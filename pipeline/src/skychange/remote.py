@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import io
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -58,9 +59,23 @@ def client() -> httpx.Client:
         return _client
 
 
+def _get(url: str, byte_range: str) -> httpx.Response:
+    """Satu permintaan range, diulang kalau sambungannya putus di tengah jalan.
+    Server kadang menutup sambungan lama yang sedang dipakai ulang; permintaan baca
+    aman diulang."""
+    for attempt in range(3):
+        try:
+            return client().get(url, headers={"Range": byte_range})
+        except httpx.TransportError:
+            if attempt == 2:
+                raise
+            time.sleep(0.4 * (attempt + 1))
+    raise AssertionError("tidak tercapai")
+
+
 def get_range(url: str, start: int, end: int) -> bytes:
     """Byte [start, end) dari berkas."""
-    r = client().get(url, headers={"Range": f"bytes={start}-{end - 1}"})
+    r = _get(url, f"bytes={start}-{end - 1}")
     if r.status_code != 206:
         r.raise_for_status()
         raise Layout(f"server tidak memberi rentang ({r.status_code})")
@@ -161,7 +176,7 @@ class Head:
     def wave_table(self) -> fits.HDUList:
         """HDU WCS-WAVE (tabel panjang gelombang dan lebar pita) di akhir berkas,
         dibungkus supaya bisa dipakai sebagai `fobj` oleh astropy.wcs."""
-        r = client().get(self.url, headers={"Range": f"bytes=-{TAIL_BYTES}"})
+        r = _get(self.url, f"bytes=-{TAIL_BYTES}")
         if r.status_code != 206:
             r.raise_for_status()
             raise Layout("server tidak memberi akhir berkas")

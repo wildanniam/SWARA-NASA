@@ -815,6 +815,9 @@ kbd {
 }
 
 .ring-spin {
+  /* Berputar di sekitar pusat lingkarannya sendiri. Tanpa ini pusat putarnya adalah
+     pusat kotak gambar SVG dihitung dari pojoknya, dan busurnya terlempar ke luar cincin. */
+  transform-box: fill-box;
   transform-origin: center;
   animation: spin 1.5s linear infinite;
 }
