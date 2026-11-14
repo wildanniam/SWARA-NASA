@@ -59,9 +59,9 @@ Urutan platform berikutnya:
 
 1. Input RA dan Dec: pratinjau "dibaca sebagai" dan klik di peta sudah ada; dua kotak berlabel belum.
 2. Halaman proyek dan video demo berbahasa Inggris.
-3. Identitas visual, setelah pekerjaan fitur: logo (belum ada; yang dipakai sekarang tanda sementara) dan penerapan arah tarot dan rasi bintang ke halaman pembuka dan Guide. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
+3. Identitas visual: logo (belum ada; yang dipakai sekarang tanda sementara) dan penerapan arah tarot dan rasi bintang ke cuplikan penanda, hasil Go to, dan halaman pembuka. Guide sudah diganti bacaan tiga kartu. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide, kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), dan pembuka seluruh langit.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), dan pembuka seluruh langit.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -138,6 +138,12 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **KEPUTUSAN (Wildan): Guide diganti bacaan tiga kartu, dan tarot serta rasi bintang mulai diterapkan sebagai sistem.** Alasannya: laci Guide terlalu banyak teks dan tidak menjelaskan bendanya. Syaratnya: boleh liar, tetapi tetap nyambung dengan desain kosmik yang sudah ada. Aturannya di [web/DESIGN.md](web/DESIGN.md): alat ukur saat orang mengukur, kartu saat SWARA bercerita.
+  - Tombol Guide sekarang membuka tiga kartu yang digambar dari bundle di layar: tempatnya (rasi di atas peta SPHEREx asli), jalannya (tumpukan WISE, satu sinar per pengamatan), cahayanya (spektrum sebagai sinar). Sisi belakang tiap kartu memuat rincian data yang dulu ada di Guide. Di peta seluruh langit isinya satu kartu.
+  - Kartu yang tidak terbaca tampil tertelungkup dengan alasannya: Barnard's Star, RW Aurigae, dan R Draconis (terlalu terang untuk spektrum bersih), WISE 0855 (tidak terpisah dari bintang latar).
+  - Fakta di kartu semuanya hitungan: rasi dari batas IAU, lintang galaktik, lintang Bumi tempat benda itu tidak pernah terbit (90 dikurangi deklinasi), dan waktu melintasi lebar Bulan purnama (1865 detik busur dibagi laju terukur; Barnard's Star sekitar 180 tahun, Epsilon Indi B sekitar 420 tahun).
+  - Diuji di browser lokal (Chromium headless): lima contoh, menunjuk sinar di kartu II dan III, membalik ketiga kartu, Keys and sources, look Glacier dan Paper, kartu seluruh langit, layar 1366 x 768, dan layar 390 px dengan geser dan ketuk. Belum diuji: ponsel asli, Safari, Firefox, pembaca layar.
+  - Untuk Nayla: kalimat pembuka di kepala dialog diambil dari kalimat pertama `TARGET_NOTES` di `web/src/content.ts`. Kalau mau fakta kurasi per benda (jarak, jenis), di situ tempatnya.
 - **TEMUAN: peta seluruh langit bisa diperbesar dan digeser sampai resolusi SPHEREx.** IRSA melayani peta DR1 sebagai potongan HiPS sampai order 5 (12,9 detik busur per piksel) yang boleh dibaca langsung dari browser. Viewer menggambarnya dengan WebGL di atas peta dasar, dalam proyeksi Hammer yang kerangkanya berputar ke utara-di-atas saat diperbesar. Menyelam ke satu tempat sekarang zoom yang menyambung sampai pandangan lebarnya. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
   - Terukur di lokal (Chromium headless dengan GPU laptop): titik langit di bawah kursor bergeser paling banyak 0,41 px per langkah zoom; waktu per bingkai saat menggeser median 16,7 ms; pada medan 51 derajat titik ujung garis rasi jatuh di bintang peta dengan median selisih 0,70 px (33 bintang).
   - Peta pada zoom terdalam di Barnard's Star lawan pandangan lebar 40 menit busurnya: selisih letak 3,5 detik busur, korelasi 0,80.
