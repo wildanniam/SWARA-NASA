@@ -4665,3 +4665,13 @@ kbd {
     min-height: 22px;
   }
 }
+
+/* Tautan kode sumber di kaki dialog kartu: setara tombol tenang di sebelahnya. */
+.reading-actions a.pill {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.reading-actions a.pill:hover {
+  color: var(--text);
+}
