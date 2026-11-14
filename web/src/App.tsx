@@ -19,6 +19,7 @@ import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
 import { Notes } from "./components/Notes";
+import { SlewReadout, type Slew } from "./components/SlewReadout";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
 import { CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
@@ -39,8 +40,9 @@ import {
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
-import type { PaletteId } from "./lib/palette";
+import { LUTS, type PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
+import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import type { Spectrum } from "./lib/spectrum";
 import { motionNote, sonifier } from "./sound/sonify";
 
@@ -49,6 +51,10 @@ const BLINK_MS = 700;
 const LONG_MS = 420;
 // Lebar langit yang tampil di lensa saat hanya SPHEREx: gerak sekitar satu piksel perlu didekati.
 const CLOSE_ARCSEC = 120;
+// Jeda antara lensa terbuka dan menyelam ke pembesaran kerja, supaya terlihat dua tahap.
+const DIVE_MS = 620;
+// Contoh biasanya siap dalam sekejap; lensa menunggu sebentar supaya bisa terbang masuk.
+const LAND_WAIT_MS = 900;
 const POLL_MS = 1000;
 const POLL_MAX_FAILURES = 3;
 
@@ -86,6 +92,18 @@ export function App() {
   // Citra WISE yang sedang tampil; kosong berarti lensa menampilkan kunjungan SPHEREx.
   const [wiseId, setWiseId] = useState<string>();
   const [zoomArcsec, setZoomArcsec] = useState(CLOSE_ARCSEC);
+  // Pandangan lebar: lensa tertutup dan latar tampil sebagai langit itu sendiri.
+  const [sky, setSky] = useState(false);
+  // Teleskop sedang berpindah ke tempat lain.
+  const [slew, setSlew] = useState<Slew>();
+  // Tempat yang lensanya sudah terbuka; sebelum itu lensa masih tertutup di langit lebar.
+  const [landedId, setLandedId] = useState<string>();
+  // Pembesaran kerja yang dituju setelah lensa terbuka pada medan terlebarnya.
+  const homeZoom = useRef<number | undefined>(undefined);
+  const diveTimer = useRef(0);
+  const appRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const zoomerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [palette, setPalette] = useState<PaletteId>("heat");
   const [showFlags, setShowFlags] = useState(false);
@@ -226,7 +244,11 @@ export function App() {
         setWindowId(first?.id);
         setEra(long ? "long" : "spherex");
         setWiseId(long ? wise[0].id : undefined);
-        setZoomArcsec(long ? manifest.fov_arcsec : Math.min(CLOSE_ARCSEC, manifest.fov_arcsec));
+        // Lensa selalu terbuka pada medan terlebarnya, tempat isinya berimpit dengan
+        // latar, lalu menyelam ke pembesaran kerja.
+        window.clearTimeout(diveTimer.current);
+        homeZoom.current = long ? manifest.fov_arcsec : Math.min(CLOSE_ARCSEC, manifest.fov_arcsec);
+        setZoomArcsec(manifest.fov_arcsec);
         setPlaying(!prefersReducedMotion());
       })
       .catch((err) => {
@@ -299,7 +321,27 @@ export function App() {
       dec: target.dec,
       bearing: route.id ? bearingBetween(route, target) : { x: 0, y: 0 },
     });
+    setSky(false);
+    // Lama perpindahan mengikuti jarak sudut yang sebenarnya di langit.
+    const degrees = route.id ? separationDeg(route, target) : 0;
+    setSlew(
+      route.id && !prefersReducedMotion()
+        ? {
+            id: target.id,
+            from: { ra: route.ra, dec: route.dec },
+            to: { ra: target.ra, dec: target.dec },
+            degrees,
+            ms: slewMs(degrees),
+            startedAt: performance.now(),
+          }
+        : undefined,
+    );
   }
+  useEffect(() => {
+    if (!slew) return;
+    const timer = window.setTimeout(() => setSlew((cur) => (cur === slew ? undefined : cur)), slew.ms);
+    return () => window.clearTimeout(timer);
+  }, [slew]);
 
   const available = useMemo(
     () => (manifest && bandId ? manifest.windows.filter((w) => findFrame(manifest, w.id, bandId)) : []),
@@ -321,6 +363,7 @@ export function App() {
   const cursor = sequence.findIndex((f) => (shownWise ? f.wise && f.id === shownWise.id : !f.wise && f.id === windowId));
 
   const show = useCallback((f: { wise: boolean; id: string }) => {
+    setSky(false);
     if (f.wise) setWiseId(f.id);
     else {
       setWiseId(undefined);
@@ -346,6 +389,9 @@ export function App() {
   const chooseEra = useCallback(
     (next: Era) => {
       if (!manifest || !wise) return;
+      window.clearTimeout(diveTimer.current);
+      homeZoom.current = undefined;
+      setSky(false);
       setEra(next);
       setWiseId(next === "long" ? wise.frames[0].id : undefined);
       setZoomArcsec(next === "long" ? manifest.fov_arcsec : Math.min(CLOSE_ARCSEC, manifest.fov_arcsec));
@@ -359,18 +405,31 @@ export function App() {
     [manifest],
   );
   const zoomIndex = Math.max(0, zoomLevels.indexOf(zoomArcsec));
+  // Di luar tingkat terlebar ada pandangan lebar: lensa menutup dan latar mengambil alih.
+  const canSky = !!manifest?.context;
   const zoom = useCallback(
     (dir: 1 | -1) => {
+      window.clearTimeout(diveTimer.current);
+      homeZoom.current = undefined;
+      if (sky) {
+        if (dir === 1) setSky(false);
+        return;
+      }
       const next = zoomLevels[zoomIndex + dir];
       if (next) setZoomArcsec(next);
+      else if (dir === -1 && canSky) {
+        setPlaying(false);
+        setSky(true);
+      }
     },
-    [zoomLevels, zoomIndex],
+    [zoomLevels, zoomIndex, sky, canSky],
   );
 
   // Suara mulai memutar satu kunjungan: blink berhenti dan panggung ikut ke kunjungan itu.
   const listen = useCallback(
     (id: string) => {
       setPlaying(false);
+      setSky(false);
       if (availableIds.has(id)) {
         setWiseId(undefined);
         setWindowId(id);
@@ -383,6 +442,7 @@ export function App() {
     (id: string) => {
       if (!manifest || !manifest.frames.some((f) => f.band === id)) return;
       setBandId(id);
+      setSky(false);
       setWiseId(undefined);
       setWindowId((cur) =>
         cur && findFrame(manifest, cur, id) ? cur : manifest.windows.find((w) => findFrame(manifest, w.id, id))?.id,
@@ -409,6 +469,7 @@ export function App() {
       }
       if (e.key === " " && !el.closest("button, a")) {
         e.preventDefault();
+        setSky(false);
         setPlaying((v) => !v);
       } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault();
@@ -444,6 +505,41 @@ export function App() {
   const failed =
     jobFailed || (!custom && indexError) || (loaded?.id === targetId && loaded?.error) || images.hasFailed(imageUrl);
   const status = failed ? "error" : image ? undefined : "loading";
+
+  // Lensa tertutup selama berpindah, sebelum terbang masuk, dan di pandangan lebar.
+  const slewing = !!slew && slew.id === targetId;
+  const landed = !!targetId && landedId === targetId;
+  const collapsed = sky || slewing || !landed;
+  const imageReady = !!image && !status;
+  useEffect(() => {
+    if (!targetId || slewing || landed) return;
+    if (imageReady) {
+      // Sejenak dalam keadaan tertutup dulu, supaya terbukanya teranimasi.
+      const timer = window.setTimeout(() => setLandedId(targetId), 40);
+      return () => window.clearTimeout(timer);
+    }
+    // Bundle baru yang sedang dibuat langsung menampilkan lensa beserta progresnya.
+    const timer = window.setTimeout(() => setLandedId(targetId), pending || failed ? 0 : LAND_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [targetId, slewing, landed, imageReady, pending, failed]);
+
+  // Setelah terbuka pada medan terlebar, lensa menyelam ke pembesaran kerjanya.
+  useEffect(() => {
+    const home = homeZoom.current;
+    if (!landed || !manifest || home === undefined) return;
+    if (home === manifest.fov_arcsec) {
+      homeZoom.current = undefined;
+      return;
+    }
+    diveTimer.current = window.setTimeout(
+      () => {
+        homeZoom.current = undefined;
+        setZoomArcsec(home);
+      },
+      prefersReducedMotion() ? 0 : DIVE_MS,
+    );
+    return () => window.clearTimeout(diveTimer.current);
+  }, [landed, manifest]);
 
   // Teks panggung selama bundle koordinat bebas dibuat, atau saat gagal.
   let statusText: string | undefined;
@@ -521,7 +617,21 @@ export function App() {
 
   // Bagian langit yang tampil di lensa, berpusat di posisi bundle: sekali dalam
   // piksel frame SPHEREx (untuk tanda dan jejak), sekali dalam piksel citra yang tampil.
-  const viewArcsec = manifest ? Math.min(zoomArcsec, manifest.fov_arcsec) : CLOSE_ARCSEC;
+  const viewArcsec = useZoomTween(
+    manifest ? Math.min(zoomArcsec, manifest.fov_arcsec) : CLOSE_ARCSEC,
+    zoomerRef,
+    !collapsed,
+  );
+
+  // Latar dipusatkan tepat di bawah lensa. Dari skalanya didapat seberapa kecil
+  // lensa harus menutup supaya isinya berimpit dengan latar.
+  const geometry = useSkyGeometry(appRef, slotRef, targetId);
+  const ctx = manifest?.context ?? undefined;
+  const skyScale = geometry && ctx ? geometry.size / ctx.fov_arcsec : undefined; // piksel per detik busur
+  const collapseScale = skyScale && geometry ? (viewArcsec * skyScale) / geometry.lens : 0.4;
+  const footprintPx =
+    skyScale && manifest ? manifest.fov_arcsec * skyScale : geometry ? geometry.lens * 0.4 : 200;
+  const ctxBand = manifest?.bands.find((b) => b.id === ctx?.band);
   const markView = useMemo(() => {
     const px = manifest?.frame_px ?? 240;
     const w = (viewArcsec / (manifest?.fov_arcsec ?? CLOSE_ARCSEC)) * px;
@@ -574,8 +684,18 @@ export function App() {
         : TARGET_NOTES[target.id];
 
   return (
-    <div className="app">
-      <Backdrop id={target?.id} url={contextUrl} size={manifest?.context?.size_px} bearing={route.bearing} />
+    <div className="app" ref={appRef}>
+      <Backdrop
+        id={target?.id}
+        url={contextUrl}
+        size={manifest?.context?.size_px}
+        lut={LUTS[palette]}
+        geometry={geometry}
+        bright={collapsed}
+        bearing={route.bearing}
+        slewMs={slew?.ms ?? 1100}
+        travel={Math.min(44, 12 + (slew?.degrees ?? 0) * 0.35)}
+      />
 
       <header className="top">
         <p className="brand">
@@ -640,6 +760,26 @@ export function App() {
           progress={progress}
           onRetry={retry}
           soundRing={soundRing}
+          slotRef={slotRef}
+          zoomerRef={zoomerRef}
+          collapsed={collapsed}
+          collapseScale={collapseScale}
+          footprintPx={footprintPx}
+          reticle={slewing || !landed ? "slewing" : "idle"}
+          reticleLabel={target ? `Look closer at ${target.name}` : "Look closer"}
+          onExpand={() => setSky(false)}
+          onWheelZoom={zoom}
+          caption={
+            slewing && slew ? (
+              <SlewReadout slew={slew} />
+            ) : sky && ctx ? (
+              <>
+                <b>Wide view</b>
+                <span>SPHEREx {ctxBand ? microns(ctxBand.lambda_min, ctxBand.lambda_max) : ""}</span>
+                <span>{Math.round(ctx.fov_arcsec / 60)}′ field</span>
+              </>
+            ) : undefined
+          }
         >
           <button
             type="button"
@@ -663,15 +803,15 @@ export function App() {
           >
             <Flag aria-hidden="true" />
           </button>
-          {zoomLevels.length > 1 && (
+          {(zoomLevels.length > 1 || canSky) && (
             <>
               <button
                 type="button"
                 className="satellite satellite-left"
                 style={{ "--a": "214deg" } as React.CSSProperties}
-                aria-label="Zoom out"
-                data-tip="Zoom out"
-                disabled={zoomIndex === 0}
+                aria-label={zoomIndex === 0 ? "Step back to the wide view" : "Zoom out"}
+                data-tip={zoomIndex === 0 ? "Wide view" : "Zoom out"}
+                disabled={zoomIndex === 0 && !canSky}
                 onClick={() => zoom(-1)}
               >
                 <MagnifyingGlassMinus aria-hidden="true" />
@@ -739,7 +879,10 @@ export function App() {
             <button
               type="button"
               className="dial dial-accent"
-              onClick={() => setPlaying((v) => !v)}
+              onClick={() => {
+                setSky(false);
+                setPlaying((v) => !v);
+              }}
               disabled={sequence.length < 2}
               aria-pressed={playing}
               aria-label={playing ? "Pause" : long ? "Play 16 years of images" : "Blink between visits"}
@@ -875,7 +1018,7 @@ export function App() {
       />
 
       <p className="sr-only" role="status" aria-live="polite">
-        {playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
+        {sky && target ? `Wide view of the sky around ${target.name}.` : playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
       </p>
     </div>
   );

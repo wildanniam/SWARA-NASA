@@ -14,7 +14,8 @@ Tingkat: variasi tata letak sedang, gerak sedang, kepadatan rendah.
 
 - Lensa di tengah adalah data: citra SPHEREx yang dipakai untuk mengukur, 2 sampai 6 menit busur tergantung pembesaran. Warnanya hangat (panas inframerah).
 - Citra WISE 2010-2024 juga tampil di lensa, tapi hanya untuk dilihat. Keterangan di bawah lensa selalu menyebut teleskopnya, dan tidak ada angka yang diukur dari WISE.
-- Latar adalah suasana, tapi tetap asli: citra SPHEREx 40 menit busur di sekitar posisi yang sama (`context.png`). Warnanya dingin (cahaya bintang) dan diredupkan, supaya tidak dikira bagian yang diukur.
+- Latar adalah langit yang sama pada pembesaran lebih kecil: citra SPHEREx 40 menit busur di posisi yang sama (`context.png`), dipusatkan tepat di bawah lensa dan memakai palet lensa. Lensa adalah bagian tengahnya yang diperbesar. Selama lensa terbuka latar diredupkan; di pandangan lebar ia tampil terang penuh.
+- Latar tidak pernah digeser, diputar, atau dihanyutkan untuk hiasan: bintang di luar lensa harus tetap kelanjutan bintang di dalamnya. Ia hanya bergerak saat teleskop memang berpindah tempat.
 - Tidak ada bintang karangan, pendar hias, atau gradien dekoratif. Gradien hanya dipakai sebagai tirai supaya teks terbaca.
 
 ## Pengguna dan tugas
@@ -25,7 +26,7 @@ Relawan pemula. Tugasnya tiga, berurutan: lihat apa yang bergerak atau berubah t
 
 Empat lapis, dari belakang ke depan:
 
-1. **Latar langit.** Citra medan lebar memenuhi layar dan hanyut sangat pelan. Saat pindah tempat, latar lama bergeser pergi ke arah yang sebenarnya di langit dan latar baru datang dari arah sebaliknya.
+1. **Latar langit.** Citra medan lebar, dipusatkan di pusat lensa; sisinya dihitung dari layar supaya menutup dari pusat lensa ke semua tepi. Saat pindah tempat, latar lama bergeser pergi ke arah yang sebenarnya di langit dan latar baru datang dari arah sebaliknya.
 2. **Panggung.** Lensa bundar di tengah, diapit dua blok teks: identitas benda di kiri, temuan di kanan.
 3. **Dok kendali** di bawah, dua baris: waktu (blink dan kunjungan) dan cahaya (dengar dan spektrum).
 4. **Lapis sementara:** dialog "pergi ke" dan laci catatan.
@@ -35,6 +36,8 @@ Urutan `z-index`: latar 0, tirai 1, panggung 2, bilah atas dan dok 3, laci 4, di
 ## Komponen dan wataknya
 
 - **Lensa.** Bundar, seperti medan pandang teleskop. Cincin luarnya bertanda derajat dengan huruf N dan E. Cincin itu juga penunjuk: terisi saat data dimuat, dan menyapu saat suara spektrum berjalan. Membuka dan menutup seperti diafragma.
+- **Rantai pembesaran.** Pandangan lebar (latar, 40 menit busur), lalu lensa 6, 3, dan 2 menit busur. Menjauh dari tingkat terlebar menutup lensa: ia mengecil sampai isinya tepat seukuran latar (skalanya dihitung dari skala latar, bukan angka tetap), lalu larut. Yang tersisa cincin ambar selebar petak yang diperbesar lensa; mengekliknya membuka lensa lagi. Membuka sebuah tempat selalu lewat urutan ini: langit lebar, lensa terbuka, lalu menyelam ke pembesaran kerja.
+- **Berpindah tempat.** Lensa menutup, latar bergeser, dan baris di bawah lensa membaca posisi yang sedang dilewati di sepanjang busur lingkaran besar serta sisa jaraknya. Lama perpindahan mengikuti jarak sudut yang sebenarnya (0,8 sampai 2,4 detik).
 - **Tanda acuan dan jejak.** Tanda silang ambar menandai posisi pada kunjungan pertama. Posisi terukur tiap kunjungan digambar sebagai titik yang tersambung, jadi geraknya terbaca walau blink dijeda.
 - **Satelit.** Tombol bundar kecil menempel di cincin lensa: palet warna dan penanda piksel yang tidak bisa dipercaya di kanan, perbesar dan perkecil di kiri.
 - **Tombol putar.** Blink dan Dengar adalah tombol bundar besar. Hanya Blink yang berisi warna aksen.
@@ -82,12 +85,13 @@ Tiap gerak punya alasan:
 | Gerak | Artinya |
 |---|---|
 | Blink berpindah tanpa pudar | mata menangkap gerak dari loncatan |
-| Latar bergeser saat pindah tempat | teleskop diarahkan ke bagian langit lain, dengan arah yang benar |
+| Latar bergeser saat pindah tempat | teleskop diarahkan ke bagian langit lain, dengan arah yang benar dan lama yang mengikuti jaraknya |
+| Lensa mengecil ke latar atau membesar darinya | lensa dan latar adalah langit yang sama pada pembesaran berbeda |
+| Isi lensa membesar atau mengecil saat ganti tingkat | pembesaran berubah, tempatnya tetap |
 | Lensa membuka seperti diafragma | data untuk tempat ini sudah siap |
 | Cincin terisi atau menyapu | progres muat atau posisi suara |
-| Latar hanyut sangat pelan | rasa melayang |
 
-Dengan `prefers-reduced-motion`: tidak ada hanyut dan geser, lensa langsung terbuka, dan blink tidak mulai sendiri.
+Dengan `prefers-reduced-motion`: tidak ada geser, perpindahan, atau gerak pembesaran; lensa langsung terbuka pada pembesaran kerjanya, dan blink tidak mulai sendiri.
 
 ## Keadaan yang wajib ada
 
