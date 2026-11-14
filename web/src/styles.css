@@ -305,7 +305,8 @@ kbd {
   color: var(--accent);
 }
 
-.pill:disabled {
+.pill:disabled,
+.pill[aria-disabled="true"] {
   opacity: 0.38;
   cursor: not-allowed;
 }
@@ -1667,6 +1668,133 @@ kbd {
 
 .thumb[data-shown="true"] {
   opacity: 1;
+}
+
+/* ---------- dialog kartu berbagi ---------- */
+
+.scrim-center {
+  align-items: center;
+  padding: 16px;
+}
+
+.cardbox {
+  display: grid;
+  grid-template-columns: auto minmax(240px, 300px);
+  align-items: center;
+  gap: 24px;
+  max-width: 100%;
+  padding: 18px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  background: var(--panel-solid);
+  animation: rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardbox-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* Kartunya 1080 x 1920; di sini ia tampil sekecil yang muat di layar. */
+.cardbox-canvas {
+  display: block;
+  width: auto;
+  height: min(calc(100dvh - 72px), 660px);
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  background: var(--void);
+  transition: opacity 200ms;
+}
+
+.cardbox-stage[data-ready="false"] .cardbox-canvas {
+  opacity: 0.25;
+}
+
+.cardbox-wait {
+  position: absolute;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.cardbox-side {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+}
+
+.cardbox-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardbox h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cardbox-lead,
+.cardbox-note {
+  margin: 0;
+  color: var(--soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cardbox-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.cardbox-tabs,
+.cardbox-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.cardbox-tabs .pill {
+  justify-content: flex-start;
+}
+
+.cardbox-numeral {
+  min-width: 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cardbox-tabs .pill[aria-pressed="true"] .cardbox-numeral {
+  color: inherit;
+}
+
+@media (max-width: 720px) {
+  .scrim-center {
+    align-items: start;
+  }
+
+  .cardbox {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 14px;
+  }
+
+  .cardbox-canvas {
+    height: min(56dvh, 520px);
+  }
+
+  .cardbox-side {
+    width: 100%;
+  }
 }
 
 /* ---------- laci catatan ---------- */
