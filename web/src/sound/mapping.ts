@@ -58,6 +58,16 @@ export const MOTION = {
   arcsecPerStep: 1,
   /** Batas langkah ke atas dan ke bawah. */
   maxSteps: 12,
+  /** Jarak antar nada saat melodi riwayat diputar (durasi nada = `seconds`). */
+  melodyStep: 0.9,
+  /** Bentuk gelombang agar frasa melodi bisa dijadwalkan engine yang sama. */
+  waveform: "triangle" as OscillatorType,
+  unverifiedWaveform: "sawtooth" as OscillatorType,
+  unverifiedGain: 1,
+  /** Kunjungan tanpa pengukuran: ketukan pelan. */
+  gapTick: true,
+  gapTickHz: 1400,
+  gapTickGain: 0.12,
   /** Pergeseran timur-barat yang memberi geser stereo penuh, detik busur. Timur di kiri, seperti di gambar. */
   panArcsec: 10,
   /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */
@@ -70,3 +80,141 @@ export const MOTION = {
 };
 
 export type MotionSettings = typeof MOTION;
+
+// Sapuan gambar 32x5 (usul awal dari measurements.md; nilai akhir wewenang Alif).
+// Satu sapuan = 32 kolom melintasi medan 6 menit busur, tiap kolom hingga 5 nada.
+// Ambang dan normalisasi dihitung per objek per band saat ekstraksi.
+
+export const SCAN = {
+  /** Jumlah kolom barat-ke-timur. */
+  columns: 32,
+  /** Nada serentak terbanyak per kolom (puncak terkuat). */
+  maxNotes: 5,
+  /** Detik per kolom: 32 x 0,34 ~ 11 detik per kunjungan. */
+  colSeconds: 0.34,
+  /** Bagian tiap kolom yang berbunyi; sisanya jeda antar kolom. */
+  noteFill: 0.8,
+  /** Ambang puncak = latar + kSigma * sigma (diukur: k=4, lihat measurements.md). */
+  kSigma: 4,
+  /** Batas atas volume = min(255, p98 * topMargin). */
+  topMargin: 1.25,
+  /** Volume minimum puncak yang lolos ambang, supaya tetap terdengar. */
+  minVol: 0.08,
+
+  /** Nada baris paling utara, Hz (A3). Selatan turun `octaves` oktaf. */
+  baseHz: 220,
+  octaves: 2,
+  scale: [0, 2, 4, 7, 9],
+
+  /** Bentuk gelombang nada data; kolom berflag memakai yang kasar. */
+  waveform: "triangle" as OscillatorType,
+  unverifiedWaveform: "sawtooth" as OscillatorType,
+  unverifiedGain: 0.45,
+
+  /** Kolom tanpa puncak: ketukan pelan penanda waktu berjalan. */
+  gapTick: true,
+  gapTickHz: 1400,
+  gapTickGain: 0.12,
+
+  /** Earcon tengah medan: nada pendek berbeda dari nada data. */
+  earconHz: 1760,
+  earconSeconds: 0.15,
+  earconGain: 0.5,
+
+  /** Jarak minimum antar puncak, piksel pada citra 480px. */
+  minDistPx: 6,
+};
+
+export type ScanSettings = typeof SCAN;
+
+export type InstrumentId = "spectrum" | "scan" | "motion";
+
+export type InstrumentProfile = {
+  waveform: OscillatorType;
+  unverifiedWaveform: OscillatorType;
+  unverifiedGain: number;
+  gapTick: boolean;
+  gapTickHz: number;
+  gapTickGain: number;
+  gapTickWaveform: OscillatorType;
+  gain: number;
+  envelope: "sustain" | "pluck" | "bell";
+  attackSeconds: number;
+  sustainFraction: number;
+  partials: { ratio: number; gain: number }[];
+};
+
+// Instrumen sintetis terpisah untuk tiap sumber data; level adalah pengali relatif.
+export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
+  spectrum: {
+    waveform: "sine",
+    unverifiedWaveform: "triangle",
+    unverifiedGain: 0.42,
+    gapTick: true,
+    gapTickHz: 1400,
+    gapTickGain: 0.1,
+    gapTickWaveform: "sine",
+    gain: 0.86,
+    envelope: "sustain",
+    attackSeconds: 0.014,
+    sustainFraction: 0.62,
+    partials: [],
+  },
+  scan: {
+    waveform: "sine",
+    unverifiedWaveform: "triangle",
+    unverifiedGain: 0.34,
+    gapTick: true,
+    gapTickHz: 1760,
+    gapTickGain: 0.12,
+    gapTickWaveform: "sine",
+    gain: 0.44,
+    envelope: "pluck",
+    attackSeconds: 0.003,
+    sustainFraction: 0.16,
+    partials: [
+      { ratio: 2, gain: 0.07 },
+      { ratio: 3, gain: 0.018 },
+    ],
+  },
+  motion: {
+    waveform: "sine",
+    unverifiedWaveform: "sine",
+    unverifiedGain: 0.7,
+    gapTick: true,
+    gapTickHz: 1150,
+    gapTickGain: 0.1,
+    gapTickWaveform: "sine",
+    gain: 0.58,
+    envelope: "bell",
+    attackSeconds: 0.006,
+    sustainFraction: 0.1,
+    partials: [
+      { ratio: 2, gain: 0.12 },
+    ],
+  },
+};
+
+export const MIX = {
+  /** Master level dipertahankan; equal-power gain membagi energi antar lapisan aktif. */
+  gain: SOUND.gain,
+  compressorThresholdDb: -16,
+  compressorKneeDb: 12,
+  compressorRatio: 6,
+  compressorAttackSeconds: 0.003,
+  compressorReleaseSeconds: 0.18,
+  reverbSeconds: 4.2,
+  reverbMix: 0.28,
+};
+
+// Ambience synthesized locally: low drone, pipe-organ chord, soft strings, sparse piano.
+export const AMBIENCE = {
+  gain: 0.3,
+  droneHz: [55, 82.41],
+  organHz: [110, 164.81, 220],
+  stringsHz: [164.81, 220, 329.63],
+  pianoHz: [220, 329.63, 440],
+  pianoIntervalSeconds: 6,
+  buildSeconds: 2.8,
+  releaseSeconds: 2.4,
+};

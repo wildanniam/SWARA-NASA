@@ -13,8 +13,6 @@ import {
   Pause,
   Play,
   ShareNetwork,
-  SpeakerHigh,
-  SpeakerSlash,
   Subtract,
   StarFour,
   SunDim,
@@ -51,9 +49,11 @@ import {
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
+import { readyFrameForWindow } from "./lib/visitFrames";
 import { loadAtlas, type Atlas } from "./lib/allsky";
 import type { CardInput } from "./lib/card";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
+import { readFramePixels } from "./lib/framePixels";
 import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
 import { backdropPalette, isPalette, lookGradient, LOOKS, LUTS, REVEAL_LUT, type PaletteId } from "./lib/palette";
@@ -61,7 +61,7 @@ import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
-import { motionNote, sonifier } from "./sound/sonify";
+import { motionNote } from "./sound/sonify";
 
 const BLINK_MS = 700;
 // Deretan 16 tahun punya belasan citra, jadi diputar lebih cepat.
@@ -158,7 +158,6 @@ export function App() {
   // Bintang katalog Gaia ditimpakan di lensa.
   const [gaiaOn, setGaiaOn] = useState(false);
   const [gaia, setGaia] = useState<{ id: string; field: GaiaField }>();
-  const [motionSound, setMotionSound] = useState(false);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
   const [query, setQuery] = useState("");
@@ -186,6 +185,7 @@ export function App() {
   // Band yang sedang terdengar saat suara spektrum berjalan; lensa ikut menampilkannya.
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
+  const scanLine = useRef<SVGLineElement>(null);
   const images = useImageStore();
 
   const toggleFocus = useCallback(() => {
@@ -682,12 +682,53 @@ export function App() {
     (id: string) => {
       setPlaying(false);
       setSky(false);
-      if (availableIds.has(id)) {
+      if (manifest && targetId && manifest.windows.some((w) => w.id === id)) {
+        const frame = readyFrameForWindow(manifest.frames, id, bandId, (f) => !!images.get(assetUrl(targetId, custom, f.image)));
         setWiseId(undefined);
+        if (frame && frame.band !== bandId) setBandId(frame.band);
         setWindowId(id);
       }
     },
-    [availableIds],
+    [manifest, targetId, custom, bandId, images],
+  );
+
+  // Sapuan dimulai: lensa dipaksa ke medan penuh, blink berhenti. Citra WISE
+  // (yang tidak dibunyikan) diganti kunjungan SPHEREx pertama sapuan.
+  const startScan = useCallback(
+    (visits: string[]) => {
+      if (!manifest) return;
+      window.clearTimeout(diveTimer.current);
+      homeZoom.current = undefined;
+      setPlaying(false);
+      setSky(false);
+      setZoomArcsec(manifest.fov_arcsec);
+      setWiseId(undefined);
+      if (visits[0] && visits[0] !== windowId) setWindowId(visits[0]);
+    },
+    [manifest, windowId],
+  );
+
+  // Piksel abu display satu kunjungan (band yang tampil), untuk sapuan.
+  const readVisit = useCallback(
+    (id: string) => {
+      if (!manifest || !targetId || !bandId) return undefined;
+      const f = findFrame(manifest, id, bandId);
+      if (!f) return undefined;
+      const img = images.get(assetUrl(targetId, custom, f.image));
+      if (!img) return undefined;
+      const mask = f.mask ? images.get(assetUrl(targetId, custom, f.mask)) : undefined;
+      return readFramePixels(img, mask);
+    },
+    [manifest, targetId, custom, bandId, images],
+  );
+
+  const hasImage = useCallback(
+    (id: string) => {
+      if (!manifest || !targetId || !bandId) return false;
+      const f = findFrame(manifest, id, bandId);
+      return !!f && !!images.get(assetUrl(targetId, custom, f.image));
+    },
+    [manifest, targetId, custom, bandId, images],
   );
 
   const chooseBand = useCallback(
@@ -769,8 +810,6 @@ export function App() {
         e.preventDefault();
         setPlaying(false);
         step(e.key === "ArrowRight" ? 1 : -1);
-      } else if (e.key.toLowerCase() === "m" && manifest && referenceMotion(manifest)) {
-        setMotionSound((v) => !v);
       } else if (e.key === "+" || e.key === "=") zoom(1);
       else if (e.key === "-") zoom(-1);
       else if (manifest && /^[1-6]$/.test(e.key)) {
@@ -781,7 +820,7 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [step, chooseBand, manifest, zoom, openGuide, atlas, focus, toggleFocus]);
 
-  // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
+  // Mode Spektrum: lensa menampilkan band yang sedang terdengar.
   const shownBandId =
     heardBand && manifest && windowId && findFrame(manifest, windowId, heardBand) ? heardBand : bandId;
   const frame = manifest && windowId && shownBandId ? findFrame(manifest, windowId, shownBandId) : undefined;
@@ -891,14 +930,17 @@ export function App() {
     else shift = `Shifted ${shiftWords(s.east, s.north)} since ${since}.`;
   }
 
-  // Motif gerak: tiap kunjungan yang tampil membunyikan satu nada dari posisinya.
+  // Nada gerak per kunjungan untuk pilihan tersendiri di modal Listen.
   const canHearMotion = !!ref;
-  useEffect(() => {
-    if (!motionSound || !manifest || !windowId || sonifier.busy) return;
-    const s = shiftAt(manifest, windowId);
-    if (s.kind === "none") return;
-    sonifier.blip(s.kind === "unmeasured" ? null : s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0));
-  }, [motionSound, manifest, windowId]);
+  const readMotion = useCallback(
+    (id: string) => {
+      if (!manifest || !ref) return null;
+      const s = shiftAt(manifest, id);
+      if (s.kind === "none" || s.kind === "unmeasured") return null;
+      return s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0);
+    },
+    [manifest, ref],
+  );
 
   const dateLabel = shownWise ? monthYear(shownWise.mjd_mid) : win ? monthYear(win.mjd_mid) : "";
   const bandLabel = shownWise
@@ -1282,6 +1324,7 @@ export function App() {
           progress={progress}
           onRetry={retry}
           soundRing={soundRing}
+          scanLineRef={scanLine}
           slotRef={slotRef}
           zoomerRef={zoomerRef}
           collapsed={collapsed}
@@ -1555,23 +1598,6 @@ export function App() {
               <CaretRight aria-hidden="true" />
             </button>
           </div>
-          <div className="dock-tail">
-            <button
-              type="button"
-              className="pill"
-              aria-pressed={motionSound && canHearMotion}
-              disabled={!canHearMotion}
-              title={
-                canHearMotion
-                  ? "One note per visit: higher is further north"
-                  : "Nothing here could be tracked between visits, so there is no motion sound"
-              }
-              onClick={() => setMotionSound((v) => !v)}
-            >
-              {motionSound && canHearMotion ? <SpeakerHigh aria-hidden="true" /> : <SpeakerSlash aria-hidden="true" />}
-              Motion sound
-            </button>
-          </div>
         </div>
 
         <div className="dock-row dock-light">
@@ -1585,6 +1611,7 @@ export function App() {
             />
           ) : manifest && !manifest.preview ? (
             <SpectrumStrip
+              targetId={targetId ?? ""}
               spectrum={spectrum?.data}
               failed={!!spectrum?.error}
               windows={manifest.windows}
@@ -1595,7 +1622,13 @@ export function App() {
               onBand={chooseBand}
               onListen={listen}
               onHear={setHeardBand}
+              onScanStart={startScan}
+              readMotion={readMotion}
+              motionReady={canHearMotion}
+              readVisit={readVisit}
+              hasImage={hasImage}
               soundRing={soundRing}
+              scanLine={scanLine}
             />
           ) : (
             <div className="strip strip-empty" />
