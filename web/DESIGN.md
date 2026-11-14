@@ -164,6 +164,24 @@ Dua bagian (`web/src/components/Logo.tsx`; bentuk yang sama ada di `web/public/f
 
 Elips sebesar yang muat di layar; judul dan kontrol menempati sudut kosong elips (kiri bawah: judul, satu kalimat, petunjuk, tombol tur; kanan bawah: panjang gelombang dan look; kanan atas pelat: zoom). Tidak ada kaki halaman. Ponsel tetap bertumpuk.
 
+## Landing page
+
+`/` adalah landing page; aplikasinya di `/sky`. Tautan lama yang membawa parameter aplikasi (`target`, `ra`, `dec`, `name`, `band`, `look`, `view`) tetap membuka aplikasi, dan aplikasi selalu menulis alamatnya di `/sky`. Kodenya di `web/src/landing/`, kelasnya berawalan `lp-`. Acuannya mockup v2 yang disetujui Wildan (14 November 2026): minimalis dan modern, rasi bintang sebagai aksen, bukan hiasan di semua tempat.
+
+Isinya dihitung dari bundle yang sama dengan aplikasi. Yang ditulis tangan hanya empat angka di bawah hero dan contoh pembacaan di kartu 06 (Wolf 359, tempat yang sudah pernah dibuat). Cahaya hias hanya boleh di bingkai (tepi bola, kilau kartu), tidak pernah di data: bola langit adalah peta SPHEREx DR1 asli dengan garis rasi dari manifest peta seluruh langit, dan citra di kartu serta panggung adalah frame bundle.
+
+| Bagian | Sasaran | Mikro-interaksi |
+|---|---|---|
+| Navigasi | empat bagian dan satu jalan ke aplikasi | pil penanda meluncur ke menu yang ditunjuk lalu kembali ke bagian yang sedang dibaca; titik ambar di bawah menu aktif; kaca gelap setelah digulir; panah tombol bergeser |
+| Hero | nama panjang SWARA, janji satu kalimat, dua tombol (aplikasi dan Barnard's Star) | masuk bertahap; tepi bola terbit lebih dulu, petanya larut masuk; bola berputar satu putaran per 12 menit dan sedikit miring mengikuti kursor; penanda lima contoh membawa angka terukurnya |
+| Angka | empat fakta yang bisa dicek | menghitung naik sekali; garis ambar tumbuh di atas kolom yang ditunjuk |
+| Kenapa SWARA | tiga pembeda dari penampil langit biasa | cara lama tercoret sendiri saat kolomnya muncul |
+| Enam alat | tiap kartu menggambar alatnya dari data asli | semua: terangkat 8 px, kurung sudut melebar dan menyala, sorot cahaya mengikuti kursor, kilau lewat sekali, panah muncul di samping judul. 01 memutar semua pengamatan dengan sinar dan tanggalnya; 02 penggeser pembanding mengikuti kursor (kiri citra terakhir, kanan selisihnya) dan kunci tahunnya; 03 kepala putar menyapu spektrum dengan bacaan µm, tanpa bunyi; 04 garis tumbuh lalu selisihnya tertulis; 05 kipas kartu melebar; 06 koordinat diacak lalu mengunci dan cincinnya terisi |
+| Lima contoh | pilih satu benda dan lihat angkanya sebelum masuk | bintang penanda meluncur ke baris; lensa larut sambil sedikit mengecil; angka menghitung dari angka sebelumnya; kalimat Gaia dari `gaia.json` |
+| Kaki | produk, proyek, sumber data | garis bawah tautan meluncur masuk; bintang di nama SWARA membesar |
+
+Layar sentuh tidak punya hover, jadi animasi kartu berjalan sendiri selama kartunya terlihat. Di ponsel lima contoh menjadi deretan pil yang bisa digeser dengan panggung di bawahnya. Dengan gerak dikurangi tidak ada animasi: angka langsung tampil dan bola diam. Tanpa WebGL bola dilukis sekali di CPU.
+
 ## Pelat: gaya semua panel
 
 Dialog dan popover memakai satu gaya, bukan kotak abu-abu polos: latar gelap yang hangat di bagian atas, garis tepi aksen tipis, dan satu garis lagi 5 px di dalamnya (garis ganda, seperti bingkai kartu). Dipakai dialog Go to dan Share, kartu bidik dan cuplikan penanda di peta, dan panel Keys and sources. Dua dialog besar membawa satu bintang empat sudut yang memutus garis atasnya, seperti garis dok. Keterangan kecil (tooltip) dan gugus tombol zoom peta memakai garis dan latar yang sama tanpa garis dalam. Kartu tarot tetap hanya di The cards dan kartu berbagi; pelat adalah wadah, bukan kartu.

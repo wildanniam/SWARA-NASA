@@ -1,3 +1,4 @@
+import "./styles.css";
 import {
   CaretLeft,
   CaretRight,
@@ -58,6 +59,7 @@ import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
 import { backdropPalette, isPalette, lookGradient, LOOKS, LUTS, REVEAL_LUT, type PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
+import { APP_PATH } from "./route";
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
@@ -395,14 +397,15 @@ export function App() {
     return () => ac.abort();
   }, [targetId, previewParts]);
 
-  // Yang sedang tampil dicatat di URL, supaya tautannya membuka pandangan yang sama.
+  // Yang sedang tampil dicatat di URL, supaya tautannya membuka pandangan yang sama. Selalu di
+  // /sky: tautan lama "/?target=..." pindah ke sana, jadi muat ulang tidak jatuh ke landing page.
   useEffect(() => {
     if (atlas) {
       const p = new URLSearchParams();
       if (skyBand !== "D5") p.set("band", skyBand);
       if (palette !== "heat") p.set("look", palette);
       const q = p.toString();
-      window.history.replaceState(null, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+      window.history.replaceState(null, "", `${APP_PATH}${q ? `?${q}` : ""}`);
       return;
     }
     if (!targetId || !bandId || !manifest) return;
@@ -415,7 +418,7 @@ export function App() {
     p.set("band", bandId);
     if (manifest.wise?.frames.length && era === "spherex") p.set("view", "spherex");
     if (palette !== "heat") p.set("look", palette);
-    window.history.replaceState(null, "", `${window.location.pathname}?${p}`);
+    window.history.replaceState(null, "", `${APP_PATH}?${p}`);
   }, [targetId, bandId, manifest, job, era, palette, atlas, skyBand]);
 
   // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
@@ -1160,7 +1163,7 @@ export function App() {
       name: target.name,
       manifest,
       look: palette,
-      url: `${window.location.origin}${window.location.pathname}?${link}`,
+      url: `${window.location.origin}${APP_PATH}?${link}`,
       site: window.location.host,
       context: cardContext,
       wiseImages: cardWise,

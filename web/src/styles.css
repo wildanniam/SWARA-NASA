@@ -23,6 +23,11 @@
   color-scheme: dark;
 }
 
+/* Pindah antara landing page dan aplikasi melarut, di browser yang mendukungnya. */
+@view-transition {
+  navigation: auto;
+}
+
 * {
   box-sizing: border-box;
 }
