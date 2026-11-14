@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 node_modules/
 dist/
+
+# local agent tooling, never commit
+.agents/
