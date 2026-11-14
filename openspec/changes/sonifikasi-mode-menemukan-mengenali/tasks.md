@@ -20,7 +20,7 @@
 
 ## 4. Mode Kecerahan
 
-- [ ] 4.1 Implementasikan pemilihan band-irisan + `brightnessPhrase()` (pitch dari fluks ternormalisasi kunjungan pertama/median, volume konstan; kunjungan tanpa band = tick + pengumuman); verifikasi: RW Aurigae 4–5 mikron terdengar turun; kunjungan tanpa band berbunyi tick + teks alasan.
+- [ ] 4.1 Implementasikan pemilihan band-irisan + toleransi diam + `brightnessPhrase()` (pitch dari fluks ternormalisasi kunjungan pertama/median, volume konstan; selisih < `max(batas_bawah, 2×S)` = nada acuan + pengumuman diam; kunjungan tanpa band = tick + pengumuman); verifikasi: data sintetis di bawah toleransi terdengar sama dengan acuan; penurunan RW Aurigae 4–5 mikron terbukti melewati toleransi lalu terdengar turun (kalau tidak lewat, klaim "terdengar turun" dikoreksi); kunjungan tanpa band berbunyi tick + teks alasan.
 - [ ] 4.2 Implementasikan meter terang sinkron + A/B dua kunjungan bergantian dengan pengumuman "A"/"B"; verifikasi: putar A/B — meter dan pengumuman mengikuti giliran sampai dihentikan.
 
 ## 5. Mode Pindai

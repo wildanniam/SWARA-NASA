@@ -27,12 +27,17 @@ Mode Gerak SHALL memainkan satu nada per kunjungan dengan pitch dari Dec relatif
 
 ### Requirement: Mode Kecerahan satu nada per kunjungan
 
-Mode Kecerahan SHALL memainkan satu nada per kunjungan dengan pitch dari fluks ternormalisasi terhadap kunjungan pertama atau median objek itu (naik = menerang), volume konstan, hanya dibandingkan pada band yang ada di semua kunjungan; kunjungan tanpa band itu mendapat tick plus pengumuman.
+Mode Kecerahan SHALL memainkan satu nada per kunjungan dengan pitch dari fluks ternormalisasi terhadap kunjungan pertama atau median objek itu (naik = menerang), volume konstan, hanya dibandingkan pada band yang ada di semua kunjungan; kunjungan tanpa band itu mendapat tick plus pengumuman. Selisih di bawah ketelitian pengukuran SHALL dinyatakan diam: nadanya sama persis dengan acuan.
 
 #### Scenario: Menerang antar kunjungan
 
 - **WHEN** fluks objek naik antar kunjungan pada band pembanding (misalnya RW Aurigae terang di 4–5 mikron lalu turun)
 - **THEN** pitch mengikuti arah terang: kunjungan yang lebih terang terdengar lebih tinggi
+
+#### Scenario: Di bawah ketelitian dianggap diam
+
+- **WHEN** selisih fluks suatu kunjungan terhadap acuan lebih kecil dari `max(batas_bawah, 2×S)`, dengan S sebaran galat titik bersih band pembanding
+- **THEN** kunjungan itu berbunyi sama persis dengan nada acuan dan pengumuman menyatakan tidak ada perubahan terukur
 
 #### Scenario: Band tidak lengkap
 

@@ -100,6 +100,7 @@ Satu `Note` (`web/src/sound/sonify.ts`) berarti:
 |---|---|
 | `t`, `dur` | detik sejak awal frasa, dan lamanya |
 | `hz` | tinggi nada; `null` = langkah tanpa data → ketukan pendek + pengumuman, bukan nada diam |
+| `unverified` | nilai dari titik jenuh SPHEREx (akurasi belum terverifikasi): timbre penanda sama seperti `lowConf`, pitch tetap dari data |
 | `vol` | pengali keras 0-1; mode bervolume konstan memakai 1 |
 | `pan` | -1 (kiri) sampai 1 (kanan) |
 | `lowConf` | deteksi lemah: memakai timbre penanda, pitch tetap dari data |

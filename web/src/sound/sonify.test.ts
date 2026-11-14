@@ -95,6 +95,16 @@ describe("schedule", () => {
     expect(peak.value).toBeCloseTo(SOUND.unverifiedGain * 0.5, 6);
   });
 
+  it("titik jenuh (unverified) memakai timbre penanda yang sama", () => {
+    const { ctx, out, oscs, gains } = fakeCtx();
+    schedule(ctx, out, [note({ hz: 330, unverified: true })], 10);
+    expect(oscs).toHaveLength(1);
+    expect(oscs[0].type).toBe(SOUND.unverifiedWaveform);
+    expect(oscs[0].frequency.value).toBe(330);
+    const peak = gains[0].calls.find((c: Call) => c.method === "linear");
+    expect(peak.value).toBeCloseTo(SOUND.unverifiedGain, 6);
+  });
+
   it("volume per nada mengalikan puncak tanpa mengubah pitch", () => {
     const { ctx, out, oscs, gains } = fakeCtx();
     schedule(ctx, out, [note({ hz: 440, vol: 0.25 })], 10);
