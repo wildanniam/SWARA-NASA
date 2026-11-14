@@ -1050,26 +1050,47 @@ kbd {
   padding-left: 6px;
 }
 
-/* Pemilih mode suara di samping tombol Listen: satu tombol satu fungsi. */
-.mode-switch {
-  display: flex;
-  gap: 6px;
+/* Pemilih suara: modal dari tombol Listen, satu baris satu fungsi. */
+.hear {
+  display: grid;
+  gap: 8px;
+  width: min(420px, 100%);
+  padding: 14px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  background: var(--panel-solid);
+  animation: rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.mode-switch button {
+.hear-option {
+  display: grid;
+  gap: 2px;
+  text-align: start;
   border: 1px solid var(--hair);
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
   font: inherit;
-  font-size: 12px;
-  padding: 4px 10px;
+  padding: 10px 12px;
   cursor: pointer;
 }
 
-.mode-switch button[aria-checked="true"] {
+.hear-option:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--text);
+}
+
+.hear-option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hear-name {
+  font-weight: 700;
+}
+
+.hear-detail {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .dock-tail {

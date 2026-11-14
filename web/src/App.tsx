@@ -12,7 +12,6 @@ import {
   ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
-  Stop,
   SunDim,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1262,21 +1261,6 @@ export function App() {
               {motionSound && canHearMotion ? <SpeakerHigh aria-hidden="true" /> : <SpeakerSlash aria-hidden="true" />}
               Motion sound
             </button>
-            <button
-              type="button"
-              className="pill"
-              aria-pressed={!!melody}
-              disabled={!canHearMotion}
-              title={
-                canHearMotion
-                  ? "Play the motion history from the first to the last visit"
-                  : "Nothing here could be tracked between visits, so there is no motion history"
-              }
-              onClick={() => (melody ? stopMelody() : playMelody())}
-            >
-              {melody ? <Stop weight="fill" aria-hidden="true" /> : <Play weight="fill" aria-hidden="true" />}
-              History
-            </button>
           </div>
         </div>
 
@@ -1302,6 +1286,10 @@ export function App() {
               onListen={listen}
               onHear={setHeardBand}
               onScanStart={startScan}
+              onMotionHistory={playMelody}
+              motionPlaying={!!melody}
+              onMotionStop={stopMelody}
+              motionReady={canHearMotion}
               readVisit={readVisit}
               hasImage={hasImage}
               soundRing={soundRing}

@@ -1,7 +1,6 @@
 # Tasks
 
 ## 1. Keputusan kontrol melodi
-
 - [x] 1.1 Tetapkan bentuk kontrol melodi gerak (tombol terpisah vs aksi sekunder pada tombol Motion sound) dan perilaku default mode; verifikasi: keputusan tertulis satu paragraf di change sebelum grup 2 dimulai
 
 ## 2. Mode Spektrum kembali
@@ -20,3 +19,7 @@
 
 - [x] 4.1 Perbarui Guide: cara baca melodi spektrum vs sapuan vs melodi gerak + kapan tiap mode dipakai dan verifikasi: teks terbaca di Guide, tanpa klaim aksesibilitas baru
 - [ ] 4.2 Uji dengar manual Epsilon Indi B, Barnard, RW Aur untuk kedua mode + melodi dan verifikasi: pendengar bisa membedakan ketiga suara dan menyebut fungsinya tanpa melihat layar
+
+## 5. Modal pemilih suara
+
+- [x] 5.1 Ganti radio mode + tombol History dengan modal pemilih dari tombol Listen (Scan/Spectrum/Motion history, langsung memutar, jujur nonaktif) dan verifikasi: `tsc` + build + uji unit hijau; beralih pilihan menghentikan suara berjalan termasuk melodi

@@ -39,8 +39,11 @@ Lihat `proposal.md` untuk motivasi. Keadaan setelah `pindai-gambar-32x5` task 3:
 
 ## Open Questions
 
-- ~~Bentuk kontrol melodi diputuskan saat apply~~ diputuskan (task 1.1):
-  tombol terpisah. Satu tombol = satu fungsi (lebih jelas untuk tunanetra):
-  tombol Motion existing tetap toggle blip live per langkah blink, tombol putar
-  kecil baru di sampingnya memutar melodi riwayat dari kunjungan pertama sampai
-  terakhir. Tidak ada yang berbunyi barengan (spec 3.3).
+- ~~Bentuk kontrol melodi diputuskan saat apply~~ diputuskan lalu direvisi
+  (masukan pengguna: dock terlalu padat):
+  tidak ada tombol History di dock dan tidak ada radio mode di sebelah Listen.
+  Tombol Listen membuka modal pemilih suara dengan tiga pilihan —
+  Scan, Spectrum, Motion history — masing-masing satu baris penjelasan;
+  memilih langsung memutar kunjungan tampil (Scan/Spectrum) atau riwayat penuh
+  (Motion). All visits memakai mode terakhir, toggle Motion blip tetap di dock.
+  Spec 3.3 (satu suara dalam satu waktu) tidak berubah.

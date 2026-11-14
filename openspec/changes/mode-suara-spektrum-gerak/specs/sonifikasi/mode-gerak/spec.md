@@ -40,9 +40,23 @@ Memulai melodi SHALL menghentikan sapuan atau spektrum yang berjalan, dan sebali
 
 ### Requirement: Tanpa posisi terukur tidak berbunyi
 
-Jika tidak ada posisi acuan yang stabil untuk objek ini, kontrol melodi SHALL nonaktif dengan penjelasan yang sama dengan suara gerak existing.
+Jika tidak ada posisi acuan yang stabil untuk objek ini, pilihan Motion history di pemilih suara SHALL nonaktif dengan penjelasan yang sama dengan suara gerak existing.
 
 #### Scenario: WISE 0855 tidak terlacak
 
 - **WHEN** pengguna membuka WISE 0855
-- **THEN** kontrol melodi nonaktif dan keterangannya menyatakan posisi tidak terukur
+- **THEN** pilihan Motion history nonaktif dan keterangannya menyatakan posisi tidak terukur
+
+### Requirement: Pemilih suara terpadu
+
+Tombol Listen SHALL membuka modal pemilih dengan tiga pilihan: Scan, Spectrum, dan Motion history, masing-masing dengan satu baris penjelasan dan keadaan nonaktif yang jujur (tanpa citra, tanpa spektrum, tanpa posisi). Memilih SHALL menutup modal dan langsung memutar: kunjungan tampil untuk Scan/Spectrum, riwayat penuh untuk Motion history. All visits memakai mode terakhir yang dipilih.
+
+#### Scenario: Pilih Scan
+
+- **WHEN** pengguna membuka pemilih lalu memilih Scan
+- **THEN** modal tertutup, mode menjadi Scan, dan sapuan kunjungan tampil berbunyi
+
+#### Scenario: Pilihan jujur nonaktif
+
+- **WHEN** kunjungan tampil tidak punya citra pada band itu
+- **THEN** pilihan Scan nonaktif dengan alasannya, bukan bunyi diam

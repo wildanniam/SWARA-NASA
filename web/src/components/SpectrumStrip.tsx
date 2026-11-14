@@ -2,7 +2,7 @@ import { Play, Stop } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 import type { Band, TimeWindow } from "../lib/bundle";
 import { microns, monthYear } from "../lib/format";
-import { useWidth } from "../lib/hooks";
+import { useDialog, useWidth } from "../lib/hooks";
 import { scanGrid, scanPhrase } from "../lib/scan";
 import {
   assess,
@@ -34,6 +34,14 @@ type Props = {
   onListen: (windowId: string) => void;
   /** Band yang sedang terdengar di mode Spektrum, supaya lensa menampilkan band yang sama. */
   onHear: (bandId: string | undefined) => void;
+  /** Memutar riwayat gerak penuh (dipicu dari pemilih suara). */
+  onMotionHistory: () => void;
+  /** Riwayat gerak sedang berbunyi (dimiliki App). */
+  motionPlaying: boolean;
+  /** Hentikan riwayat gerak. */
+  onMotionStop: () => void;
+  /** Ada posisi acuan stabil sehingga riwayat gerak bisa dibunyikan. */
+  motionReady: boolean;
   /** Paksa lensa ke medan penuh dan hentikan blink sebelum sapuan berbunyi. */
   onScanStart: (visits: string[]) => void;
   /** Piksel abu display kunjungan ini (band yang tampil), kalau citranya sudah dimuat. */
@@ -84,6 +92,12 @@ export function SpectrumStrip(p: Props) {
   // Selama suara berjalan: kunjungan mana saja yang diputar dan kapan tiap kunjungan mulai.
   const [play, setPlay] = useState<{ kind: "scan" | "spectrum"; visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
   const [mode, setMode] = useState<"scan" | "spectrum">("scan");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const [chooser, setChooser] = useState(false);
+  const chooserRef = useDialog<HTMLDivElement>(chooser, () => setChooser(false));
+  const motionRef = useRef(p.onMotionHistory);
+  motionRef.current = p.onMotionHistory;
   const [playVisit, setPlayVisit] = useState<string>();
   const [announce, setAnnounce] = useState<string>();
   const [hover, setHover] = useState<SpectrumPoint>();
@@ -134,11 +148,12 @@ export function SpectrumStrip(p: Props) {
   // Satu suara = satu frasa gabungan. Sapuan: tiap kunjungan 32 kolom lalu jeda.
   // Spektrum: satu frasa 48 nada per kunjungan seperti sebelum sapuan ada.
   const start = useCallback(
-    (visits: string[]) => {
+    (visits: string[], kind: "scan" | "spectrum" = modeRef.current) => {
       if (!visits.length) return;
-      if (mode === "spectrum") {
+      if (kind === "spectrum") {
         const use = visits.filter((v) => (binned.get(v) ?? []).length > 0);
         if (!use.length) return;
+        setMode("spectrum");
         const starts = sonifier.play(use.map((v) => phrase(binned.get(v) ?? [], top)));
         setPlay({
           kind: "spectrum",
@@ -148,6 +163,7 @@ export function SpectrumStrip(p: Props) {
           bounds: use.map((v, i) => ({ visit: v, start: starts[i] })),
         });
       } else {
+        setMode("scan");
         scanStartRef.current(visits);
         hearRef.current(undefined);
         let notes: Note[] = [];
@@ -174,19 +190,21 @@ export function SpectrumStrip(p: Props) {
         // penyimpanan diblokir: petunjuknya hanya muncul lagi lain kali
       }
     },
-    [mode, binned, top],
+    [binned, top],
   );
 
-  const chooseMode = useCallback(
-    (next: "scan" | "spectrum") => {
-      if (next === mode) return;
-      sonifier.stop();
-      setPlay(undefined);
-      setPlayVisit(undefined);
-      hearRef.current(undefined);
-      setMode(next);
+  // Memilih dari pemilih langsung memutar: kunjungan tampil untuk
+  // Scan/Spectrum, riwayat penuh untuk Motion history.
+  const choose = useCallback(
+    (kind: "scan" | "spectrum" | "motion") => {
+      setChooser(false);
+      if (kind === "motion") {
+        motionRef.current();
+        return;
+      }
+      if (windowId) start([windowId], kind);
     },
-    [mode],
+    [windowId, start],
   );
 
   // Benda berganti atau pita hilang: suara berhenti.
@@ -274,8 +292,9 @@ export function SpectrumStrip(p: Props) {
 
   const toggle = useCallback(() => {
     if (play) stop();
-    else if (canPlay && windowId) start([windowId]);
-  }, [play, stop, canPlay, windowId, start]);
+    else if (p.motionPlaying) p.onMotionStop();
+    else setChooser(true);
+  }, [play, p.motionPlaying, p.onMotionStop]);
 
   // L = dengarkan / berhenti.
   useEffect(() => {
@@ -339,27 +358,13 @@ export function SpectrumStrip(p: Props) {
           type="button"
           className="dial"
           onClick={toggle}
-          disabled={!play && !canPlay}
-          aria-pressed={!!play}
-          aria-label={play ? "Stop the sound" : mode === "scan" ? "Scan the image of this visit" : "Listen to the spectrum of this visit"}
+          disabled={!play && !p.motionPlaying && !canPlay}
+          aria-pressed={!!play || p.motionPlaying}
+          aria-label={play || p.motionPlaying ? "Stop the sound" : "Choose what to listen to"}
         >
-          {play ? <Stop weight="fill" /> : <Play weight="fill" />}
+          {play || p.motionPlaying ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
-        <span className="dial-caption">{play ? "Stop" : fresh && canPlay ? "Hear what it is" : "Listen"}</span>
-        <span className="mode-switch" role="radiogroup" aria-label="What to listen to">
-          {(["scan", "spectrum"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              aria-label={m === "scan" ? "Scan the image" : "Play the spectrum"}
-              onClick={() => chooseMode(m)}
-            >
-              {m === "scan" ? "Scan" : "Spectrum"}
-            </button>
-          ))}
-        </span>
+        <span className="dial-caption">{play || p.motionPlaying ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
       </div>
 
       <div className="strip">
@@ -475,6 +480,56 @@ export function SpectrumStrip(p: Props) {
       <p className="sr-only" role="status" aria-live="polite">
         {announce ?? ""}
       </p>
+
+      {chooser && (
+        <div
+          className="scrim"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setChooser(false);
+          }}
+        >
+          <div ref={chooserRef} className="hear" role="dialog" aria-modal="true" aria-label="Choose what to listen to">
+            {(
+              [
+                {
+                  id: "scan",
+                  name: "Scan the image",
+                  detail: "32 columns east to west. Higher is north, louder is brighter, a ping marks the target.",
+                  disabled: !canScan,
+                  why: "No image in this band and visit.",
+                },
+                {
+                  id: "spectrum",
+                  name: "Play the spectrum",
+                  detail: "48 notes short to long. Higher is brighter, dips are absorption.",
+                  disabled: !canSpectrum,
+                  why: "Not enough usable spectrum in this visit.",
+                },
+                {
+                  id: "motion",
+                  name: "Motion history",
+                  detail: "One note per visit, first to last. Higher is north, same note means holding still.",
+                  disabled: !p.motionReady,
+                  why: "Nothing here could be tracked between visits.",
+                },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className="hear-option"
+                data-autofocus={o.id === "scan" ? true : undefined}
+                disabled={o.disabled}
+                title={o.disabled ? o.why : o.detail}
+                onClick={() => choose(o.id)}
+              >
+                <span className="hear-name">{o.name}</span>
+                <span className="hear-detail">{o.disabled ? o.why : o.detail}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
