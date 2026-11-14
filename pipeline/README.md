@@ -32,11 +32,16 @@ API berjalan di `http://127.0.0.1:8000`; dev server viewer meneruskan `/api` ke 
 
 | Permintaan | Isi |
 |---|---|
-| `POST /api/sky` dengan `{"ra": "...", "dec": "..."}` | Mulai membuat bundle, atau langsung `ready` kalau sudah pernah dibuat. Jawabannya keadaan pekerjaan, termasuk `id`. |
+| `POST /api/sky` dengan `{"query": "..."}` | Mulai membuat bundle, atau langsung `ready` kalau sudah pernah dibuat. Jawabannya keadaan pekerjaan, termasuk `id`; untuk pencarian nama juga `label` dan `pm_arcsec_yr` (gerak diri katalog). |
 | `GET /api/sky/<id>` | Keadaan pekerjaan: `status` (`queued`, `running`, `ready`, `error`), `stage` (`search`, `fetch`, `frames`), `done`, `total`, `error` (`no_data`, `failed`). |
 | `GET /api/bundles/<id>/...` | Berkas bundle, bentuknya sama dengan preset. |
 
-`ra` dan `dec` boleh derajat desimal (`133.7951`, `-7.2451`) atau jam-menit-detik (`08h55m10.831s`, `-7d14m42.53s`, `08:55:10.8`). Angka polos dibaca sebagai derajat. Koordinat dibulatkan ke 4 desimal (0,36 detik busur) dan itu menjadi `id`.
+`query` boleh koordinat atau nama benda:
+
+- **Koordinat:** dua angka polos dibaca sebagai derajat (`133.7951 -7.2451`); bentuk lain sebagai jam-menit-detik untuk RA dan derajat untuk Dec (`08h55m10.831s -7d14m42.53s`, `08:55:10.8 -07:14:42`).
+- **Nama:** apa pun yang bukan koordinat dicari di SIMBAD lewat CDS Sesame (`resolve.py`). Posisi SIMBAD berlaku untuk tahun 2000, jadi digeser dengan gerak diri katalog ke 2026 supaya benda yang bergerak cepat ada di tengah medan. Kalau SIMBAD tidak mencatat gerak diri, posisi tahun 2000 dipakai apa adanya.
+
+Koordinat dibulatkan ke 4 desimal (0,36 detik busur) dan itu menjadi `id`.
 
 Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordinat yang sama tidak dibuat dua kali. Paling banyak dua bundle dibuat bersamaan; sisanya menunggu. Keadaan pekerjaan hanya disimpan di memori: kalau API dimatikan di tengah pembuatan, kirim ulang koordinatnya.
 

@@ -9,6 +9,10 @@ export type SkyJob = {
   done: number;
   total: number;
   error: "" | "no_data" | "failed";
+  /** Nama yang dicari pengguna, kalau posisinya datang dari katalog. */
+  label?: string | null;
+  /** Besar gerak diri menurut katalog, detik busur per tahun. */
+  pm_arcsec_yr?: number | null;
 };
 
 const API = `${import.meta.env.BASE_URL}api`;
@@ -28,12 +32,12 @@ async function read(res: Response): Promise<SkyJob> {
   throw new Error(`sky API: HTTP ${res.status}`);
 }
 
-/** Minta bundle untuk satu koordinat. Teks RA/Dec dibaca di server (derajat atau jam-menit-detik). */
-export const requestSky = (ra: string, dec: string) =>
+/** Minta bundle untuk satu nama benda atau koordinat; teksnya dibaca di server. */
+export const requestSky = (query: string) =>
   fetch(`${API}/sky`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ra, dec }),
+    body: JSON.stringify({ query }),
   }).then(read);
 
 export const skyStatus = (id: string, signal?: AbortSignal) => fetch(`${API}/sky/${id}`, { signal }).then(read);

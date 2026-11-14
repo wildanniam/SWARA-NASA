@@ -1,9 +1,18 @@
 // Teks per target. Draf dari hasil pipeline 2026-11-13; perlu ditinjau tim konten.
 
 export const KIND_LABEL = { moving: "Moves", variable: "Changes brightness", custom: "Your coordinates" } as const;
+export const SEARCH_LABEL = "Your search";
 
 export const CUSTOM_NOTE =
   "SPHEREx images centred on the coordinates you entered. Blink between visits and watch for anything that shifts or changes brightness.";
+
+/** Teks untuk benda yang dicari dengan nama; gerak katalog disebut supaya bisa dibandingkan dengan yang terukur. */
+export function searchNote(name: string, pmArcsecYr?: number | null): string {
+  const where = `SPHEREx images centred on where the SIMBAD catalogue places ${name} in 2026.`;
+  if (pmArcsecYr == null) return `${where} The catalogue lists no motion for it, so this is its position in 2000.`;
+  if (pmArcsecYr < 0.1) return `${where} The catalogue lists almost no motion for it.`;
+  return `${where} The catalogue says it moves about ${pmArcsecYr.toFixed(1)}″ per year. Blink and compare.`;
+}
 
 export const TARGET_NOTES: Record<string, string> = {
   barnard:

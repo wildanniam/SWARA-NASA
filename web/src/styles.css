@@ -126,6 +126,26 @@ input {
   display: none;
 }
 
+.target-group {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.target-group + .target-group {
+  margin-left: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+
+.target-label {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
 .target {
   flex: none;
   padding: 7px 12px;
@@ -184,9 +204,14 @@ input {
   outline-offset: 2px;
 }
 
-.field span {
-  color: var(--muted);
-  font-size: 13px;
+.field svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
 .field input {
@@ -211,6 +236,32 @@ input {
   margin: 0;
   color: #ff9d8a;
   font-size: 13px;
+}
+
+.coords-help {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.coords-help p {
+  margin: 0;
+}
+
+.coords-help b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.coords-examples {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12.5px;
 }
 
 /* ---------- panggung ---------- */
@@ -929,12 +980,6 @@ kbd {
   .timeline {
     flex: 1 1 100%;
     margin-left: 0;
-  }
-}
-
-@media (max-width: 520px) {
-  .coords .btn {
-    flex: 1 1 100%;
   }
 }
 

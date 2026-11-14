@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CoordinateForm } from "./components/CoordinateForm";
+import { SearchForm } from "./components/SearchForm";
 import { SkyStage } from "./components/SkyStage";
 import { SpectrumPanel } from "./components/SpectrumPanel";
 import { Timeline } from "./components/Timeline";
-import { CUSTOM_NOTE, KIND_LABEL, TARGET_NOTES } from "./content";
+import { CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
 import {
   assetUrl,
   defaultBand,
@@ -30,6 +30,13 @@ const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)"
 
 type Loaded = { id: string; manifest?: Manifest; error?: boolean };
 
+// Yang dibuka lewat tautan: preset, atau nama benda dan koordinatnya, dan band.
+const LINK = new URLSearchParams(window.location.search);
+const LINK_NAME = LINK.get("name")?.trim().slice(0, 80) || undefined;
+const LINK_RA = Number(LINK.get("ra") ?? NaN);
+const LINK_DEC = Number(LINK.get("dec") ?? NaN);
+const LINK_HAS_POSITION = Number.isFinite(LINK_RA) && Number.isFinite(LINK_DEC);
+
 export function App() {
   const [targets, setTargets] = useState<TargetRef[]>();
   const [indexError, setIndexError] = useState(false);
@@ -45,28 +52,42 @@ export function App() {
   const [motionSound, setMotionSound] = useState(false);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
+  const [query, setQuery] = useState("");
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string>();
   const images = useImageStore();
+
+  const bandFromLink = useRef(LINK.get("band"));
+
+  // Memilih tempat lain mengosongkan kotak cari, supaya isinya tidak tertinggal
+  // di samping gambar benda yang berbeda.
+  const selectTarget = useCallback((id: string) => {
+    setTargetId(id);
+    setQuery("");
+    setFormError(undefined);
+  }, []);
 
   const job = targetId ? jobs[targetId] : undefined;
   const custom = job !== undefined;
   const ready = !job || job.status === "ready";
 
-  const openSky = useCallback(async (ra: string, dec: string) => {
+  /** Buka satu nama benda atau koordinat. Mengembalikan false kalau ditolak atau gagal. */
+  const openSky = useCallback(async (text: string): Promise<boolean> => {
     setFormBusy(true);
     setFormError(undefined);
     try {
-      const next = await requestSky(ra, dec);
+      const next = await requestSky(text);
       setJobs((all) => ({ ...all, [next.id]: next }));
       setTargetId(next.id);
+      return true;
     } catch (err) {
       if (err instanceof SkyRequestError) {
         setFormError(err.message);
       } else {
         console.error(err);
-        setFormError("The coordinate service is not reachable right now. The targets above still work.");
+        setFormError("The coordinate service is not reachable right now. The examples above still work.");
       }
+      return false;
     } finally {
       setFormBusy(false);
     }
@@ -83,7 +104,8 @@ export function App() {
       skyStatus(jobId, ac.signal)
         .then((next) => {
           failures = 0;
-          setJobs((all) => ({ ...all, [next.id]: next }));
+          // Nama dan gerak katalog hanya datang dari permintaan awal; jangan ditimpa.
+          setJobs((all) => ({ ...all, [next.id]: { ...all[next.id], ...next } }));
         })
         .catch((err) => {
           if (ac.signal.aborted || ++failures < POLL_MAX_FAILURES) return;
@@ -97,6 +119,19 @@ export function App() {
     };
   }, [jobId, pending]);
 
+  // Tautan yang membawa nama atau koordinat langsung dibuka, tanpa menunggu daftar
+  // contoh. Nama dicari ulang di katalog, supaya nama dan posisinya memang
+  // berasal dari katalog; koordinat di tautan dipakai kalau pencarian itu gagal.
+  const linkOpened = useRef(false);
+  useEffect(() => {
+    if (linkOpened.current || !(LINK_NAME || LINK_HAS_POSITION)) return;
+    linkOpened.current = true;
+    void (async () => {
+      const byName = LINK_NAME ? await openSky(LINK_NAME) : false;
+      if (!byName && LINK_HAS_POSITION) await openSky(`${LINK_RA} ${LINK_DEC}`);
+    })();
+  }, [openSky]);
+
   // Daftar target.
   useEffect(() => {
     const ac = new AbortController();
@@ -104,7 +139,8 @@ export function App() {
     loadIndex(ac.signal)
       .then((list) => {
         setTargets(list);
-        setTargetId((cur) => cur ?? list[0]?.id);
+        const linked = LINK_NAME || LINK_HAS_POSITION ? undefined : list.find((t) => t.id === LINK.get("target"));
+        setTargetId((cur) => cur ?? (linked ?? list[0])?.id);
       })
       .catch((err) => {
         if (!ac.signal.aborted) {
@@ -122,7 +158,10 @@ export function App() {
     setLoaded({ id: targetId });
     loadManifest(targetId, custom, ac.signal)
       .then((manifest) => {
-        const band = defaultBand(manifest);
+        // Band dari tautan hanya dipakai untuk target pertama yang tampil.
+        const wanted = bandFromLink.current;
+        bandFromLink.current = null;
+        const band = wanted && manifest.frames.some((f) => f.band === wanted) ? wanted : defaultBand(manifest);
         const first = manifest.windows.find((w) => findFrame(manifest, w.id, band));
         preload(
           manifest.frames.flatMap((f) => [assetUrl(targetId, custom, f.image), assetUrl(targetId, custom, f.mask)]),
@@ -142,6 +181,19 @@ export function App() {
   }, [targetId, custom, ready, attempt]);
 
   const manifest = loaded?.id === targetId ? loaded?.manifest : undefined;
+
+  // Yang sedang tampil dicatat di URL, supaya tautannya membuka pandangan yang sama.
+  useEffect(() => {
+    if (!targetId || !bandId || !manifest) return;
+    const p = new URLSearchParams();
+    if (job) {
+      p.set("ra", job.ra.toFixed(4));
+      p.set("dec", job.dec.toFixed(4));
+      if (job.label) p.set("name", job.label);
+    } else p.set("target", targetId);
+    p.set("band", bandId);
+    window.history.replaceState(null, "", `${window.location.pathname}?${p}`);
+  }, [targetId, bandId, manifest, job]);
 
   // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
   useEffect(() => {
@@ -164,7 +216,7 @@ export function App() {
       ...(targets ?? []),
       ...Object.values(jobs).map((j) => ({
         id: j.id,
-        name: coordShort(j.ra, j.dec),
+        name: j.label || coordShort(j.ra, j.dec),
         kind: "custom" as const,
         ra: j.ra,
         dec: j.dec,
@@ -278,7 +330,7 @@ export function App() {
   const retry = jobFailed
     ? job.error === "no_data"
       ? undefined
-      : () => openSky(String(job.ra), String(job.dec))
+      : () => void openSky(job.label ?? `${job.ra} ${job.dec}`)
     : () => setAttempt((n) => n + 1);
 
   // Tanda acuan dan pergeseran terukur.
@@ -333,21 +385,38 @@ export function App() {
 
       <main className="layout">
         <section className="stage-col" aria-label="Sky view">
-          <nav className="targets" aria-label="Targets" ref={navRef}>
-            {allTargets.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className="target"
-                aria-pressed={t.id === targetId}
-                onClick={() => setTargetId(t.id)}
-              >
-                {t.name}
-              </button>
-            ))}
+          <nav className="targets" aria-label="Places in the sky" ref={navRef}>
+            {(["custom", "example"] as const).map((group) => {
+              const list = allTargets.filter((t) => (t.kind === "custom") === (group === "custom"));
+              if (!list.length) return null;
+              return (
+                <div key={group} className="target-group" role="group" aria-label={group === "custom" ? "Yours" : "Examples"}>
+                  <span className="target-label" aria-hidden="true">
+                    {group === "custom" ? "Yours" : "Examples"}
+                  </span>
+                  {list.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className="target"
+                      aria-pressed={t.id === targetId}
+                      onClick={() => selectTarget(t.id)}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </nav>
 
-          <CoordinateForm busy={formBusy} error={formError} onSubmit={openSky} />
+          <SearchForm
+            value={query}
+            onChange={setQuery}
+            busy={formBusy}
+            error={formError}
+            onSubmit={(text) => void openSky(text)}
+          />
 
           <SkyStage
             image={image}
@@ -457,9 +526,15 @@ export function App() {
         <aside className="side">
           {target && (
             <section className="about">
-              <p className="kind">{KIND_LABEL[target.kind]}</p>
+              <p className="kind">{job?.label ? SEARCH_LABEL : KIND_LABEL[target.kind]}</p>
               <h1>{target.name}</h1>
-              <p className="note">{target.kind === "custom" ? CUSTOM_NOTE : TARGET_NOTES[target.id]}</p>
+              <p className="note">
+                {job?.label
+                  ? searchNote(job.label, job.pm_arcsec_yr)
+                  : target.kind === "custom"
+                    ? CUSTOM_NOTE
+                    : TARGET_NOTES[target.id]}
+              </p>
               {shift && <p className="shift">{shift}</p>}
               <p className="sr-only" role="status" aria-live="polite">
                 {!playing && win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
