@@ -4562,3 +4562,43 @@ kbd {
     margin-bottom: 0;
   }
 }
+
+/* ---------- citra selisih ---------- */
+
+.diff-minus {
+  margin: 0 0.35em;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+/* Kunci warna di keterangan lensa: bara = lebih terang sekarang, pucat = lebih terang dulu. */
+.diff-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.diff-key i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.diff-key i[data-k="now"] {
+  background: #ffb454;
+  box-shadow: 0 0 6px rgb(255 180 84 / 0.7);
+}
+
+.diff-key i[data-k="then"] {
+  margin-left: 10px;
+  background: #96a8e2;
+  box-shadow: 0 0 6px rgb(150 168 226 / 0.6);
+}
+
+.satellite:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

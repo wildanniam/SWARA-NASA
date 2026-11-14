@@ -28,6 +28,9 @@ export type Frame = {
   image: string;
   mask: string;
   n_exposures: number;
+  /** Skala regangan citra ini, MJy/sr; sama untuk semua kunjungan satu band. */
+  knee_mjy_sr?: number;
+  vmax_mjy_sr?: number;
   saturated_fraction: number;
   bad_fraction: number;
 };
@@ -57,6 +60,8 @@ export type Wise = {
   /** Citra sudah ditulis pipeline dengan aturan tampilan frame SPHEREx. Bundle lama
    *  belum; untuk itu viewer menyamakan nadanya sendiri saat melukis (tone.ts). */
   matched?: boolean;
+  /** Skala regangan citra WISE yang sudah disamakan, satuan unWISE. */
+  display?: { sky: number; knee: number; vmax: number; soften_arcsec: number };
 };
 
 export type Manifest = {

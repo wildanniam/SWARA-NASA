@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { prefersReducedMotion } from "../lib/hooks";
-import { paint, type Rect } from "../lib/paint";
+import { paint, paintDifference, type Linear, type Rect } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
 
 type Props = {
@@ -14,6 +14,8 @@ type Props = {
   tone?: Uint8ClampedArray;
   /** Penghalusan sebelum diwarnai, dalam piksel citra; dipakai untuk citra WISE. */
   soften?: number;
+  /** Citra selisih: `image` dikurangi citra acuan ini (pengamatan pertama teleskop yang sama). */
+  difference?: { reference: HTMLImageElement; scale?: Linear; tone?: Uint8ClampedArray };
   /** Tempat dan teleskop citra yang tampil, "tempat:teleskop". Saat teleskopnya
    *  berganti di tempat yang sama, citra lama larut ke citra baru. */
   source: string;
@@ -91,7 +93,9 @@ export function Lens(p: Props) {
       fade.getContext("2d")!.drawImage(canvas, 0, 0);
       fade.style.opacity = "1";
     }
-    paint(canvas, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view, p.tone, p.soften);
+    if (p.difference)
+      paintDifference(canvas, p.image, p.difference.reference, CANVAS_PX, p.view, p.difference.scale, p.difference.tone, p.soften);
+    else paint(canvas, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view, p.tone, p.soften);
     if (handover && fade) {
       if (typeof fade.animate === "function") {
         dissolve.current.animation = fade.animate([{ opacity: 1 }, { opacity: 0 }], {
@@ -104,7 +108,7 @@ export function Lens(p: Props) {
       dissolve.current.timer = window.setTimeout(() => dissolve.current.animation?.cancel(), DISSOLVE_MS + 60);
       setCue((n) => n + 1);
     }
-  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source]);
+  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source, p.difference]);
 
   useEffect(() => {
     const state = dissolve.current;
@@ -149,6 +153,7 @@ export function Lens(p: Props) {
       data-status={p.status ?? "ready"}
       data-collapsed={p.collapsed}
       data-look={p.palette}
+      data-difference={!!p.difference}
     >
       <div className="lens-slot" ref={p.slotRef} style={slotStyle}>
         <div className="lens-body" inert={p.collapsed}>

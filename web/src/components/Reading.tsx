@@ -896,6 +896,7 @@ const PLACE_KEYS: [string, string][] = [
   ["+ −", "zoom the lens, out to the wide view and the whole sky"],
   ["C", "next look"],
   ["R", "reveal faint things"],
+  ["D", "difference from the first look"],
   ["L", "listen to the spectrum"],
   ["M", "motion sound"],
   ["/", "go to a place"],
