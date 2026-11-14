@@ -90,6 +90,23 @@ Arti `flag`:
 - `saturated_core`: inti bintang tidak punya nilai. Fluks tidak bisa dipakai.
 - `bad_pixel`: ada piksel rusak atau hilang di apertur.
 
+## Kontrak audio (bundle → nada)
+
+Viewer dan suara membaca data yang sama supaya mata dan telinga selalu sepakat. Alurnya: bundle → bin per mode → `Note` → `Sonifier` (satu engine). Yang berbeda antar mode hanya pembuat frasanya.
+
+Satu `Note` (`web/src/sound/sonify.ts`) berarti:
+
+| Isian | Arti |
+|---|---|
+| `t`, `dur` | detik sejak awal frasa, dan lamanya |
+| `hz` | tinggi nada; `null` = langkah tanpa data → ketukan pendek + pengumuman, bukan nada diam |
+| `vol` | pengali keras 0-1; mode bervolume konstan memakai 1 |
+| `pan` | -1 (kiri) sampai 1 (kanan) |
+| `lowConf` | deteksi lemah: memakai timbre penanda, pitch tetap dari data |
+| `lambda` | panjang gelombang tengah langkah, mikron (untuk penanda visual) |
+
+Jaminan engine: satu AudioContext untuk seluruh aplikasi, frasa baru selalu menghentikan suara lama sampai bersih, dan amplop tiap nada mulai dari nol dan kembali ke nol (tanpa bunyi klik). Bentuk bundle tidak berubah oleh kontrak ini: tidak ada kolom baru di `manifest.json` maupun `spectrum.json`.
+
 ## Batas
 
 - Fluks = jumlah kotak 5x5 piksel setelah latar dikurangi, tanpa koreksi apertur dan tanpa pemisahan bintang tetangga. Cukup untuk bentuk spektrum, bukan fotometri kelas publikasi.

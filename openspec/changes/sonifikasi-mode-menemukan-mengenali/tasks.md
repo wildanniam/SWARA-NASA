@@ -2,9 +2,9 @@
 
 ## 1. Kontrak Note dan engine tunggal
 
-- [ ] 1.1 Perluas `Note` dengan `vol` dan `lowConf`, dukung gain per nada + timbre penanda di `schedule()`; verifikasi: uji render luring mencatat gain/timbre per nada sesuai `lowConf` tanpa klik (attack/release utuh).
-- [ ] 1.2 Kunci perilaku stop-bersih dan tick-pengumuman (`hz: null` → tick + teks kunjungan); verifikasi: uji memainkan frasa lalu frasa baru — tidak ada sumber lama yang tersisa dan kunjungan tanpa data berbunyi tick.
-- [ ] 1.3 Dokumentasikan kontrak `Note` di `pipeline/README.md` (kontrak audio) dan verifikasi perintah contoh tetap jalan; catat bahwa bentuk bundle tidak berubah.
+- [x] 1.1 Perluas `Note` dengan `vol` dan `lowConf`, dukung gain per nada + timbre penanda di `schedule()`; verifikasi: uji render luring mencatat gain/timbre per nada sesuai `lowConf` tanpa klik (attack/release utuh).
+- [x] 1.2 Kunci perilaku stop-bersih dan tick-pengumuman (`hz: null` → tick + teks kunjungan); verifikasi: uji memainkan frasa lalu frasa baru — tidak ada sumber lama yang tersisa dan kunjungan tanpa data berbunyi tick.
+- [x] 1.3 Dokumentasikan kontrak `Note` di `pipeline/README.md` (kontrak audio) dan verifikasi perintah contoh tetap jalan; catat bahwa bentuk bundle tidak berubah.
 
 ## 2. Mode-shell: pengumuman, kontrol, aksesibilitas
 

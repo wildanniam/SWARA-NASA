@@ -11,6 +11,12 @@ export type Note = {
   /** null = langkah tanpa data. */
   hz: number | null;
   unverified: boolean;
+  /** Pengali keras nada ini, 0-1. Mode yang volumenya konstan memakai 1;
+   *  hanya Pindai yang menyandikan terang lewat sini. */
+  vol: number;
+  /** Deteksi lemah: terdengar berbeda tanpa mengubah pitch yang menyandikan
+   *  data. Memakai timbre penanda yang sama dengan `unverified`. */
+  lowConf: boolean;
   /** -1 kiri .. 1 kanan. */
   pan: number;
   lambda: number;
@@ -38,6 +44,8 @@ export function phrase(bins: Bin[], top: number, s: SoundSettings = SOUND): Note
     dur: step * s.noteFill,
     hz: b.flux === null ? null : pitch(b.flux, top, s),
     unverified: b.unverified,
+    vol: 1,
+    lowConf: false,
     pan: bins.length > 1 ? (i / (bins.length - 1)) * 2 * s.pan - s.pan : 0,
     lambda: b.lambda,
   }));
@@ -56,13 +64,16 @@ export function schedule(
   for (const n of notes) {
     const tick = n.hz === null;
     if (tick && !s.gapTick) continue;
+    // Nada bertanda (tak terverifikasi atau deteksi lemah) memakai timbre
+    // penanda dari mapping, tetapi pitch-nya tetap dari data.
+    const marked = n.unverified || n.lowConf;
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
     const pan = ctx.createStereoPanner();
     const start = at + n.t;
     const dur = tick ? 0.012 : n.dur;
-    const peak = tick ? s.gapTickGain : n.unverified ? s.unverifiedGain : 1;
-    osc.type = tick ? "sine" : n.unverified ? s.unverifiedWaveform : s.waveform;
+    const peak = (tick ? s.gapTickGain : marked ? s.unverifiedGain : 1) * (tick ? 1 : n.vol);
+    osc.type = tick ? "sine" : marked ? s.unverifiedWaveform : s.waveform;
     osc.frequency.value = tick ? s.gapTickHz : n.hz!;
     pan.pan.value = n.pan;
     const attack = Math.min(0.008, dur / 4);
