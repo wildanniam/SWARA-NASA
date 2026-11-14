@@ -176,7 +176,6 @@ export function App() {
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
   const scanLine = useRef<SVGLineElement>(null);
-  const scanDot = useRef<SVGCircleElement>(null);
   const images = useImageStore();
 
   const openGuide = useCallback(() => {
@@ -1173,7 +1172,6 @@ export function App() {
           onRetry={retry}
           soundRing={soundRing}
           scanLineRef={scanLine}
-          scanDotRef={scanDot}
           slotRef={slotRef}
           zoomerRef={zoomerRef}
           collapsed={collapsed}
@@ -1430,7 +1428,6 @@ export function App() {
               hasImage={hasImage}
               soundRing={soundRing}
               scanLine={scanLine}
-              scanDot={scanDot}
             />
           ) : (
             <div className="strip strip-empty" />

@@ -790,16 +790,8 @@ kbd {
 }
 
 .scan-line {
-  stroke: #c9d46f;
+  stroke: var(--accent);
   stroke-width: 2px;
-  vector-effect: non-scaling-stroke;
-  visibility: hidden;
-}
-
-.scan-dot {
-  fill: #c9d46f;
-  stroke: var(--void);
-  stroke-width: 1.2px;
   vector-effect: non-scaling-stroke;
   visibility: hidden;
 }
@@ -1506,6 +1498,35 @@ kbd {
   color: var(--faint);
   font-family: var(--mono);
   font-size: 10.5px;
+}
+
+.segment-notes {
+  position: absolute;
+  left: 6px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.segment-note {
+  width: 5px;
+  height: 5px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.78;
+}
+
+.segment-note--scan {
+  color: #c9d46f;
+}
+
+.segment-note--spectrum {
+  color: #ffad55;
+}
+
+.segment-note--motion {
+  color: #79aefc;
 }
 
 .segment:hover:not(:disabled) {

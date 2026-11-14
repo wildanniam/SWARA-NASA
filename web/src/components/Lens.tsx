@@ -39,8 +39,6 @@ type Props = {
   soundRing: RefObject<SVGCircleElement | null>;
   /** Garis pindai vertikal; digerakkan langsung oleh sapuan gambar. */
   scanLineRef: RefObject<SVGLineElement | null>;
-  /** Penanda posisi pindai saat ini. */
-  scanDotRef: RefObject<SVGCircleElement | null>;
   /** Kotak tata letak lensa; diukur supaya latar bisa dipusatkan di bawahnya. */
   slotRef: RefObject<HTMLDivElement | null>;
   /** Isi lensa yang dibesarkan dan dikecilkan saat berganti pembesaran. */
@@ -201,7 +199,6 @@ export function Lens(p: Props) {
                 aria-hidden="true"
               >
                 <line ref={p.scanLineRef} className="scan-line" x1={-10} y1={0} x2={-10} y2={100} />
-                <circle ref={p.scanDotRef} className="scan-dot" cx={-10} cy={50} r={2.4} />
               </svg>
             </div>
             <div className="lens-scale" style={{ width: `${(scaleArcsec / p.viewArcsec) * 100}%` }} aria-hidden="true">
