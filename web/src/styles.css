@@ -1953,7 +1953,8 @@ kbd {
   padding: 56px 32px 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background-color: var(--void);
+  /* --veil: 1 = peta menutup panggung; turun ke 0 saat menyelam ke satu tempat. */
+  background-color: rgb(5 6 11 / var(--veil, 1));
 }
 
 .atlas[data-look="glacier"] {
@@ -2023,32 +2024,76 @@ kbd {
    atas dan kaki halaman. Perbandingannya 2:1, seperti proyeksinya. */
 .atlas-plot {
   position: relative;
+  container-type: inline-size;
   width: min(100%, 1560px, calc((100dvh - 268px) * 2));
 }
 
 .atlas-map {
   position: relative;
   aspect-ratio: 2 / 1;
+  overflow: hidden;
   cursor: crosshair;
-  touch-action: manipulation;
+  opacity: var(--veil, 1);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* Bingkai pelat: elips kedua yang tipis di luar tepi langit. */
-.atlas-map::before {
+/* Diperbesar: satu jari menggeser peta, dan seluruh kotaknya jadi medan pandang. */
+.atlas-map[data-pan="true"] {
+  touch-action: none;
+  cursor: grab;
+}
+
+.atlas-map[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+/* Bingkai pelat: elips kedua yang tipis di luar tepi langit, selama seluruh langit tampil. */
+.atlas-plot::before {
   content: "";
   position: absolute;
-  inset: -11px;
+  inset: -11px -11px auto;
+  /* Setinggi petanya saja (2:1), bukan setinggi kotak yang juga memuat kartu di ponsel. */
+  height: calc(50cqw + 22px);
   border: 1px solid rgb(205 214 255 / 0.1);
   border-radius: 50%;
   pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+/* Bingkai medan: muncul begitu tepi langit keluar dari kotak. */
+.atlas-plot::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 50cqw;
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.atlas[data-zoomed="true"] .atlas-plot::before {
+  opacity: 0;
+}
+
+.atlas[data-zoomed="true"] .atlas-plot::after {
+  opacity: var(--veil, 1);
+}
+
+.atlas[data-zoomed="true"] .atlas-map {
+  border-radius: 18px;
 }
 
 .atlas-canvas,
-.atlas-fade {
+.atlas-overlay {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
 .atlas-canvas {
@@ -2058,56 +2103,6 @@ kbd {
 
 .atlas-map[data-ready="true"] .atlas-canvas {
   opacity: 1;
-}
-
-/* Panjang gelombang sebelumnya, larut di atas yang baru. */
-.atlas-fade {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 420ms ease;
-}
-
-.atlas-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.atlas-overlay path,
-.atlas-overlay ellipse {
-  fill: none;
-  vector-effect: non-scaling-stroke;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.sky-edge {
-  stroke: rgb(205 214 255 / 0.3);
-  stroke-width: 1;
-}
-
-.sky-grid {
-  stroke: rgb(var(--grid) / 0.09);
-  stroke-width: 1;
-}
-
-.sky-equator {
-  stroke: rgb(var(--grid) / 0.24);
-  stroke-width: 1;
-  stroke-dasharray: 1 5;
-}
-
-.sky-lines {
-  stroke: rgb(var(--line) / 0.22);
-  stroke-width: 1;
-}
-
-.sky-lines-hot {
-  stroke: rgb(var(--line) / 0.95);
-  stroke-width: 1.6;
 }
 
 .atlas-labels {
@@ -2130,6 +2125,12 @@ kbd {
 
 .atlas-labels [data-hidden="true"] {
   visibility: hidden;
+}
+
+/* Label jam RA dan ekuator hanya untuk peta seluruh langit. */
+.atlas[data-zoomed="true"] .sky-hour,
+.atlas[data-zoomed="true"] .sky-equator-label {
+  display: none;
 }
 
 .sky-hour {
@@ -2282,20 +2283,6 @@ kbd {
   color: rgb(var(--label) / 0.66);
 }
 
-.sky-marker-text em {
-  max-height: 0;
-  overflow: hidden;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 500;
-  color: rgb(var(--mark));
-  opacity: 0;
-  transition:
-    max-height 200ms ease,
-    opacity 200ms ease;
-}
-
 .sky-marker:hover .sky-marker-ring,
 .sky-marker:focus-visible .sky-marker-ring {
   transform: scale(1.18);
@@ -2314,12 +2301,6 @@ kbd {
 .sky-marker[data-label="hidden"]:hover .sky-marker-text,
 .sky-marker[data-label="hidden"]:focus-visible .sky-marker-text {
   visibility: visible;
-}
-
-.sky-marker:hover .sky-marker-text em,
-.sky-marker:focus-visible .sky-marker-text em {
-  max-height: 16px;
-  opacity: 1;
 }
 
 .sky-marker:focus-visible {
@@ -2417,8 +2398,6 @@ kbd {
   --tx: 30px;
   --ty: -26px;
   position: absolute;
-  left: var(--ax);
-  top: var(--ay);
   z-index: 3;
   display: grid;
   gap: 10px;
@@ -2634,62 +2613,23 @@ kbd {
   font-size: 14px;
 }
 
-/* Masuk: peta mengecil dari titik tempat terakhir sambil menutup panggungnya. */
-.atlas[data-fx="enter"] {
-  animation: atlas-veil-in 520ms ease both;
-}
-
-.atlas[data-fx="enter"] .atlas-map {
-  transform-origin: var(--fx) var(--fy);
-  animation: atlas-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
+/* Masuk dan keluar digerakkan peta sendiri (zoom yang menyambung); di sini hanya
+   kendali di sekitarnya yang memudar. */
 .atlas[data-fx="enter"] .atlas-head,
 .atlas[data-fx="enter"] .atlas-foot {
-  animation: atlas-chrome-in 380ms ease 320ms both;
+  animation: atlas-chrome-in 420ms ease 700ms both;
 }
 
-/* Keluar: peta membesar ke titik yang dipilih dan larut ke tempat itu. */
 .atlas[data-fx="leave"] {
   pointer-events: none;
-  animation: atlas-veil-out 700ms ease-in both;
-}
-
-.atlas[data-fx="leave"] .atlas-map {
-  transform-origin: var(--fx) var(--fy);
-  animation: atlas-dive 700ms cubic-bezier(0.55, 0, 0.85, 0.35) both;
 }
 
 .atlas[data-fx="leave"] .atlas-head,
 .atlas[data-fx="leave"] .atlas-foot,
-.atlas[data-fx="leave"] .aim-card {
-  animation: atlas-chrome-out 220ms ease both;
-}
-
-@keyframes atlas-veil-in {
-  from {
-    background-color: rgb(5 6 11 / 0);
-  }
-}
-
-@keyframes atlas-veil-out {
-  to {
-    background-color: rgb(5 6 11 / 0);
-  }
-}
-
-@keyframes atlas-rise {
-  from {
-    opacity: 0;
-    transform: scale(4.5);
-  }
-}
-
-@keyframes atlas-dive {
-  to {
-    opacity: 0;
-    transform: scale(6);
-  }
+.atlas[data-fx="leave"] .aim-card,
+.atlas[data-fx="leave"] .atlas-zoom,
+.atlas[data-fx="leave"] .atlas-status {
+  animation: atlas-chrome-out 260ms ease both;
 }
 
 @keyframes atlas-chrome-in {
@@ -2702,6 +2642,125 @@ kbd {
   to {
     opacity: 0;
   }
+}
+
+/* Tombol zoom di sudut peta. */
+.atlas-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: rgb(10 12 20 / 0.86);
+  cursor: default;
+}
+
+.atlas-zoom .round {
+  width: 30px;
+  height: 30px;
+}
+
+/* Keadaan pemuatan potongan, di sudut kiri bawah peta. */
+.atlas-status {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 2;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(10 12 20 / 0.8);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.atlas-status[data-state="idle"] {
+  opacity: 0;
+}
+
+.atlas-status[data-state="loading"] .atlas-status-down,
+.atlas-status[data-state="down"] .atlas-status-loading,
+.atlas-status[data-state="idle"] .atlas-status-down {
+  display: none;
+}
+
+/* Cuplikan penanda: citra asli tempat itu dan apa yang terukur di sana. */
+.sky-peek {
+  --tx: 26px;
+  --ty: -50%;
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 318px;
+  padding: 12px 14px 12px 12px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  background: var(--panel-solid);
+  transform: translate(var(--tx), var(--ty));
+  pointer-events: none;
+  cursor: default;
+  animation: fade 160ms ease-out;
+}
+
+.sky-peek[data-flip-x="true"] {
+  --tx: calc(-100% - 26px);
+}
+
+.sky-peek[data-pinned="true"] {
+  pointer-events: auto;
+}
+
+.sky-peek .thumb {
+  flex: none;
+  width: 72px;
+  height: 72px;
+}
+
+.sky-peek-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sky-peek-text b {
+  font-size: 14px;
+  font-weight: 600;
+  font-stretch: 112%;
+  letter-spacing: 0.02em;
+}
+
+.sky-peek-text small {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.sky-peek-text p {
+  margin: 2px 0 0;
+  color: var(--soft);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.sky-peek-measured {
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.sky-peek .pill {
+  justify-self: start;
+  margin-top: 8px;
 }
 
 /* "Dibaca sebagai" di dialog pergi-ke: di mana koordinat yang diketik berada. */
@@ -2774,8 +2833,37 @@ kbd {
     width: 100%;
   }
 
-  .atlas-map::before {
-    inset: -6px;
+  .atlas-plot::before {
+    inset: -6px -6px auto;
+    height: calc(50cqw + 12px);
+  }
+
+  /* Di layar sentuh zoom dilakukan dengan cubit; yang tersisa hanya tombol kembali ke seluruh langit. */
+  .atlas-zoom {
+    display: none;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .atlas[data-zoomed="true"] .atlas-zoom {
+    display: flex;
+  }
+
+  .atlas-zoom .round:not(:last-child) {
+    display: none;
+  }
+
+  .atlas-status {
+    left: 8px;
+    bottom: 8px;
+    max-width: calc(100% - 64px);
+  }
+
+  .sky-peek {
+    position: static;
+    width: auto;
+    margin-top: 18px;
+    transform: none;
   }
 
   /* Di layar kecil hanya nama tempat yang tertulis; label kisi dan benda disembunyikan. */

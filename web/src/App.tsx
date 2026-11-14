@@ -21,7 +21,7 @@ import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
 import { Notes } from "./components/Notes";
 import { ShareCard } from "./components/ShareCard";
-import { SkyMap, type MapSpot, type SkyMarker } from "./components/SkyMap";
+import { SkyMap, type Handoff, type SkyMapHandle, type SkyMarker } from "./components/SkyMap";
 import { SlewReadout, type Slew } from "./components/SlewReadout";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
@@ -42,7 +42,7 @@ import {
   type TargetRef,
 } from "./lib/bundle";
 import { readyFrameForWindow } from "./lib/visitFrames";
-import { loadAtlas, toMap, type Atlas } from "./lib/allsky";
+import { loadAtlas, type Atlas } from "./lib/allsky";
 import type { CardInput } from "./lib/card";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { readFramePixels } from "./lib/framePixels";
@@ -92,18 +92,11 @@ const LINK_TARGET = LINK.get("target");
 // Tanpa tautan ke satu tempat, situs dibuka di seluruh langit.
 const LINK_OPENS_PLACE = !!(LINK_TARGET || LINK_NAME || LINK_HAS_POSITION);
 const LINK_SKY_BAND = /^D[1-6]$/.test(LINK.get("band") ?? "") ? LINK.get("band")! : "D5";
-// Lama peralihan antara seluruh langit dan satu tempat.
-const ATLAS_FX_MS = 700;
 // Tujuan tombol "Show me a moving star": gerak diri tercepat di langit kita.
 const TOUR_ID = "barnard";
 const KIND_DETAIL = { moving: "moves", variable: "changes brightness", custom: "yours" } as const;
-
-/** Letak satu posisi di peta seluruh langit, dalam persen. */
-function spotOn(atlas: Atlas | undefined, ra: number, dec: number): MapSpot {
-  if (!atlas) return { x: 50, y: 50 };
-  const p = toMap(atlas, ra, dec);
-  return { x: (p.x / atlas.projection.width) * 100, y: (p.y / atlas.projection.height) * 100 };
-}
+// Lebar pandangan lebar kalau bundelnya belum diketahui, detik busur.
+const WIDE_ARCSEC = 2400;
 const LINK_LOOK = LINK.get("look");
 const GUIDE_KEY = "swara.guide";
 
@@ -164,7 +157,9 @@ export function App() {
   const [cardOpen, setCardOpen] = useState(false);
   // Seluruh langit: tingkat terluar teleskop, di atas panggung tempat yang terakhir dibuka.
   const [atlas, setAtlas] = useState(!LINK_OPENS_PLACE);
-  const [atlasFx, setAtlasFx] = useState<{ kind: "enter" | "leave"; at: MapSpot }>();
+  // Gerak antara seluruh langit dan satu tempat: menjauh dari tempat itu, atau menyelam ke sana.
+  const [atlasFx, setAtlasFx] = useState<{ kind: "enter"; ra: number; dec: number } | { kind: "leave" }>();
+  const skyRef = useRef<SkyMapHandle>(null);
   const [atlasData, setAtlasData] = useState<Atlas>();
   const [atlasFailed, setAtlasFailed] = useState(false);
   const [skyBand, setSkyBand] = useState(LINK_SKY_BAND);
@@ -432,6 +427,7 @@ export function App() {
         dec: t.dec,
         yours: false,
         current: t.id === targetId,
+        built: true,
       })),
       ...Object.values(jobs)
         .filter((j) => j.status !== "error")
@@ -443,6 +439,7 @@ export function App() {
           dec: j.dec,
           yours: true,
           current: j.id === targetId,
+          built: j.status === "ready",
         })),
     ],
     [targets, jobs, targetId],
@@ -504,55 +501,55 @@ export function App() {
     };
   }, [atlas, gotoOpen, atlasData]);
 
-  // Menjauh dari pandangan lebar: peta seluruh langit mengecil dari titik tempat ini.
+  // Menjauh dari pandangan lebar: peta mulai dari tempat ini lalu menjauh sampai seluruh langit.
   const enterAtlas = useCallback(() => {
     window.clearTimeout(atlasTimer.current);
     setPlaying(false);
     setWheelOpen(false);
     setAtlas(true);
-    if (prefersReducedMotion()) {
-      setAtlasFx(undefined);
-      return;
-    }
-    setAtlasFx({ kind: "enter", at: target ? spotOn(atlasData, target.ra, target.dec) : { x: 50, y: 50 } });
-    atlasTimer.current = window.setTimeout(() => setAtlasFx(undefined), ATLAS_FX_MS);
-  }, [target, atlasData]);
+    setAtlasFx(target && !prefersReducedMotion() ? { kind: "enter", ra: target.ra, dec: target.dec } : undefined);
+    // Kalau petanya tidak pernah selesai tiba (gagal dimuat), keadaan geraknya tetap dilepas.
+    atlasTimer.current = window.setTimeout(() => setAtlasFx(undefined), 5000);
+  }, [target]);
 
-  // Mendekat ke satu titik: peta membesar ke titik itu dan larut ke tempatnya.
-  const leaveAtlas = useCallback((at: MapSpot) => {
+  // Mendekat ke satu titik: peta menyelam ke sana sampai sejajar dengan pandangan lebarnya.
+  const leaveAtlas = useCallback((to: { ra: number; dec: number }) => {
     window.clearTimeout(atlasTimer.current);
-    if (prefersReducedMotion()) {
+    const map = skyRef.current;
+    if (!map || prefersReducedMotion()) {
       setAtlas(false);
       setAtlasFx(undefined);
       return;
     }
-    setAtlasFx({ kind: "leave", at });
-    atlasTimer.current = window.setTimeout(() => {
+    setAtlasFx({ kind: "leave" });
+    void map.dive(to.ra, to.dec).then(() => {
       setAtlas(false);
       setAtlasFx(undefined);
-    }, ATLAS_FX_MS);
+    });
   }, []);
   useEffect(() => () => window.clearTimeout(atlasTimer.current), []);
 
   /** Pilih tempat dari seluruh langit (penanda, contoh, atau tombol tur). */
   const pickFromAtlas = useCallback(
-    (id: string, at: MapSpot) => {
+    (id: string) => {
+      const to = allTargets.find((t) => t.id === id);
+      if (!to) return;
       if (id === targetId) setSky(false);
       else {
         quietArrival.current = id;
         selectTarget(id);
       }
-      leaveAtlas(at);
+      leaveAtlas(to);
     },
-    [targetId, selectTarget, leaveAtlas],
+    [allTargets, targetId, selectTarget, leaveAtlas],
   );
 
   /** Kembali dari seluruh langit ke tempat terakhir, di pandangan lebarnya. */
   const backToPlace = useCallback(() => {
     if (!target) return;
     setSky(true);
-    leaveAtlas(spotOn(atlasData, target.ra, target.dec));
-  }, [target, atlasData, leaveAtlas]);
+    leaveAtlas(target);
+  }, [target, leaveAtlas]);
 
   const available = useMemo(
     () => (manifest && bandId ? manifest.windows.filter((w) => findFrame(manifest, w.id, bandId)) : []),
@@ -722,16 +719,21 @@ export function App() {
       const el = e.target as HTMLElement;
       if (el.closest?.("input, select, textarea, [role=dialog]")) return;
       if (atlas) {
-        // Di seluruh langit: 1-6 memilih panjang gelombang, + kembali ke tempat terakhir.
+        // Di seluruh langit: 1-6 memilih panjang gelombang, + dan - memperbesar peta,
+        // panah menggesernya, 0 kembali ke seluruh langit.
         if (/^[1-6]$/.test(e.key)) {
           setSkyBand(`D${e.key}`);
           return;
         }
-        if (e.key === "+" || e.key === "=") {
-          backToPlace();
-          return;
+        const map = skyRef.current;
+        if (e.key === "+" || e.key === "=") map?.zoomBy(2);
+        else if (e.key === "-") map?.zoomBy(0.5);
+        else if (e.key === "0") map?.reset();
+        else if (e.key.startsWith("Arrow")) {
+          e.preventDefault();
+          map?.panBy(e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0, e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0);
         }
-        if (e.key === " " || e.key.startsWith("Arrow") || e.key === "-" || e.key.toLowerCase() === "m") return;
+        if (e.key === " " || e.key.startsWith("Arrow") || /^[+=\-0]$/.test(e.key) || e.key.toLowerCase() === "m") return;
       }
       if (e.key === "/") {
         e.preventDefault();
@@ -771,7 +773,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, chooseBand, manifest, zoom, openGuide, atlas, backToPlace]);
+  }, [step, chooseBand, manifest, zoom, openGuide, atlas]);
 
   // Mode Spektrum: lensa menampilkan band yang sedang terdengar.
   const shownBandId =
@@ -941,6 +943,17 @@ export function App() {
   const ctx = manifest?.context ?? undefined;
   const skyScale = geometry && ctx ? geometry.size / ctx.fov_arcsec : undefined; // piksel per detik busur
   const collapseScale = skyScale && geometry ? (viewArcsec * skyScale) / geometry.lens : 0.4;
+  // Ke mana peta seluruh langit harus sejajar di akhir menyelam: pusat lensa di layar
+  // dan skala pandangan lebar, supaya bintangnya berimpit dengan latar di bawahnya.
+  const skyHandoff = useCallback((): Handoff | undefined => {
+    const box = appRef.current?.getBoundingClientRect();
+    if (!box || !geometry) return undefined;
+    return { clientX: box.left + geometry.x, clientY: box.top + geometry.y, pxPerArcsec: geometry.size / WIDE_ARCSEC };
+  }, [geometry]);
+  const arrivedAtAtlas = useCallback(() => {
+    window.clearTimeout(atlasTimer.current);
+    setAtlasFx(undefined);
+  }, []);
   const footprintPx =
     skyScale && manifest ? manifest.fov_arcsec * skyScale : geometry ? geometry.lens * 0.4 : 200;
   const ctxBand = manifest?.bands.find((b) => b.id === ctx?.band);
@@ -1437,6 +1450,7 @@ export function App() {
 
       {atlas && (
         <SkyMap
+          ref={skyRef}
           atlas={atlasData}
           failed={atlasFailed}
           band={skyBand}
@@ -1448,17 +1462,21 @@ export function App() {
           onLines={setSkyLines}
           markers={skyMarkers}
           onPick={pickFromAtlas}
-          onGo={async (ra, dec, at) => {
+          onGo={async (ra, dec) => {
             const result = await openSky(`${ra.toFixed(4)} ${dec.toFixed(4)}`, true);
             if (typeof result === "string") return result;
-            leaveAtlas(at);
+            leaveAtlas(result);
             return null;
           }}
           onTour={() => {
             const tour = targets?.find((t) => t.id === TOUR_ID) ?? targets?.find((t) => t.kind === "moving");
-            if (tour) pickFromAtlas(tour.id, spotOn(atlasData, tour.ra, tour.dec));
+            if (tour) pickFromAtlas(tour.id);
           }}
-          fx={atlasFx}
+          arrive={atlasFx?.kind === "enter" ? atlasFx : undefined}
+          onArrived={arrivedAtAtlas}
+          leaving={atlasFx?.kind === "leave"}
+          handoff={skyHandoff}
+          tour={targets?.find((t) => t.id === TOUR_ID)}
           busy={gotoOpen || notesOpen || cardOpen}
         />
       )}
@@ -1474,7 +1492,7 @@ export function App() {
           void openSky(text, atlas).then((result) => {
             if (typeof result === "string") return;
             setGotoOpen(false);
-            if (atlas) leaveAtlas(spotOn(atlasData, result.ra, result.dec));
+            if (atlas) leaveAtlas(result);
           })
         }
         examples={targets ?? []}
@@ -1484,7 +1502,7 @@ export function App() {
         onPick={(id) => {
           setGotoOpen(false);
           const t = allTargets.find((x) => x.id === id);
-          if (atlas && t) pickFromAtlas(id, spotOn(atlasData, t.ra, t.dec));
+          if (atlas && t) pickFromAtlas(id);
           else selectTarget(id);
         }}
         atlas={atlasData}

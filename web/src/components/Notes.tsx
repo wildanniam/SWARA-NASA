@@ -21,8 +21,11 @@ type Props = {
 };
 
 const SKY_KEYS: [string, string][] = [
+  ["+ −", "zoom the map"],
+  ["← → ↑ ↓", "move the map"],
+  ["0", "back to the whole sky"],
   ["1 to 6", "wavelength"],
-  ["+", "back to the last place"],
+  ["Enter", "look at the aimed spot"],
   ["Esc", "clear the aim"],
   ["C", "next look"],
   ["R", "reveal faint things"],
@@ -38,7 +41,7 @@ function SkyGuide({ atlas, look, skyBand }: { atlas: Atlas; look: PaletteId; sky
         <h3>The whole sky</h3>
         <p>
           This is SPHEREx's own map of the entire sky, made from its first year of scans (DR1). It is the widest step of
-          the telescope: from here you choose a place, and the lens shows it up close.
+          the telescope: zoom in and move around, choose a place, and the lens shows it up close.
         </p>
         <p>
           The sky is a sphere, so a flat map has to stretch it. This one keeps our galaxy, the Milky Way, straight
@@ -96,7 +99,10 @@ function SkyGuide({ atlas, look, skyBand }: { atlas: Atlas; look: PaletteId; sky
             band
           </dd>
           <dt>Detail</dt>
-          <dd>About {Math.round(atlas.source.pixel_arcmin)}′ per pixel, far coarser than the lens</dd>
+          <dd>
+            About {Math.round(atlas.source.pixel_arcmin)}′ per pixel for the whole sky. Zooming in loads sharper pieces of
+            the same map from IRSA, down to about 13″ per pixel, roughly half the sharpness of the lens
+          </dd>
           <dt>Gaps</dt>
           <dd>A few black patches near very bright regions are gaps in SPHEREx's map</dd>
         </dl>
