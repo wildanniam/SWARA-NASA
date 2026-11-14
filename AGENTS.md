@@ -100,6 +100,7 @@ Semua poin ini sudah diuji langsung terhadap data.
 - **Piksel besar:** 6,15 detik busur. Gerak beberapa detik busur per tahun hanya bergeser sekitar 1 piksel.
 - **Bintang terang jenuh.** Definisi bit penanda ada di `pipeline/src/skychange/flags.py`.
 - **Pencarian posisi pakai SIA, bukan TAP** (2-4 detik lawan 203 detik).
+- **SIA IRSA bisa membalas `502 Proxy Error` berjam-jam.** Pencarian mencoba ulang dengan jeda 1, 2, 4, dan 8 detik; kalau tetap gagal, bundle tidak dibuat dan aplikasi mengatakan arsip NASA sedang tidak menjawab. Lima contoh dan tempat yang sudah pernah dibuat tidak terpengaruh.
 - **Piksel dibaca langsung dari bucket publik `nasa-irsa-spherex`** (wilayah us-east-1, sekitar 260 milidetik bolak-balik dari Indonesia) lewat HTTP range. `remote.py` meminta tepat bagian yang dibutuhkan: lima permintaan dan sekitar 1,25 MB per eksposur. Lewat astropy dan fsspec satu eksposur butuh sekitar 360 permintaan dan 10,7 MB, hampir semuanya untuk HDU FLAGS yang terkompresi per baris; cara itu tinggal sebagai cadangan.
 - **Satu koordinat baru butuh sekitar 1 sampai 1,5 menit** (diukur pada 291 dan 334 eksposur; sebelumnya 2,5 menit di laptop dan 6 menit di server). Yang paling lama sekarang unduhan itu sendiri: sekitar 360 MB untuk 291 eksposur. Contoh aman karena sudah jadi berkas statis.
 - **Frame dibuat selebar 6 menit busur.** Itu menambah waktu sekitar sepertiga dibanding 2 menit busur (157 lawan 115 detik pada satu uji), dengan hasil ukur yang sama.
@@ -135,6 +136,11 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 - Nama dan gerak diri: SIMBAD lewat CDS Sesame
 
 ## Log
+
+### 2026-11-15
+- **TEMUAN: tempat baru gagal karena layanan SIA IRSA membalas 502, bukan karena rute `/sky`.** Diuji 14-15 November sekitar tengah malam WIB: `spherex_dr1` gagal 6 dari 6 permintaan, `spherex_qr3` 4 dari 6, TAP juga 502, sementara potongan HiPS IRSA tetap termuat. Pipeline dulu menyerah pada 502 pertama, jadi tiap Try again membangun ulang lalu gagal dengan pesan umum.
+  - Perbaikan (PR #37): coba ulang 429, 5xx, dan koneksi putus dengan jeda 1, 2, 4, dan 8 detik dalam batas 90 detik; kalau tetap gagal, pekerjaan berakhir dengan `error: "archive"` dan aplikasi menulis "NASA's SPHEREx archive (IRSA) is not answering right now". Tidak dilanjutkan dengan satu koleksi saja, karena bundle itu akan tersimpan dengan eksposur yang diam-diam hilang.
+  - Diuji dengan respons palsu (502, 502, 200; putus lalu 200; lima kali 502; 404) dan langsung ke IRSA: saat DR1 terus 502 pencarian berhenti setelah 21,5 detik dengan pesan arsip; percobaan berikutnya lolos dan bundle Sirius jadi ("Not trackable": terlalu terang untuk dilacak).
 
 ### 2026-11-14
 - **KEPUTUSAN (Wildan, Alif, Nayla): lisensi repo pindah dari MIT ke AGPL-3.0-or-later.** Alasannya: mesin suara Alif akan memakai Strudel (AGPL) yang berjalan di browser, dan tim ingin semangat open source yang tinggi. Akibatnya: siapa pun yang menjalankan versi modifikasi SWARA untuk orang lain lewat jaringan wajib membuka kodenya; versi tertutup hanya mungkin kalau Strudel diganti. Tautan "Source · AGPL" selalu terlihat di kaki dialog The cards. Versi lama repo tetap MIT.
