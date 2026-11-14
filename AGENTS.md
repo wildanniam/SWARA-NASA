@@ -58,10 +58,8 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 Urutan platform berikutnya:
 
 1. Kartu berbagi (bentuknya dipilih Wildan dari mockup dulu; tanpa kata "discovery").
-2. Input RA dan Dec yang lebih mudah: dua kotak berlabel, pratinjau "dibaca sebagai", dan memaafkan salah ketik.
+2. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
 3. Halaman proyek dan video demo berbahasa Inggris.
-
-Tambahan yang disetujui Wildan untuk sesudahnya: peta seluruh langit sebagai pembuka, tabel pengukuran per kunjungan, selisih citra antar waktu, label kualitas data per benda, kurva terang per kunjungan, unduh CSV spektrum, dan tutorial tiga langkah (paling akhir).
 
 Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, dan tombol Share serta Guide.
 
