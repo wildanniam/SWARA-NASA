@@ -51,6 +51,8 @@ type Props = {
   soundRing: RefObject<SVGCircleElement | null>;
   /** Garis pindai di lensa; digerakkan kolom-per-kolom mengikuti jam audio. */
   scanLine: RefObject<SVGLineElement | null>;
+  /** Titik yang bergerak di sepanjang garis pindai. */
+  scanDot: RefObject<SVGCircleElement | null>;
 };
 
 const H = 84;
@@ -140,13 +142,15 @@ export function SpectrumStrip(p: Props) {
     if (headDotRef.current) headDotRef.current.style.visibility = "hidden";
     const line = p.scanLine.current;
     if (line) line.style.visibility = "hidden";
+    const scanDot = p.scanDot.current;
+    if (scanDot) scanDot.style.visibility = "hidden";
     p.soundRing.current?.setAttribute("stroke-dasharray", "0 100");
     setPlay(undefined);
     setPlayVisit(undefined);
     setHeardLambda(undefined);
     setMotionNoteActive(false);
     hearRef.current(undefined);
-  }, [p.soundRing, p.scanLine]);
+  }, [p.soundRing, p.scanLine, p.scanDot]);
 
   const stop = useCallback(() => {
     sonifier.stop();
@@ -286,12 +290,19 @@ export function SpectrumStrip(p: Props) {
       }
       const col = local / SCAN.colSeconds;
       const line = p.scanLine.current;
+      const scanDot = p.scanDot.current;
       if (line) {
         if (visit.layers.scan && col >= 0 && col < SCAN.columns) {
           line.setAttribute("x1", String(col + 0.5));
           line.setAttribute("x2", String(col + 0.5));
           line.style.visibility = "visible";
         } else line.style.visibility = "hidden";
+      }
+      if (scanDot) {
+        if (visit.layers.scan && col >= 0 && col < SCAN.columns) {
+          scanDot.setAttribute("cx", String(col + 0.5));
+          scanDot.style.visibility = "visible";
+        } else scanDot.style.visibility = "hidden";
       }
       if (visit.layers.scan && col >= SCAN.columns / 2 && centerTold !== visit.id) {
         centerTold = visit.id;
@@ -317,6 +328,7 @@ export function SpectrumStrip(p: Props) {
         }
         const head = headRef.current;
         const dot = headDotRef.current;
+        const activeBin = binned.get(visit.id)?.[step];
         if (head) {
           const x = xOf(lambda);
           head.setAttribute("x1", String(x));
@@ -325,6 +337,11 @@ export function SpectrumStrip(p: Props) {
         }
         if (dot) {
           dot.setAttribute("cx", String(xOf(lambda)));
+          const flux = activeBin?.flux;
+          const cy = flux !== null && flux !== undefined
+            ? M.top + (1 - clamp01(flux / top)) * (H - M.top - M.bottom)
+            : baseline;
+          dot.setAttribute("cy", String(cy));
           dot.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
         }
       } else {
@@ -340,7 +357,7 @@ export function SpectrumStrip(p: Props) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [play, stop, abandon, windows, bands, xOf, p.soundRing, p.scanLine]);
+  }, [play, stop, abandon, windows, bands, binned, top, xOf, p.soundRing, p.scanLine, p.scanDot]);
 
   const bandsLocked = !!play;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
@@ -526,24 +543,6 @@ export function SpectrumStrip(p: Props) {
                     onClick={() => p.onBand(b.id)}
                   >
                     <span className="segment-number" aria-hidden="true">{i + 1}</span>
-                    <span className="segment-notes" aria-hidden="true">
-                      <i
-                        className="segment-note segment-note--scan"
-                        data-active={!!play && currentLayers?.scan ? "true" : undefined}
-                      />
-                      <i
-                        className="segment-note segment-note--spectrum"
-                        data-active={
-                          !!play && heardLambda !== undefined && heardLambda >= b.lambda_min && heardLambda < b.lambda_max
-                            ? "true"
-                            : undefined
-                        }
-                      />
-                      <i
-                        className="segment-note segment-note--motion"
-                        data-active={motionNoteActive ? "true" : undefined}
-                      />
-                    </span>
                   </button>
                 );
             })}

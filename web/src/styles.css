@@ -796,6 +796,14 @@ kbd {
   visibility: hidden;
 }
 
+.scan-dot {
+  fill: #c9d46f;
+  stroke: var(--void);
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  visibility: hidden;
+}
+
 .mark line {
   stroke: var(--accent);
   stroke-width: 1.5px;
@@ -828,7 +836,9 @@ kbd {
 }
 
 .trail-dot[data-current="true"] {
-  fill: var(--accent);
+  fill: #79aefc;
+  stroke: #79aefc;
+  filter: drop-shadow(0 0 4px rgba(121, 174, 252, 0.8));
 }
 
 .lens-scale {
@@ -1454,14 +1464,14 @@ kbd {
 }
 
 .spec-head {
-  stroke: var(--accent);
+  stroke: #ffad55;
   stroke-width: 2.2;
   pointer-events: none;
   visibility: hidden;
 }
 
 .spec-head-dot {
-  fill: var(--accent);
+  fill: #ffad55;
   stroke: var(--void);
   stroke-width: 1.2;
   pointer-events: none;
@@ -1496,43 +1506,6 @@ kbd {
   color: var(--faint);
   font-family: var(--mono);
   font-size: 10.5px;
-}
-
-.segment-notes {
-  position: absolute;
-  left: 6px;
-  bottom: 3px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.segment-note {
-  width: 4px;
-  height: 4px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  opacity: 0.3;
-  transition: opacity 120ms ease, box-shadow 120ms ease, transform 120ms ease;
-}
-
-.segment-note--scan {
-  color: #c9d46f;
-}
-
-.segment-note--spectrum {
-  color: #ffad55;
-}
-
-.segment-note--motion {
-  color: #79aefc;
-}
-
-.segment-note[data-active="true"] {
-  transform: scale(1.35);
-  background: currentColor;
-  opacity: 1;
-  box-shadow: 0 0 6px currentColor;
 }
 
 .segment:hover:not(:disabled) {
