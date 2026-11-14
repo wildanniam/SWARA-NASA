@@ -21,10 +21,11 @@ import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
 import { Notes } from "./components/Notes";
+import { ShareCard } from "./components/ShareCard";
 import { SlewReadout, type Slew } from "./components/SlewReadout";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
-import { CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
+import { BLENDED, CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
 import {
   assetUrl,
   defaultBand,
@@ -40,6 +41,7 @@ import {
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
+import type { CardInput } from "./lib/card";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
@@ -140,6 +142,8 @@ export function App() {
   const [gotoOpen, setGotoOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Dialog kartu berbagi.
+  const [cardOpen, setCardOpen] = useState(false);
   // Band yang sedang terdengar saat suara spektrum berjalan; lensa ikut menampilkannya.
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
@@ -778,24 +782,84 @@ export function App() {
     return notes;
   }, [manifest]);
 
-  // Berbagi: di ponsel lewat lembar berbagi sistem, di tempat lain tautannya disalin.
+  const copyLink = useCallback(() => {
+    void navigator.clipboard?.writeText(window.location.href).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    });
+  }, []);
+
+  // Berbagi: begitu bundle lengkap, Share membuka kartu. Selagi bundle masih dibuat
+  // yang dibagikan tautannya: lembar berbagi sistem di ponsel, salin di tempat lain.
+  const canDrawCard = !!manifest && !manifest.preview;
   const share = useCallback(() => {
-    const url = window.location.href;
-    const copy = () =>
-      navigator.clipboard?.writeText(url).then(() => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1800);
-      });
+    if (canDrawCard) {
+      setCardOpen(true);
+      return;
+    }
     const touch = window.matchMedia?.("(pointer: coarse)").matches;
     if (touch && typeof navigator.share === "function") {
       const title = targetName ? `${targetName} on SWARA` : "SWARA";
       void navigator
-        .share({ title, text: "Watch this patch of sky change and hear its spectrum.", url })
+        .share({ title, text: "Watch this patch of sky change and hear its spectrum.", url: window.location.href })
         .catch((err: unknown) => {
-          if (!(err instanceof DOMException && err.name === "AbortError")) void copy();
+          if (!(err instanceof DOMException && err.name === "AbortError")) copyLink();
         });
-    } else void copy();
-  }, [targetName]);
+    } else copyLink();
+  }, [targetName, canDrawCard, copyLink]);
+
+  // Bahan kartu: citra yang sudah termuat untuk tempat ini, spektrumnya, dan tautan
+  // pendek ke tempat yang sama. Hanya disusun selagi dialognya terbuka.
+  useEffect(() => {
+    if (cardOpen && contextUrl) preload([contextUrl]);
+  }, [cardOpen, contextUrl]);
+  const cardContext = images.get(cardOpen ? contextUrl : undefined);
+  const cardWindow = available[available.length - 1];
+  const cardFrame = manifest && cardWindow && bandId ? findFrame(manifest, cardWindow.id, bandId) : undefined;
+  const cardFrameImage = images.get(cardOpen && cardFrame && targetId ? assetUrl(targetId, custom, cardFrame.image) : undefined);
+  const cardWise =
+    cardOpen && wise && targetId
+      ? wise.frames.flatMap((f) => images.get(assetUrl(targetId, custom, f.image)) ?? [])
+      : [];
+  const cardWiseCount = cardWise.length;
+  const cardPoints = spectrum?.data?.points;
+  const cataloguePm = job?.pm_arcsec_yr;
+  const jobRa = job?.ra;
+  const jobDec = job?.dec;
+  const jobLabel = job?.label;
+  const cardInput = useMemo<CardInput | undefined>(() => {
+    if (!cardOpen || !manifest || manifest.preview || !target || !targetId) return undefined;
+    if (!cardWiseCount && !cardFrameImage) return undefined;
+    const link = new URLSearchParams();
+    if (jobRa !== undefined && jobDec !== undefined) {
+      link.set("ra", jobRa.toFixed(4));
+      link.set("dec", jobDec.toFixed(4));
+      if (jobLabel) link.set("name", jobLabel);
+    } else link.set("target", targetId);
+    return {
+      name: target.name,
+      manifest,
+      look: palette,
+      url: `${window.location.origin}${window.location.pathname}?${link}`,
+      site: window.location.host,
+      context: cardContext,
+      wiseImages: cardWise,
+      wiseTone:
+        wise && !wise.matched && cardWise[0]
+          ? wiseTone(targetId, cardWise[0], WISE_SOFTEN_ARCSEC / wise.pixel_arcsec)
+          : undefined,
+      frame:
+        cardFrameImage && cardFrame && cardWindow
+          ? { image: cardFrameImage, bandId: cardFrame.band, mjd: cardWindow.mjd_mid }
+          : undefined,
+      points: cardPoints,
+      blended: custom ? undefined : BLENDED[targetId],
+      cataloguePm,
+      today: new Date(),
+    };
+    // `cardWise` berganti tiap render; jumlahnya yang menandai citra baru termuat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardOpen, manifest, target, targetId, custom, palette, cardContext, cardWiseCount, cardFrameImage, cardPoints, cataloguePm, jobRa, jobDec, jobLabel]);
 
   const openGoTo = () => {
     setFormError(undefined);
@@ -840,7 +904,7 @@ export function App() {
           <kbd aria-hidden="true">/</kbd>
         </button>
         <div className="top-actions">
-          <button type="button" className="pill pill-share" aria-label="Share a link to this view" onClick={share}>
+          <button type="button" className="pill pill-share" aria-label="Share this view" onClick={share}>
             <ShareNetwork aria-hidden="true" />
             <span aria-live="polite">{copied ? "Link copied" : "Share"}</span>
           </button>
@@ -1182,6 +1246,15 @@ export function App() {
           selectTarget(id);
           setGotoOpen(false);
         }}
+      />
+      <ShareCard
+        open={cardOpen}
+        onClose={() => setCardOpen(false)}
+        input={cardInput}
+        lookName={LOOKS.find((l) => l.id === palette)?.name ?? ""}
+        spectrumPending={!spectrum?.data && !spectrum?.error}
+        copied={copied}
+        onCopyLink={copyLink}
       />
       <Notes
         open={notesOpen}

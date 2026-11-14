@@ -57,11 +57,11 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 Urutan platform berikutnya:
 
-1. Kartu berbagi (bentuknya dipilih Wildan dari mockup dulu; tanpa kata "discovery").
-2. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
-3. Halaman proyek dan video demo berbahasa Inggris.
+1. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
+2. Halaman proyek dan video demo berbahasa Inggris.
+3. Identitas visual, setelah pekerjaan fitur: logo (belum ada; yang dipakai sekarang tanda sementara) dan penerapan arah tarot dan rasi bintang ke halaman pembuka dan Guide. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, dan tombol Share serta Guide.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide, dan kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery").
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -138,6 +138,12 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **KEPUTUSAN (Wildan): tarot dan rasi bintang jadi DNA desain SWARA ke depan.** Alasannya: orang sudah akrab dengan bahasa itu, jadi ia memancing orang untuk melihat dan membagikan. Logo belum ada dan perlu dibuat. Urutannya: fitur dulu, identitas visual sesudahnya. Cara memakainya ditulis di [web/DESIGN.md](web/DESIGN.md): tarot memberi formatnya, langit memberi isinya.
+- **TEMUAN: kartu berbagi jalan.** Share sekarang membuka dialog kartu 1080 x 1920 yang dilukis dari bundle di layar: kartu gerak (citra WISE ditumpuk, satu sinar per pengamatan pada tanggalnya) dan kartu cahaya (spektrum sebagai sinar). Julukannya mengikuti yang terukur SPHEREx.
+  - Diuji di browser pada lima contoh dengan enam look, satu nama yang dicari, dan satu koordinat bebas. Kartu cahaya muncul untuk Epsilon Indi B; untuk Barnard's Star, RW Aurigae, dan R Draconis tidak, karena titik bersihnya terlalu sedikit, dan dialognya mengatakan itu.
+  - WISE 0855: tumpukan WISE memperlihatkan jejaknya, tetapi yang terukur SPHEREx di posisi itu adalah bintang latar. Kartunya menulis bahwa keduanya tidak terpisah, dan kartu cahaya tidak dibuat.
+  - Semua kode QR dari kartu yang diekspor terbaca pemindai OpenCV. Belum dicoba: memindai dengan kamera ponsel, dan lembar berbagi berkas di ponsel asli.
+  - Gerak katalog hanya tertulis di kartu untuk nama yang dicari; untuk lima contoh angkanya tidak ada di bundle.
 - **TEMUAN: enam look terkurasi.** Ember, Glacier, Aurora, Nebula, Mono, Paper. Terang relatif tiap peta diperiksa di 256 tingkat: lima naik terus, Paper turun terus, tidak ada yang berbalik arah. Masukan teman Wildan: Copy link dan Notes tidak terasa bisa diklik; keduanya diganti Share (berbingkai aksen) dan Guide (dengan penanda sampai dibuka, dimulai dengan legenda bergambar).
 - **TEMUAN: kenapa pindah dari WISE ke SPHEREx terasa meloncat, dan perbaikannya.**
   - Sebab terukur: latar citra WISE bernilai abu 23-33 dari 255 sedangkan latar frame SPHEREx 0; rata-rata terang lensa 2-4 kali lebih tinggi; dan citra dari layanan WiseView terpotong di 500 satuan, jadi bintang terang menyilaukan (Barnard's Star: rata-rata 57 lawan 14).

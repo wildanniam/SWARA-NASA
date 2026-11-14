@@ -14,6 +14,12 @@ export function searchNote(name: string, pmArcsecYr?: number | null): string {
   return `${where} The catalogue says it moves about ${pmArcsecYr.toFixed(1)}″ per year. Blink and compare.`;
 }
 
+/** Benda contoh yang di data SPHEREx tidak terpisah dari bintang latar. Yang terukur di
+ *  posisinya bukan benda itu, jadi kartu berbagi tidak menyebut gerak atau cahayanya. */
+export const BLENDED: Record<string, string> = {
+  wise0855: "SPHEREx could not separate it from a background star here",
+};
+
 export const TARGET_NOTES: Record<string, string> = {
   barnard:
     "The star with the fastest apparent motion in our sky. Blink between visits and it steps north, away from the mark, while the faint stars around it stay put.",
