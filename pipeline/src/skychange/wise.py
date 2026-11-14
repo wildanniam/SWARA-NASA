@@ -72,18 +72,52 @@ def target_pixel(meta: dict, ra: float, dec: float) -> tuple[float, float]:
     return float(x), float(meta["NAXIS2"] - 1 - y)
 
 
+def _coverage(meta: dict, ra: float, dec: float, half_px: float) -> tuple[float, float, float]:
+    """Bagian medan yang tertutup citra (0-1), dan kekurangannya ke kanan dan ke bawah
+    dalam piksel (negatif = kurang di kiri atau atas)."""
+    x, y = target_pixel(meta, ra, dec)
+    w, h = meta["NAXIS1"], meta["NAXIS2"]
+    left, right = min(x + 0.5, half_px), min(w - x - 0.5, half_px)
+    up, down = min(y + 0.5, half_px), min(h - y - 0.5, half_px)
+    area = max(left + right, 0) * max(up + down, 0) / (2 * half_px) ** 2
+    return area, (half_px - right) - (half_px - left), (half_px - down) - (half_px - up)
+
+
 def build_wise(ra: float, dec: float, out: Path, fov_arcsec: float, log=print, timeout: float = 60.0) -> dict | None:
     """Unduh deretan citra W2 selebar `fov_arcsec` ke `out/wise/` dan kembalikan
     entri manifest-nya; None kalau layanan tidak punya data di posisi ini."""
+    half_px = fov_arcsec / PIXEL_ARCSEC / 2
     size = math.ceil(fov_arcsec / PIXEL_ARCSEC)
     size += 1 - size % 2  # ganjil, supaya posisi jatuh di tengah satu piksel
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-        r = client.get(API_URL, params=_params(ra, dec, size))
-        r.raise_for_status()
-        meta = r.json()
-        keys = meta.get("ims") or []
-        if not keys:
+
+        def ask(ra0: float, dec0: float, n: int) -> dict:
+            r = client.get(API_URL, params=_params(ra0, dec0, n))
+            r.raise_for_status()
+            return r.json()
+
+        meta = ask(ra, dec, size)
+        if not meta.get("ims"):
             return None
+        # Layanan memotong dari satu petak unWISE, jadi di dekat tepi petak citranya
+        # terpotong. Petak bersebelahan saling menumpuk beberapa menit busur: minta
+        # ulang dengan pusat digeser ke arah yang terpotong supaya petak tetangga yang
+        # dipakai, lalu ambil yang menutup medan paling banyak.
+        area, dx, dy = _coverage(meta, ra, dec, half_px)
+        if area < 0.98:
+            push = lambda d: (abs(d) + 12) * (1 if d > 0 else -1) if abs(d) > 0.5 else 0.0
+            sx, sy = push(dx), push(dy)
+            ra2 = ra - sx * PIXEL_ARCSEC / 3600 / math.cos(math.radians(dec))  # kanan = barat
+            dec2 = dec - sy * PIXEL_ARCSEC / 3600  # bawah = selatan
+            n2 = size + 2 * math.ceil(max(abs(sx), abs(sy)))
+            try:
+                other = ask(ra2, dec2, n2 + 1 - n2 % 2)
+                if other.get("ims") and _coverage(other, ra, dec, half_px)[0] > area:
+                    meta = other
+                    area = _coverage(meta, ra, dec, half_px)[0]
+            except httpx.HTTPError:
+                pass
+        keys = meta["ims"]
 
         folder = out / "wise"
         folder.mkdir(parents=True, exist_ok=True)
@@ -118,6 +152,7 @@ def build_wise(ra: float, dec: float, out: Path, fov_arcsec: float, log=print, t
         "pixel_arcsec": PIXEL_ARCSEC,
         "size_px": [int(meta["NAXIS1"]), int(meta["NAXIS2"])],
         "target_px": [round(x, 2), round(y, 2)],
+        "coverage": round(area, 3),
         "orientation": "north up, east left",
         "stretch": f"linear, {MIN_BRIGHT:g} to {MAX_BRIGHT:g} unWISE units; for viewing, not photometry",
         "frames": frames,
