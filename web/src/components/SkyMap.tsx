@@ -487,7 +487,10 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
       fieldRef.current.textContent = label ? ` · field ${label}` : "";
     }
     rootRef.current?.style.setProperty("--veil", String(veil.current));
-    if (moving) raf.current = requestAnimationFrame(paint);
+    // Satu bingkai, satu lukisan: langkah gerak di atas lewat setView sudah bisa menjadwalkan
+    // bingkai berikutnya. Menjadwalkan lagi di sini membuat jumlah lukisan berlipat dua tiap
+    // bingkai, dan itulah yang membuat menyelam tersendat makin lama makin parah.
+    if (moving && !raf.current) raf.current = requestAnimationFrame(paint);
   }, [drawOverlay, placeDom]);
 
   const schedule = useCallback(() => {
