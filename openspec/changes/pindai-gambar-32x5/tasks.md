@@ -13,9 +13,9 @@
 
 ## 3. Integrasi viewer
 
-- [ ] 3.1 Tekan Listen memaksa lensa ke 6 menit busur, menghentikan blink, dan memindai band+kunjungan tampil; WISE dialihkan ke kunjungan SPHEREx terdekat; verifikasi: dari zoom 2' dan dari citra WISE, lensa berakhir di 6' SPHEREx dan sapuan berbunyi
-- [ ] 3.2 Gambar garis pindai vertikal di `lens-marks` yang dikunci jam audio (`sonifier.now()` + RAF) kolom-per-kolom timur-ke-barat dan verifikasi: garis di kolom ke-N saat nada kolom ke-N berbunyi (cek visual + reduced-motion melompat per kolom)
-- [ ] 3.3 Umumkan ke screen reader hanya pada peristiwa (mulai sapuan, earcon target, selesai) tanpa mengganggu frasa dan verifikasi: lolos tab keyboard penuh + tidak ada pengumuman tiap kolom
+- [x] 3.1 Tekan Listen memaksa lensa ke 6 menit busur, menghentikan blink, dan memindai band+kunjungan tampil; WISE dialihkan ke kunjungan SPHEREx terdekat; verifikasi: dari zoom 2' dan dari citra WISE, lensa berakhir di 6' SPHEREx dan sapuan berbunyi
+- [x] 3.2 Gambar garis pindai vertikal di `lens-marks` yang dikunci jam audio (`sonifier.now()` + RAF) kolom-per-kolom timur-ke-barat dan verifikasi: garis di kolom ke-N saat nada kolom ke-N berbunyi (cek visual + reduced-motion melompat per kolom)
+- [x] 3.3 Umumkan ke screen reader hanya pada peristiwa (mulai sapuan, earcon target, selesai) tanpa mengganggu frasa dan verifikasi: lolos tab keyboard penuh + tidak ada pengumuman tiap kolom
 
 ## 4. Kejujuran dan verifikasi akhir
 

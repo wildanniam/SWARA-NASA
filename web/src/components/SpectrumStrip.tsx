@@ -17,7 +17,7 @@ import {
   type SpectrumPoint,
 } from "../lib/spectrum";
 import { SCAN, SOUND } from "../sound/mapping";
-import { sonifier, type Note } from "../sound/sonify";
+import { phrase, sonifier, soundEpoch, type Note } from "../sound/sonify";
 
 type Props = {
   spectrum?: Spectrum;
@@ -32,6 +32,8 @@ type Props = {
   onBand: (id: string) => void;
   /** Suara mulai memutar kunjungan ini: lensa ikut pindah dan blink berhenti. */
   onListen: (windowId: string) => void;
+  /** Band yang sedang terdengar di mode Spektrum, supaya lensa menampilkan band yang sama. */
+  onHear: (bandId: string | undefined) => void;
   /** Paksa lensa ke medan penuh dan hentikan blink sebelum sapuan berbunyi. */
   onScanStart: (visits: string[]) => void;
   /** Piksel abu display kunjungan ini (band yang tampil), kalau citranya sudah dimuat. */
@@ -79,8 +81,9 @@ export function SpectrumStrip(p: Props) {
     [W],
   );
 
-  // Selama sapuan berjalan: kunjungan mana saja yang diputar dan kapan tiap kunjungan mulai.
-  const [play, setPlay] = useState<{ visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
+  // Selama suara berjalan: kunjungan mana saja yang diputar dan kapan tiap kunjungan mulai.
+  const [play, setPlay] = useState<{ kind: "scan" | "spectrum"; visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
+  const [mode, setMode] = useState<"scan" | "spectrum">("scan");
   const [playVisit, setPlayVisit] = useState<string>();
   const [announce, setAnnounce] = useState<string>();
   const [hover, setHover] = useState<SpectrumPoint>();
@@ -94,6 +97,8 @@ export function SpectrumStrip(p: Props) {
   const headRef = useRef<SVGLineElement>(null);
   const listenRef = useRef(p.onListen);
   listenRef.current = p.onListen;
+  const hearRef = useRef(p.onHear);
+  hearRef.current = p.onHear;
   const scanStartRef = useRef(p.onScanStart);
   scanStartRef.current = p.onScanStart;
   const readVisitRef = useRef(p.readVisit);
@@ -111,37 +116,57 @@ export function SpectrumStrip(p: Props) {
     [points, windows],
   );
 
-  const stop = useCallback(() => {
-    sonifier.stop();
+  const abandon = useCallback(() => {
     if (headRef.current) headRef.current.style.visibility = "hidden";
     const line = p.scanLine.current;
     if (line) line.style.visibility = "hidden";
     p.soundRing.current?.setAttribute("stroke-dasharray", "0 100");
     setPlay(undefined);
     setPlayVisit(undefined);
+    hearRef.current(undefined);
   }, [p.soundRing, p.scanLine]);
 
-  // Satu sapuan = satu frasa gabungan: tiap kunjungan 32 kolom lalu jeda.
+  const stop = useCallback(() => {
+    sonifier.stop();
+    abandon();
+  }, [abandon]);
+
+  // Satu suara = satu frasa gabungan. Sapuan: tiap kunjungan 32 kolom lalu jeda.
+  // Spektrum: satu frasa 48 nada per kunjungan seperti sebelum sapuan ada.
   const start = useCallback(
     (visits: string[]) => {
       if (!visits.length) return;
-      scanStartRef.current(visits);
-      let notes: Note[] = [];
-      const bounds: { visit: string; start: number }[] = [];
-      let refStats: { bg: number; sigma: number; top: number } | undefined;
-      for (const v of visits) {
-        const fr = readVisitRef.current(v);
-        if (!fr) continue;
-        const grid = scanGrid(fr.gray, fr.size, fr.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
-        if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
-        const at = notes.length ? notes[notes.length - 1].t + SCAN.colSeconds + SCAN_PAUSE : 0;
-        bounds.push({ visit: v, start: at });
-        for (const n of scanPhrase(grid, SCAN)) notes.push({ ...n, t: n.t + at });
+      if (mode === "spectrum") {
+        const use = visits.filter((v) => (binned.get(v) ?? []).length > 0);
+        if (!use.length) return;
+        const starts = sonifier.play(use.map((v) => phrase(binned.get(v) ?? [], top)));
+        setPlay({
+          kind: "spectrum",
+          visits: use,
+          starts,
+          total: starts[starts.length - 1] + SOUND.visitSeconds,
+          bounds: use.map((v, i) => ({ visit: v, start: starts[i] })),
+        });
+      } else {
+        scanStartRef.current(visits);
+        hearRef.current(undefined);
+        let notes: Note[] = [];
+        const bounds: { visit: string; start: number }[] = [];
+        let refStats: { bg: number; sigma: number; top: number } | undefined;
+        for (const v of visits) {
+          const fr = readVisitRef.current(v);
+          if (!fr) continue;
+          const grid = scanGrid(fr.gray, fr.size, fr.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
+          if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
+          const at = notes.length ? notes[notes.length - 1].t + SCAN.colSeconds + SCAN_PAUSE : 0;
+          bounds.push({ visit: v, start: at });
+          for (const n of scanPhrase(grid, SCAN)) notes.push({ ...n, t: n.t + at });
+        }
+        if (!notes.length) return;
+        const total = notes[notes.length - 1].t + SCAN.colSeconds;
+        const starts = sonifier.play([notes]);
+        setPlay({ kind: "scan", visits: bounds.map((b) => b.visit), starts, total, bounds });
       }
-      if (!notes.length) return;
-      const total = notes[notes.length - 1].t + SCAN.colSeconds;
-      const starts = sonifier.play([notes]);
-      setPlay({ visits: bounds.map((b) => b.visit), starts, total, bounds });
       setFresh(false);
       try {
         window.localStorage.setItem(HEARD_KEY, "1");
@@ -149,23 +174,42 @@ export function SpectrumStrip(p: Props) {
         // penyimpanan diblokir: petunjuknya hanya muncul lagi lain kali
       }
     },
-    [],
+    [mode, binned, top],
+  );
+
+  const chooseMode = useCallback(
+    (next: "scan" | "spectrum") => {
+      if (next === mode) return;
+      sonifier.stop();
+      setPlay(undefined);
+      setPlayVisit(undefined);
+      hearRef.current(undefined);
+      setMode(next);
+    },
+    [mode],
   );
 
   // Benda berganti atau pita hilang: suara berhenti.
   useEffect(() => stop, [spectrum, stop]);
 
-  // Garis pindai, busur cincin, dan pindah kunjungan mengikuti jam audio.
+  // Garis pindai / garis kepala, busur cincin, dan pindah kunjungan mengikuti jam audio.
   // Digerakkan langsung di DOM supaya tidak dirender ulang 60 kali per detik.
   useEffect(() => {
     if (!play) return;
     let raf = 0;
     let lastVisit = -1;
     let centerTold = "";
+    let lastBand: string | undefined;
+    const epoch = soundEpoch.n;
     const tick = () => {
+      if (soundEpoch.n !== epoch) {
+        // Diambil alih mode lain: play() barunya sudah menghentikan audio ini.
+        abandon();
+        return;
+      }
       const elapsed = sonifier.now() - play.starts[0];
       if (elapsed >= play.total) {
-        setAnnounce("Scan finished.");
+        setAnnounce(play.kind === "scan" ? "Scan finished." : "Finished.");
         stop();
         return;
       }
@@ -174,39 +218,64 @@ export function SpectrumStrip(p: Props) {
       if (i !== lastVisit) {
         lastVisit = i;
         centerTold = "";
+        lastBand = undefined;
         setPlayVisit(play.visits[i]);
         listenRef.current(play.visits[i]);
         const w = windows.find((q) => q.id === play.visits[i]);
-        setAnnounce(`Scanning visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`);
+        setAnnounce(
+          play.kind === "scan"
+            ? `Scanning visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`
+            : `Playing the spectrum of ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`,
+        );
       }
-      const col = (elapsed - play.bounds[i].start) / SCAN.colSeconds;
-      const line = p.scanLine.current;
-      if (line) {
-        if (col >= 0 && col < SCAN.columns) {
-          line.setAttribute("x1", String(col + 0.5));
-          line.setAttribute("x2", String(col + 0.5));
-          line.style.visibility = "visible";
-        } else line.style.visibility = "hidden";
-      }
-      if (col >= SCAN.columns / 2 && centerTold !== play.visits[i]) {
-        centerTold = play.visits[i];
-        setAnnounce("Target.");
+      if (play.kind === "scan") {
+        const col = (elapsed - play.bounds[i].start) / SCAN.colSeconds;
+        const line = p.scanLine.current;
+        if (line) {
+          if (col >= 0 && col < SCAN.columns) {
+            line.setAttribute("x1", String(col + 0.5));
+            line.setAttribute("x2", String(col + 0.5));
+            line.style.visibility = "visible";
+          } else line.style.visibility = "hidden";
+        }
+        if (col >= SCAN.columns / 2 && centerTold !== play.visits[i]) {
+          centerTold = play.visits[i];
+          setAnnounce("Target.");
+        }
+      } else {
+        const frac = (elapsed - play.bounds[i].start) / SOUND.visitSeconds;
+        const lambda = LAMBDA_MIN + clamp01(frac) * (LAMBDA_MAX - LAMBDA_MIN);
+        const band = (bands.find((b) => lambda >= b.lambda_min && lambda < b.lambda_max) ?? bands[bands.length - 1])?.id;
+        if (frac >= 0 && band !== lastBand) {
+          lastBand = band;
+          hearRef.current(band);
+        }
+        const head = headRef.current;
+        if (head) {
+          const x = xOf(lambda);
+          head.setAttribute("x1", String(x));
+          head.setAttribute("x2", String(x));
+          head.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
+        }
       }
       p.soundRing.current?.setAttribute("stroke-dasharray", `${clamp01(elapsed / play.total) * 100} 100`);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [play, stop, windows, p.soundRing, p.scanLine]);
+  }, [play, stop, abandon, windows, bands, xOf, p.soundRing, p.scanLine]);
 
   const shown = playVisit ?? windowId;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
   const canScan = !!windowId && p.hasImage(windowId);
+  const canSpectrum = quality === "ok" && !!windowId && playable.some((w) => w.id === windowId);
+  const canPlay = mode === "scan" ? canScan : canSpectrum;
+  const allReady = mode === "scan" ? scanReady : playable.map((w) => w.id);
 
   const toggle = useCallback(() => {
     if (play) stop();
-    else if (canScan && windowId) start([windowId]);
-  }, [play, stop, canScan, windowId, start]);
+    else if (canPlay && windowId) start([windowId]);
+  }, [play, stop, canPlay, windowId, start]);
 
   // L = dengarkan / berhenti.
   useEffect(() => {
@@ -270,13 +339,27 @@ export function SpectrumStrip(p: Props) {
           type="button"
           className="dial"
           onClick={toggle}
-          disabled={!play && !canScan}
+          disabled={!play && !canPlay}
           aria-pressed={!!play}
-          aria-label={play ? "Stop the sound" : "Scan the image of this visit"}
+          aria-label={play ? "Stop the sound" : mode === "scan" ? "Scan the image of this visit" : "Listen to the spectrum of this visit"}
         >
           {play ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
-        <span className="dial-caption">{play ? "Stop" : fresh && canScan ? "Hear what it is" : "Listen"}</span>
+        <span className="dial-caption">{play ? "Stop" : fresh && canPlay ? "Hear what it is" : "Listen"}</span>
+        <span className="mode-switch" role="radiogroup" aria-label="What to listen to">
+          {(["scan", "spectrum"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              aria-label={m === "scan" ? "Scan the image" : "Play the spectrum"}
+              onClick={() => chooseMode(m)}
+            >
+              {m === "scan" ? "Scan" : "Spectrum"}
+            </button>
+          ))}
+        </span>
       </div>
 
       <div className="strip">
@@ -382,10 +465,10 @@ export function SpectrumStrip(p: Props) {
         <button
           type="button"
           className="pill"
-          onClick={() => start(scanReady)}
-          disabled={!!play || scanReady.length < 2}
+          onClick={() => start(allReady)}
+          disabled={!!play || allReady.length < 2}
         >
-          All {scanReady.length || windows.length} visits
+          All {allReady.length || windows.length} visits
         </button>
       </div>
 

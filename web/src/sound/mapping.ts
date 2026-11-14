@@ -58,6 +58,16 @@ export const MOTION = {
   arcsecPerStep: 1,
   /** Batas langkah ke atas dan ke bawah. */
   maxSteps: 12,
+  /** Jarak antar nada saat melodi riwayat diputar (durasi nada = `seconds`). */
+  melodyStep: 0.9,
+  /** Bentuk gelombang agar frasa melodi bisa dijadwalkan engine yang sama. */
+  waveform: "triangle" as OscillatorType,
+  unverifiedWaveform: "sawtooth" as OscillatorType,
+  unverifiedGain: 1,
+  /** Kunjungan tanpa pengukuran: ketukan pelan. */
+  gapTick: true,
+  gapTickHz: 1400,
+  gapTickGain: 0.12,
   /** Pergeseran timur-barat yang memberi geser stereo penuh, detik busur. Timur di kiri, seperti di gambar. */
   panArcsec: 10,
   /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */

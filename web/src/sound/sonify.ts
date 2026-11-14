@@ -103,6 +103,23 @@ export function motionNote(east: number, north: number, m: MotionSettings = MOTI
   };
 }
 
+/** Satu nada per kunjungan untuk melodi riwayat gerak. null = tanpa pengukuran. */
+export function motionPhrase(steps: ({ hz: number; pan: number } | null)[], m: MotionSettings = MOTION): Note[] {
+  return steps.map((s, i) => ({
+    t: i * m.melodyStep,
+    dur: m.seconds,
+    hz: s?.hz ?? null,
+    unverified: false,
+    pan: s?.pan ?? 0,
+    // Urutan kunjungan 0..1, bukan panjang gelombang.
+    lambda: steps.length > 1 ? i / (steps.length - 1) : 0,
+  }));
+}
+
+/** Naik tiap Sonifier.play dipanggil: loop visual yang epoch-nya tertinggal
+ *  tahu suaranya sudah diambil alih mode lain, lalu berhenti sendiri. */
+export const soundEpoch = { n: 0 };
+
 /** Pemutar: satu konteks audio untuk seluruh aplikasi, dibuat saat tombol pertama ditekan. */
 export class Sonifier {
   private ctx?: AudioContext;
@@ -112,6 +129,7 @@ export class Sonifier {
   /** Putar beberapa frasa berurutan. Mengembalikan waktu mulai tiap frasa (waktu konteks). */
   play(phrases: Note[][], s: SoundSettings = SOUND): number[] {
     this.stop();
+    soundEpoch.n++;
     const ctx = (this.ctx ??= new AudioContext());
     void ctx.resume();
     this.master = ctx.createGain();

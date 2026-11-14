@@ -23,8 +23,9 @@ const KEYS: [string, string][] = [
   ["+ −", "zoom the lens, out to the wide view"],
   ["C", "next look"],
   ["R", "reveal faint things"],
-  ["L", "listen to the spectrum"],
+  ["L", "listen (scan or spectrum)"],
   ["M", "motion sound"],
+  ["H", "motion history"],
   ["/", "go to a place"],
   ["G", "this guide"],
 ];
@@ -198,13 +199,19 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: 
         <section>
           <h3>What you hear</h3>
           <p>
-            Listen plays one visit from short to long wavelength, left to right. Higher pitch is brighter, a rougher
-            tone is a value flagged as saturated, and a soft tick is a gap in the data. The lens follows the band
-            being played.
+            Listen has two modes. Scan plays the picture: 32 columns from east to west, one chord per column for
+            the strongest peaks. Higher is further north, louder is brighter, and a short ping marks the target
+            at the centre. An empty column is a soft tick. The scan line follows the sound.
+          </p>
+          <p>
+            Spectrum plays one visit from short to long wavelength, left to right. Higher pitch is brighter, a
+            rougher tone is a value flagged as saturated, and a soft tick is a gap in the data. The lens follows
+            the band being played. A rising melody means a cool or dusty object; dips are molecular absorption.
           </p>
           <p>
             Motion sound plays one note per visit while blinking. Higher is further north, lower is further south,
-            and the note moves left or right with the picture. The same note means no measurable shift.
+            and the note moves left or right with the picture. The same note means no measurable shift. History
+            plays the whole visit-to-visit trajectory in one go. Only one sound plays at a time.
           </p>
         </section>
 

@@ -12,6 +12,7 @@ import {
   ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
+  Stop,
   SunDim,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -49,7 +50,8 @@ import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
-import { motionNote, sonifier } from "./sound/sonify";
+import { motionNote, motionPhrase, sonifier, soundEpoch } from "./sound/sonify";
+import { MOTION } from "./sound/mapping";
 
 const BLINK_MS = 700;
 // Deretan 16 tahun punya belasan citra, jadi diputar lebih cepat.
@@ -141,6 +143,8 @@ export function App() {
   const [gotoOpen, setGotoOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Band yang sedang terdengar di mode Spektrum; lensa ikut menampilkannya.
+  const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
   const scanLine = useRef<SVGLineElement>(null);
   const images = useImageStore();
@@ -609,6 +613,9 @@ export function App() {
         step(e.key === "ArrowRight" ? 1 : -1);
       } else if (e.key.toLowerCase() === "m" && manifest && referenceMotion(manifest)) {
         setMotionSound((v) => !v);
+      } else if (e.key.toLowerCase() === "h" && manifest && referenceMotion(manifest)) {
+        if (melodyRef.current) melodyStopRef.current();
+        else melodyPlayRef.current();
       } else if (e.key === "+" || e.key === "=") zoom(1);
       else if (e.key === "-") zoom(-1);
       else if (manifest && /^[1-6]$/.test(e.key)) {
@@ -619,8 +626,11 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [step, chooseBand, manifest, zoom, openGuide]);
 
-  const frame = manifest && windowId && bandId ? findFrame(manifest, windowId, bandId) : undefined;
-  const band = manifest?.bands.find((b) => b.id === bandId);
+  // Mode Spektrum: lensa menampilkan band yang sedang terdengar.
+  const shownBandId =
+    heardBand && manifest && windowId && findFrame(manifest, windowId, heardBand) ? heardBand : bandId;
+  const frame = manifest && windowId && shownBandId ? findFrame(manifest, windowId, shownBandId) : undefined;
+  const band = manifest?.bands.find((b) => b.id === shownBandId);
   const win = manifest?.windows.find((w) => w.id === windowId);
   const imageUrl = !targetId
     ? undefined
@@ -734,6 +744,87 @@ export function App() {
     if (s.kind === "none") return;
     sonifier.blip(s.kind === "unmeasured" ? null : s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0));
   }, [motionSound, manifest, windowId]);
+
+  // Melodi riwayat gerak: satu nada per kunjungan dari pertama sampai terakhir.
+  const [melody, setMelody] = useState<{ visits: string[]; starts: number[]; total: number; target?: string }>();
+  const [melodySay, setMelodySay] = useState<string>();
+  const abandonMelody = useCallback(() => {
+    soundRing.current?.setAttribute("stroke-dasharray", "0 100");
+    setMelody(undefined);
+  }, []);
+  const stopMelody = useCallback(() => {
+    sonifier.stop();
+    abandonMelody();
+  }, [abandonMelody]);
+  const playMelody = useCallback(() => {
+    if (!manifest || !ref) return;
+    const visits = manifest.windows.map((w) => w.id);
+    const steps = visits.map((v) => {
+      const s = shiftAt(manifest, v);
+      if (s.kind === "none" || s.kind === "unmeasured") return null;
+      return s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0);
+    });
+    const notes = motionPhrase(steps);
+    if (!notes.length) return;
+    setPlaying(false);
+    setSky(false);
+    setWiseId(undefined);
+    if (!visits.includes(windowId ?? "")) setWindowId(visits[0]);
+    const starts = sonifier.play([notes]);
+    setMelody({ visits, starts, total: notes[notes.length - 1].t + MOTION.seconds, target: targetId });
+  }, [manifest, ref, windowId, targetId]);
+
+  // Cermin windowId/target untuk loop: berhenti kalau pengguna pindah manual.
+  const windowIdRef = useRef(windowId);
+  windowIdRef.current = windowId;
+  const targetRef = useRef(targetId);
+  targetRef.current = targetId;
+  const listenMelodyRef = useRef(listen);
+  listenMelodyRef.current = listen;
+  const melodyRef = useRef(melody);
+  melodyRef.current = melody;
+  const melodyPlayRef = useRef(playMelody);
+  melodyPlayRef.current = playMelody;
+  const melodyStopRef = useRef(stopMelody);
+  melodyStopRef.current = stopMelody;
+  useEffect(() => {
+    if (!melody) return;
+    let raf = 0;
+    let lastVisit = -1;
+    let lastCommanded = "";
+    const epoch = soundEpoch.n;
+    const tick = () => {
+      if (soundEpoch.n !== epoch || targetRef.current !== melody.target) {
+        // Diambil alih mode lain: play() barunya sudah menghentikan audio ini.
+        abandonMelody();
+        return;
+      }
+      const elapsed = sonifier.now() - melody.starts[0];
+      if (elapsed >= melody.total) {
+        setMelodySay("Motion history finished.");
+        stopMelody();
+        return;
+      }
+      let i = 0;
+      while (i < melody.visits.length - 1 && elapsed >= (i + 1) * MOTION.melodyStep) i++;
+      const cur = windowIdRef.current;
+      if (lastVisit >= 0 && cur !== melody.visits[i] && cur !== lastCommanded) {
+        stopMelody();
+        return;
+      }
+      if (i !== lastVisit) {
+        lastVisit = i;
+        lastCommanded = melody.visits[i];
+        listenMelodyRef.current(melody.visits[i]);
+        const w = manifest?.windows.find((q) => q.id === melody.visits[i]);
+        setMelodySay(`Motion history, visit ${w ? monthYear(w.mjd_mid) : melody.visits[i]}.`);
+      }
+      soundRing.current?.setAttribute("stroke-dasharray", `${Math.min(1, Math.max(0, elapsed / melody.total)) * 100} 100`);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [melody, stopMelody, abandonMelody, manifest]);
 
   const dateLabel = shownWise ? monthYear(shownWise.mjd_mid) : win ? monthYear(win.mjd_mid) : "";
   const bandLabel = shownWise
@@ -1171,6 +1262,21 @@ export function App() {
               {motionSound && canHearMotion ? <SpeakerHigh aria-hidden="true" /> : <SpeakerSlash aria-hidden="true" />}
               Motion sound
             </button>
+            <button
+              type="button"
+              className="pill"
+              aria-pressed={!!melody}
+              disabled={!canHearMotion}
+              title={
+                canHearMotion
+                  ? "Play the motion history from the first to the last visit"
+                  : "Nothing here could be tracked between visits, so there is no motion history"
+              }
+              onClick={() => (melody ? stopMelody() : playMelody())}
+            >
+              {melody ? <Stop weight="fill" aria-hidden="true" /> : <Play weight="fill" aria-hidden="true" />}
+              History
+            </button>
           </div>
         </div>
 
@@ -1194,6 +1300,7 @@ export function App() {
               bandHasFrames={(id) => manifest.frames.some((f) => f.band === id)}
               onBand={chooseBand}
               onListen={listen}
+              onHear={setHeardBand}
               onScanStart={startScan}
               readVisit={readVisit}
               hasImage={hasImage}
@@ -1235,6 +1342,9 @@ export function App() {
 
       <p className="sr-only" role="status" aria-live="polite">
         {sky && target ? `Wide view of the sky around ${target.name}.` : playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
+      </p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {melodySay ?? ""}
       </p>
     </div>
   );
