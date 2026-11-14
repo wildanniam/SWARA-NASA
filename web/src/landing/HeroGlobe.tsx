@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { atlasUrl, loadAtlas, type Atlas } from "../lib/allsky";
+import { atlasUrl, constellationAt, decDms, loadAtlas, raHms, type Atlas } from "../lib/allsky";
 import { prefersReducedMotion } from "../lib/hooks";
-import { placeHref } from "../route";
-import { EMBER } from "./data";
+import { paint } from "../lib/paint";
+import { APP_PATH, placeHref } from "../route";
+import { EMBER, imageOf } from "./data";
 
 // Bola langit di hero: peta seluruh langit SPHEREx DR1 yang asli, dibungkus ke bola dan
 // diputar pelan di kutub galaksi. Langitnya tampak seperti dilihat dari Bumi (timur di
@@ -10,8 +11,13 @@ import { EMBER } from "./data";
 //
 // Ukuran bola mengikuti layar: di layar lebar jari-jarinya 0,59 kali lebar layar, dan yang
 // terlihat hanya tudung atasnya, seperti planet yang terbit di bawah judul.
+//
+// Bolanya bisa dipegang: diseret ke segala arah (dengan momentum), ditunjuk untuk membaca rasi
+// dan koordinat di bawah kursor, dan diklik untuk membidik titik itu lalu membukanya di aplikasi.
+// Setelah dilepas, ia pelan-pelan tegak kembali dan berputar sendiri lagi. Bintang di latar
+// adalah bintang sungguhan (titik-titik garis rasi di manifest), di posisi langitnya.
 
-export type GlobePin = { id: string; name: string; short: string; ra: number; dec: number };
+export type GlobePin = { id: string; name: string; short: string; ra: number; dec: number; image?: string };
 
 type V3 = [number, number, number];
 type M3 = number[]; // 9 angka, baris demi baris
@@ -235,7 +241,18 @@ function paintCpu(canvas: HTMLCanvasElement, map: HTMLImageElement, rot: M3, cx:
   ctx.putImageData(out, 0, 0);
 }
 
-type Geometry = { w: number; h: number; cx: number; cy: number; r: number; hidePinsBelow: number };
+type Geometry = {
+  w: number;
+  h: number;
+  /** Jarak tepi atas pembungkus bola dari tepi atas hero. */
+  top: number;
+  cx: number;
+  cy: number;
+  r: number;
+  hidePinsBelow: number;
+  /** Elips blok teks hero (koordinat hero): bintang latar dikosongkan di situ. */
+  text: { cx: number; cy: number; rx: number; ry: number };
+};
 
 type Props = {
   pins: GlobePin[];
@@ -245,39 +262,88 @@ type Props = {
   covered: number;
 };
 
+type AimPoint = { ra: number; dec: number; name: string; g: V3 };
+
+const apply = (m: M3, v: V3): V3 => [
+  m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+  m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+  m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+];
+/** Rotasi sebesar `a` radian mengelilingi sumbu satuan `k` (rumus Rodrigues). */
+const axisAngle = (k: V3, a: number): M3 => {
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const t = 1 - c;
+  const [x, y, z] = k;
+  return [t * x * x + c, t * x * y - s * z, t * x * z + s * y, t * x * y + s * z, t * y * y + c, t * y * z - s * x, t * x * z - s * y, t * y * z + s * x, t * z * z + c];
+};
+const toRaDec = (atlas: Atlas, g: V3) => {
+  const m = atlas.projection.icrs_to_galactic;
+  const v = [0, 1, 2].map((i) => m[0][i] * g[0] + m[1][i] * g[1] + m[2][i] * g[2]);
+  return { ra: ((Math.atan2(v[1], v[0]) / RAD) + 360) % 360, dec: Math.asin(Math.max(-1, Math.min(1, v[2]))) / RAD };
+};
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 export function HeroGlobe({ pins, above, covered }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const starCanvas = useRef<HTMLCanvasElement>(null);
   const glCanvas = useRef<HTMLCanvasElement>(null);
   const lineCanvas = useRef<HTMLCanvasElement>(null);
   const pinRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const readRef = useRef<HTMLDivElement>(null);
+  const aimRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const [dragged, setDragged] = useState(false);
+  const [aim, setAim] = useState<AimPoint>();
+  const aimPoint = useRef<AimPoint | undefined>(undefined);
+  aimPoint.current = aim;
   const pinsRef = useRef(pins);
   pinsRef.current = pins;
-  // Penanda datang belakangan; tanpa gerak (gerak dikurangi) lukisan perlu dipicu ulang.
+  // Penanda dan bidikan datang belakangan; tanpa gerak (gerak dikurangi) lukisan perlu dipicu ulang.
   const kick = useRef<() => void>(undefined);
-  useEffect(() => kick.current?.(), [pins]);
+  useEffect(() => kick.current?.(), [pins, aim]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
     const canvas = glCanvas.current;
     const lines = lineCanvas.current;
+    const stars = starCanvas.current;
     const hero = wrap?.parentElement;
-    if (!wrap || !canvas || !lines || !hero) return;
+    if (!wrap || !canvas || !lines || !stars || !hero) return;
     let alive = true;
     let raf = 0;
     let visible = true;
     const gl = makeGl(canvas);
-    // Tanpa WebGL langitnya dilukis sekali, jadi garis dan penanda juga tidak boleh berputar.
+    // Tanpa WebGL langitnya dilukis sekali, jadi tidak ada putaran dan tidak bisa diseret.
     const reduced = prefersReducedMotion() || !gl;
+    setInteractive(!!gl);
     let atlas: Atlas | undefined;
     let map: HTMLImageElement | undefined;
-    let figures: Float32Array[] = [];
+    let figures: { abbr: string; line: Float32Array }[] = [];
+    let starVecs: V3[] = [];
     let geo: Geometry | undefined;
     let fade = 0;
     let fadeStart = 0;
-    const t0 = performance.now();
-    // Kemiringan dari kursor, dihaluskan.
-    const tilt = { yaw: 0, pitch: 0, toYaw: 0, toPitch: 0 };
+    let last = performance.now();
+
+    // Orientasi: galaktik = Q · pandangan. Mulai dari kemiringan rumah, Bima Sakti hampir mendatar.
+    let Q = viewToGalactic(0, 0, 0);
+    const HOME_POLE: V3 = [Q[6], Q[7], Q[8]];
+    const C0 = apply(Q, [0, 0, 1]);
+    const B0 = Math.asin(C0[2]);
+    const vel = { x: 0, y: 0 }; // radian per milidetik
+    const drag = { on: false, id: -1, x: 0, y: 0, moved: 0, t: 0 };
+    let idleSince = -Infinity;
+    const pointer = { in: false, x: 0, y: 0 };
+
+    const turn = (dx: number, dy: number) => {
+      // Seret ke kanan: permukaan depan ikut ke kanan (putar di sumbu y layar); ke bawah: sumbu x.
+      Q = mul(Q, transpose(mul(rotY(dx), rotX(dy))));
+    };
 
     const layout = () => {
       const heroBox = hero.getBoundingClientRect();
@@ -287,7 +353,8 @@ export function HeroGlobe({ pins, above, covered }: Props) {
       const w = heroBox.width;
       const wide = w >= 900;
       const r = wide ? Math.max(620, w * 0.59) : Math.max(360, w * 1.0);
-      const top = (el ? el.offsetTop + el.offsetHeight : heroBox.height * 0.5) + (wide ? 30 : 36);
+      const ctaBottom = el ? el.offsetTop + el.offsetHeight : heroBox.height * 0.5;
+      const top = ctaBottom + (wide ? 30 : 36);
       const wrapTop = top - HALO;
       const h = Math.max(120, heroBox.height - wrapTop);
       wrap.style.top = `${wrapTop}px`;
@@ -299,78 +366,205 @@ export function HeroGlobe({ pins, above, covered }: Props) {
         c.style.width = `${w}px`;
         c.style.height = `${h}px`;
       }
-      geo = { w, h, cx: w / 2, cy: HALO + r, r, hidePinsBelow: h - covered - 20 };
+      stars.width = Math.round(w * px);
+      stars.height = Math.round(heroBox.height * px);
+      stars.style.width = `${w}px`;
+      stars.style.height = `${heroBox.height}px`;
+      const textTop = 70;
+      geo = {
+        w,
+        h,
+        top: wrapTop,
+        cx: w / 2,
+        cy: HALO + r,
+        r,
+        hidePinsBelow: h - covered - 20,
+        text: { cx: w / 2, cy: (textTop + ctaBottom) / 2, rx: Math.min(w * 0.46, 660), ry: (ctaBottom - textTop) / 2 + 26 },
+      };
+    };
+
+    /** Titik pandangan (satuan) di bawah posisi pembungkus (x, y), atau tidak ada kalau di luar bola. */
+    const viewAt = (x: number, y: number): V3 | undefined => {
+      if (!geo) return undefined;
+      const X = (x - geo.cx) / geo.r;
+      const Y = (geo.cy - y) / geo.r;
+      const d = X * X + Y * Y;
+      if (d >= 0.985 || y > geo.hidePinsBelow + 20) return undefined;
+      return [X, Y, Math.sqrt(1 - d)];
+    };
+
+    const drawStars = (now: number) => {
+      if (!geo) return;
+      const px = Math.min(2, window.devicePixelRatio || 1);
+      const ctx = stars.getContext("2d")!;
+      ctx.setTransform(px, 0, 0, px, 0, 0);
+      const W = geo.w;
+      const H = stars.height / px;
+      ctx.clearRect(0, 0, W, H);
+      if (!starVecs.length) return;
+      // Langit nyata dalam proyeksi galaktik; pusatnya mengikuti bujur yang sedang menghadap ke kita,
+      // jadi latar ikut bergeser saat bola diputar atau diseret.
+      const c = apply(Q, [0, 0, 1]);
+      const lc = Math.atan2(c[1], c[0]);
+      const bc = Math.asin(Math.max(-1, Math.min(1, c[2]))) - B0;
+      const k = (W / 200) / RAD;
+      const cy0 = H * 0.3;
+      const t = now / 1000;
+      const T = geo.text;
+      ctx.fillStyle = "#fff6e6";
+      for (let i = 0; i < starVecs.length; i++) {
+        const g = starVecs[i];
+        let dl = Math.atan2(g[1], g[0]) - lc;
+        dl = Math.atan2(Math.sin(dl), Math.cos(dl));
+        const x = W / 2 - dl * k;
+        const y = cy0 - (Math.asin(g[2]) - bc * 0.6) * k;
+        if (x < -4 || x > W + 4 || y < -4 || y > H + 4) continue;
+        const ex = (x - T.cx) / T.rx;
+        const ey = (y - T.cy) / T.ry;
+        const clear = smooth(0.82, 1.15, Math.sqrt(ex * ex + ey * ey));
+        const tw = reduced ? 0.8 : 0.62 + 0.38 * Math.sin(t * (0.6 + (i % 7) * 0.17) + i * 2.4);
+        const a = 0.78 * tw * (0.1 + 0.9 * clear);
+        if (a < 0.02) continue;
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.arc(x, y, 0.95, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     };
 
     const frame = (now: number) => {
       raf = 0;
       if (!alive || !geo) return;
+      const dt = Math.min(64, now - last);
+      last = now;
       const px = Math.min(2, window.devicePixelRatio || 1);
-      const spin = reduced ? 0 : (((now - t0) / 1000) * SPIN_DEG_PER_S * RAD) % (2 * Math.PI);
-      tilt.yaw += (tilt.toYaw - tilt.yaw) * 0.05;
-      tilt.pitch += (tilt.toPitch - tilt.pitch) * 0.05;
-      const rot = viewToGalactic(spin, tilt.yaw, tilt.pitch);
+      let settling = false;
+      if (!drag.on && gl) {
+        const speed = Math.hypot(vel.x, vel.y);
+        if (speed > 2e-6) {
+          // Momentum sesudah dilepas, melambat.
+          turn(vel.x * dt, vel.y * dt);
+          const decay = Math.pow(0.94, dt / 16.7);
+          vel.x *= decay;
+          vel.y *= decay;
+          settling = true;
+        } else if (!reduced && now - idleSince > 2600) {
+          // Diam: berputar sendiri di kutub galaksi, dan pelan-pelan tegak kembali.
+          Q = mul(rotZ(SPIN_DEG_PER_S * RAD * (dt / 1000)), Q);
+          const cur: V3 = [Q[6], Q[7], Q[8]];
+          const dot = Math.max(-1, Math.min(1, cur[0] * HOME_POLE[0] + cur[1] * HOME_POLE[1] + cur[2] * HOME_POLE[2]));
+          const ang = Math.acos(dot);
+          if (ang > 1e-4) {
+            const ax: V3 = [cur[1] * HOME_POLE[2] - cur[2] * HOME_POLE[1], cur[2] * HOME_POLE[0] - cur[0] * HOME_POLE[2], cur[0] * HOME_POLE[1] - cur[1] * HOME_POLE[0]];
+            const n = Math.hypot(...ax);
+            if (n > 1e-9) Q = mul(Q, transpose(axisAngle([ax[0] / n, ax[1] / n, ax[2] / n], Math.min(ang, ang * 0.025 * (dt / 16.7)))));
+          }
+        }
+      }
       if (map && fadeStart === 0) fadeStart = now;
       fade = map ? (reduced ? 1 : Math.min(1, (now - fadeStart) / 900)) : 0;
-      if (gl) gl.draw(rot, geo.cx, geo.cy, geo.r, px, fade);
+      if (fade < 1) settling = true;
+      if (gl) gl.draw(Q, geo.cx, geo.cy, geo.r, px, fade);
+      drawStars(now);
 
-      // Garis rasi dan penanda: proyeksi yang sama, kebalikan dari matriks di atas.
-      const inv = transpose(rot);
+      // Garis rasi, penanda, bidikan: proyeksi yang sama, kebalikan dari Q.
+      const inv = transpose(Q);
+      const project = (g: V3) => {
+        const s = apply(inv, g);
+        return { x: geo!.cx + s[0] * geo!.r, y: geo!.cy - s[1] * geo!.r, z: s[2] };
+      };
+      // Rasi yang ditunjuk atau dibidik menyala.
+      let lit = "";
+      let hoverInfo: { name: string; ra: number; dec: number } | undefined;
+      if (atlas && pointer.in && !drag.on) {
+        const v = viewAt(pointer.x, pointer.y);
+        if (v) {
+          const at = toRaDec(atlas, apply(Q, v));
+          const abbr = constellationAt(atlas, at.ra, at.dec);
+          lit = abbr;
+          hoverInfo = { name: atlas.constellations.names[abbr] ?? abbr, ...at };
+        }
+      }
+      const aimNow = aimPoint.current;
+      const aimAbbr = aimNow && atlas ? constellationAt(atlas, aimNow.ra, aimNow.dec) : "";
       const ctx = lines.getContext("2d")!;
       ctx.setTransform(px, 0, 0, px, 0, 0);
       ctx.clearRect(0, 0, geo.w, geo.h);
       if (fade > 0) {
-        ctx.globalAlpha = fade;
-        ctx.lineWidth = 1.1;
-        ctx.strokeStyle = "rgba(255, 206, 150, 0.34)";
         ctx.lineJoin = "round";
-        ctx.beginPath();
-        const { cx, cy, r } = geo;
-        for (const line of figures) {
-          let pen = false;
-          for (let i = 0; i < line.length; i += 3) {
-            const gx = line[i];
-            const gy = line[i + 1];
-            const gz = line[i + 2];
-            const sx = inv[0] * gx + inv[1] * gy + inv[2] * gz;
-            const sy = inv[3] * gx + inv[4] * gy + inv[5] * gz;
-            const sz = inv[6] * gx + inv[7] * gy + inv[8] * gz;
-            if (sz < 0.06) {
-              pen = false;
-              continue;
+        for (const pass of [0, 1]) {
+          ctx.globalAlpha = fade;
+          ctx.lineWidth = pass ? 1.7 : 1.1;
+          ctx.strokeStyle = pass ? "rgba(255, 196, 120, 0.95)" : "rgba(255, 206, 150, 0.34)";
+          ctx.shadowColor = "rgba(255, 160, 60, 0.9)";
+          ctx.shadowBlur = pass ? 8 : 0;
+          ctx.beginPath();
+          for (const { abbr, line } of figures) {
+            const on = abbr === lit || abbr === aimAbbr;
+            if ((pass === 1) !== on) continue;
+            let pen = false;
+            for (let i = 0; i < line.length; i += 3) {
+              const q = project([line[i], line[i + 1], line[i + 2]]);
+              if (q.z < 0.06) {
+                pen = false;
+                continue;
+              }
+              if (pen) ctx.lineTo(q.x, q.y);
+              else ctx.moveTo(q.x, q.y);
+              pen = true;
             }
-            const x = cx + sx * r;
-            const y = cy - sy * r;
-            if (pen) ctx.lineTo(x, y);
-            else ctx.moveTo(x, y);
-            pen = true;
           }
+          ctx.stroke();
         }
-        ctx.stroke();
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
+      }
+      // Bacaan di kursor, sama dengan bacaan peta seluruh langit di aplikasi.
+      const read = readRef.current;
+      if (read) {
+        if (hoverInfo) {
+          const text = `${hoverInfo.name}|${raHms(hoverInfo.ra)}|${decDms(hoverInfo.dec)}`;
+          if (read.dataset.text !== text) {
+            read.dataset.text = text;
+            const [n, r, d] = text.split("|");
+            (read.children[0] as HTMLElement).textContent = n;
+            (read.children[1] as HTMLElement).textContent = `${r}  ${d}`;
+          }
+          const flip = pointer.x > geo.w - 260;
+          read.style.transform = `translate(${(flip ? pointer.x - 22 : pointer.x + 22).toFixed(1)}px, ${(pointer.y - 30).toFixed(1)}px) translateX(${flip ? "-100%" : "0"})`;
+          read.dataset.on = "true";
+        } else read.dataset.on = "false";
+      }
+      const aimEl = aimRef.current;
+      if (aimEl) {
+        if (aimNow) {
+          const q = project(aimNow.g);
+          const shown = q.z > 0.08 && q.y < geo.hidePinsBelow;
+          aimEl.style.transform = `translate(${q.x.toFixed(1)}px, ${q.y.toFixed(1)}px)`;
+          aimEl.dataset.on = String(shown);
+          aimEl.dataset.flip = String(q.x > geo.w - 280);
+        } else aimEl.dataset.on = "false";
       }
       if (atlas) {
         pinsRef.current.forEach((pin, i) => {
           const el = pinRefs.current[i];
           if (!el || !geo) return;
-          const g = toGalactic(atlas!, unit(pin.ra, pin.dec));
-          const sx = inv[0] * g[0] + inv[1] * g[1] + inv[2] * g[2];
-          const sy = inv[3] * g[0] + inv[4] * g[1] + inv[5] * g[2];
-          const sz = inv[6] * g[0] + inv[7] * g[1] + inv[8] * g[2];
-          const x = geo.cx + sx * geo.r;
-          const y = geo.cy - sy * geo.r;
-          const inside = sz > 0.1 && y > HALO + 24 && y < geo.hidePinsBelow && x > 24 && x < geo.w - 220;
-          const o = inside ? Math.min(1, (sz - 0.1) / 0.15) * fade : 0;
-          el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+          const q = project(toGalactic(atlas!, unit(pin.ra, pin.dec)));
+          const inside = q.z > 0.1 && q.y > HALO + 24 && q.y < geo.hidePinsBelow && q.x > 24 && q.x < geo.w - 220;
+          const o = inside ? Math.min(1, (q.z - 0.1) / 0.15) * fade : 0;
+          el.style.transform = `translate(${q.x.toFixed(1)}px, ${q.y.toFixed(1)}px)`;
           el.style.opacity = o.toFixed(3);
           el.style.visibility = o > 0.02 ? "visible" : "hidden";
         });
       }
-      const settling = Math.abs(tilt.toYaw - tilt.yaw) > 1e-4 || Math.abs(tilt.toPitch - tilt.pitch) > 1e-4 || fade < 1;
-      if (visible && (!reduced || settling)) raf = requestAnimationFrame(frame);
+      if (visible && (!reduced || settling || drag.on)) raf = requestAnimationFrame(frame);
     };
     const schedule = () => {
-      if (!raf && alive) raf = requestAnimationFrame(frame);
+      if (!raf && alive) {
+        last = performance.now();
+        raf = requestAnimationFrame(frame);
+      }
     };
 
     layout();
@@ -384,7 +578,7 @@ export function HeroGlobe({ pins, above, covered }: Props) {
     });
     const ro = new ResizeObserver(() => {
       layout();
-      if (!gl && map && geo && atlas) paintCpu(canvas, map, viewToGalactic(0, 0, 0), geo.cx * (canvas.width / geo.w), geo.cy * (canvas.width / geo.w), geo.r * (canvas.width / geo.w));
+      if (!gl && map && geo && atlas) paintCpu(canvas, map, Q, geo.cx * (canvas.width / geo.w), geo.cy * (canvas.width / geo.w), geo.r * (canvas.width / geo.w));
       schedule();
     });
     ro.observe(hero);
@@ -398,26 +592,123 @@ export function HeroGlobe({ pins, above, covered }: Props) {
       if (visible) schedule();
     };
     document.addEventListener("visibilitychange", onVisibility);
-    const onPointer = (e: PointerEvent) => {
-      if (reduced || e.pointerType !== "mouse") return;
-      tilt.toYaw = ((e.clientX / window.innerWidth) * 2 - 1) * 2.5 * RAD;
-      tilt.toPitch = ((e.clientY / window.innerHeight) * 2 - 1) * 1.5 * RAD;
+
+    // ---------- memegang bola ----------
+    const local = (e: PointerEvent) => {
+      const box = wrap.getBoundingClientRect();
+      return { x: e.clientX - box.left, y: e.clientY - box.top };
+    };
+    const onControl = (e: PointerEvent) => !!(e.target as Element | null)?.closest?.("a, button, .lp-aim-card");
+    const onMove = (e: PointerEvent) => {
+      if (!gl) return;
+      const p = local(e);
+      if (drag.on && e.pointerId === drag.id) {
+        const dx = p.x - drag.x;
+        const dy = p.y - drag.y;
+        const now = performance.now();
+        const dtm = Math.max(1, now - drag.t);
+        drag.x = p.x;
+        drag.y = p.y;
+        drag.t = now;
+        drag.moved += Math.abs(dx) + Math.abs(dy);
+        if (geo) {
+          turn(dx / geo.r, dy / geo.r);
+          vel.x = (dx / geo.r) / dtm;
+          vel.y = (dy / geo.r) / dtm;
+        }
+        schedule();
+        return;
+      }
+      pointer.x = p.x;
+      pointer.y = p.y;
+      pointer.in = e.pointerType === "mouse" && !onControl(e) && !!viewAt(p.x, p.y);
+      hero.style.cursor = pointer.in ? "grab" : "";
       schedule();
     };
-    window.addEventListener("pointermove", onPointer, { passive: true });
+    const onDown = (e: PointerEvent) => {
+      if (!gl || e.button !== 0 || onControl(e)) return;
+      const p = local(e);
+      if (!viewAt(p.x, p.y)) return;
+      drag.on = true;
+      drag.id = e.pointerId;
+      drag.x = p.x;
+      drag.y = p.y;
+      drag.t = performance.now();
+      drag.moved = 0;
+      vel.x = vel.y = 0;
+      hero.setPointerCapture?.(e.pointerId);
+      hero.style.cursor = "grabbing";
+      if (e.pointerType === "mouse") e.preventDefault();
+      schedule();
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!drag.on || e.pointerId !== drag.id) return;
+      drag.on = false;
+      hero.style.cursor = pointer.in ? "grab" : "";
+      // Lepas setelah diam sebentar: tanpa momentum.
+      if (performance.now() - drag.t > 90) vel.x = vel.y = 0;
+      if (drag.moved < 6) {
+        vel.x = vel.y = 0;
+        const v = viewAt(drag.x, drag.y);
+        if (v && atlas) {
+          const g = apply(Q, v);
+          const at = toRaDec(atlas, g);
+          const abbr = constellationAt(atlas, at.ra, at.dec);
+          setAim({ ...at, g, name: atlas.constellations.names[abbr] ?? abbr });
+        }
+      } else {
+        idleSince = performance.now();
+        setDragged(true);
+      }
+      schedule();
+    };
+    // Browser mengambil alih (misalnya halaman digulir di ponsel): bukan klik, bukan lemparan.
+    const onCancel = (e: PointerEvent) => {
+      if (!drag.on || e.pointerId !== drag.id) return;
+      drag.on = false;
+      vel.x = vel.y = 0;
+      idleSince = performance.now();
+      hero.style.cursor = "";
+      schedule();
+    };
+    const onLeave = () => {
+      pointer.in = false;
+      if (!drag.on) hero.style.cursor = "";
+      schedule();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAim(undefined);
+    };
+    hero.addEventListener("pointermove", onMove);
+    hero.addEventListener("pointerdown", onDown);
+    hero.addEventListener("pointerup", onUp);
+    hero.addEventListener("pointercancel", onCancel);
+    hero.addEventListener("pointerleave", onLeave);
+    window.addEventListener("keydown", onKey);
 
     const small = window.innerWidth * (window.devicePixelRatio || 1) < 1000;
     loadAtlas()
       .then((a) => {
         if (!alive) return;
         atlas = a;
-        figures = Object.values(a.constellations.lines)
-          .flat()
-          .map((line) => {
+        figures = Object.entries(a.constellations.lines).flatMap(([abbr, parts]) =>
+          parts.map((line) => {
             const out = new Float32Array(line.length * 3);
             line.forEach(([ra, dec], i) => out.set(toGalactic(a, unit(ra, dec)), i * 3));
-            return out;
-          });
+            return { abbr, line: out };
+          }),
+        );
+        // Bintang latar: titik-titik garis rasi, sekali saja per bintang.
+        const seen = new Set<string>();
+        starVecs = [];
+        for (const parts of Object.values(a.constellations.lines))
+          for (const line of parts)
+            for (const [ra, dec] of line) {
+              const key = `${ra.toFixed(3)},${dec.toFixed(3)}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+              starVecs.push(toGalactic(a, unit(ra, dec)));
+            }
         const frameD5 = a.frames.find((f) => f.band === "D5") ?? a.frames[0];
         // Peta kecil (220 KB) dulu supaya langit cepat muncul; di layar lebar peta penuh
         // (660 KB) menyusul dan menggantikannya tanpa larut ulang.
@@ -430,7 +721,7 @@ export function HeroGlobe({ pins, above, covered }: Props) {
             if (gl) gl.setMap(img);
             else if (geo) {
               const k = canvas.width / geo.w;
-              paintCpu(canvas, img, viewToGalactic(0, 0, 0), geo.cx * k, geo.cy * k, geo.r * k);
+              paintCpu(canvas, img, Q, geo.cx * k, geo.cy * k, geo.r * k);
             }
             if (first) {
               setReady(true);
@@ -450,32 +741,92 @@ export function HeroGlobe({ pins, above, covered }: Props) {
       ro.disconnect();
       io.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pointermove", onPointer);
+      hero.removeEventListener("pointermove", onMove);
+      hero.removeEventListener("pointerdown", onDown);
+      hero.removeEventListener("pointerup", onUp);
+      hero.removeEventListener("pointercancel", onCancel);
+      hero.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("keydown", onKey);
+      hero.style.cursor = "";
       gl?.dispose();
     };
   }, [above, covered]);
 
+  /** Cuplikan citra asli penanda, dilukis saat pertama kali ditunjuk. */
+  const thumb = (pin: GlobePin, el: HTMLCanvasElement | null) => {
+    if (!el || !pin.image || el.dataset.done) return;
+    el.dataset.done = "1";
+    imageOf(pin.image)
+      .then((img) => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        paint(el, img, EMBER, 128, undefined, { x: w * 0.25, y: h * 0.25, w: w * 0.5, h: h * 0.5 });
+        el.dataset.ready = "true";
+      })
+      .catch(() => undefined);
+  };
+
   return (
-    <div ref={wrapRef} className="lp-globe" data-ready={ready}>
-      <canvas ref={glCanvas} className="lp-globe-sky" role="img" aria-label="The whole sky as NASA's SPHEREx mapped it, wrapped onto a slowly turning globe with the constellation figures drawn on it." />
-      <canvas ref={lineCanvas} className="lp-globe-lines" aria-hidden="true" />
-      {pins.map((pin, i) => (
-        <a
-          key={pin.id}
-          ref={(el) => {
-            pinRefs.current[i] = el;
-          }}
-          className="lp-pin"
-          href={placeHref(pin.id)}
-          style={{ visibility: "hidden" }}
-        >
-          <i aria-hidden="true" />
-          <span>
-            {pin.name}
-            <small>{pin.short}</small>
+    <>
+      <canvas ref={starCanvas} className="lp-stars" aria-hidden="true" />
+      <div ref={wrapRef} className="lp-globe" data-ready={ready} data-interactive={interactive}>
+        <canvas
+          ref={glCanvas}
+          className="lp-globe-sky"
+          role="img"
+          aria-label="The whole sky as NASA's SPHEREx mapped it, wrapped onto a globe you can turn, with the constellation figures drawn on it."
+        />
+        <canvas ref={lineCanvas} className="lp-globe-lines" aria-hidden="true" />
+        {interactive && (
+          <span className="lp-drag-hint" data-on={ready && !dragged} aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 12a8 8 0 1 1-2.3-5.6" />
+              <path d="M20 4v5h-5" />
+            </svg>
+            Drag to turn the sky
           </span>
-        </a>
-      ))}
-    </div>
+        )}
+        <div ref={readRef} className="lp-read" data-on="false" aria-hidden="true">
+          <b />
+          <span />
+          <em>Click to aim here</em>
+        </div>
+        <div ref={aimRef} className="lp-aim" data-on="false">
+          <i className="lp-aim-ring" aria-hidden="true" />
+          {aim && (
+            <div className="lp-aim-card">
+              <b>{aim.name}</b>
+              <span>
+                {raHms(aim.ra)} {decDms(aim.dec)}
+              </span>
+              <a href={`${APP_PATH}?ra=${aim.ra.toFixed(4)}&dec=${aim.dec.toFixed(4)}`}>Look here →</a>
+              <button type="button" aria-label="Clear the aim" onClick={() => setAim(undefined)}>
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+        {pins.map((pin, i) => (
+          <a
+            key={pin.id}
+            ref={(el) => {
+              pinRefs.current[i] = el;
+            }}
+            className="lp-pin"
+            href={placeHref(pin.id)}
+            style={{ visibility: "hidden" }}
+            onPointerEnter={(e) => thumb(pin, e.currentTarget.querySelector("canvas"))}
+            onFocus={(e) => thumb(pin, e.currentTarget.querySelector("canvas"))}
+          >
+            {pin.image && <canvas className="lp-pin-thumb" aria-hidden="true" />}
+            <i aria-hidden="true" />
+            <span>
+              {pin.name}
+              <small>{pin.short}</small>
+            </span>
+          </a>
+        ))}
+      </div>
+    </>
   );
 }

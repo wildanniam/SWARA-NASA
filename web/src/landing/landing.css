@@ -312,9 +312,12 @@ body {
   padding: 0 var(--gut);
   overflow: hidden;
   text-align: center;
+  background: var(--void);
+  /* Seret ke samping memutar bola; ke atas-bawah tetap menggulir halaman. */
+  touch-action: pan-y;
 }
 
-.lp-hero > :not(.lp-globe) {
+.lp-hero > :not(.lp-globe):not(.lp-stars) {
   position: relative;
   z-index: 2;
 }
@@ -326,12 +329,68 @@ body {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: #9a9cae;
-  animation: lp-in 0.9s var(--ease) 0.05s both;
+  cursor: default;
+}
+
+/* SWARA diketik huruf demi huruf, lalu tiap huruf membuka jadi katanya. Huruf Plex Mono
+   selebar 0,6 em ditambah jarak huruf 0,3 em, jadi tiap huruf 0,9 em. */
+@keyframes lp-type {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lp-unfold {
+  to {
+    max-width: calc(var(--n) * 0.9em);
+    opacity: 1;
+  }
+}
+
+@keyframes lp-join {
+  to {
+    margin-right: 0.9em;
+  }
+}
+
+.lp-acr-line {
+  display: inline-flex;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.lp-acr-word {
+  display: inline-flex;
+  margin-right: 0.9em;
+}
+
+.lp-acr-word:last-child {
+  margin-right: 0;
+}
+
+.lp-acr-word[data-join="true"] {
+  margin-right: 0;
+  animation: lp-join 0.6s var(--ease) calc(0.95s + var(--k) * 0.07s) forwards;
 }
 
 .lp-acr b {
   color: var(--accent);
   font-weight: 600;
+  opacity: 0;
+  animation: lp-type 0.01s steps(1) calc(0.15s + var(--k) * 0.12s) forwards;
+}
+
+.lp-acr-rest {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  vertical-align: top;
+  animation: lp-unfold 0.7s var(--ease) calc(0.95s + var(--k) * 0.07s) forwards;
+}
+
+.lp-acr-line[data-replay="true"] b {
+  animation-delay: calc(var(--k) * 0.08s);
 }
 
 .lp-h1 {
@@ -388,10 +447,202 @@ body {
   animation: lp-rise-globe 1.8s var(--ease) 0.2s both;
 }
 
-.lp-globe canvas {
+.lp-globe > canvas {
   position: absolute;
   left: 0;
   top: 0;
+}
+
+@keyframes lp-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Bintang sungguhan di belakang bola; area judul dikosongkan oleh skrip. */
+.lp-stars {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: lp-fade 2.4s ease 0.4s both;
+}
+
+.lp-drag-hint {
+  position: absolute;
+  left: 50%;
+  top: 192px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: rgba(5, 6, 11, 0.45);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--soft);
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
+  transition:
+    opacity 0.6s,
+    transform 0.6s var(--ease);
+  pointer-events: none;
+}
+
+.lp-drag-hint[data-on="true"] {
+  opacity: 1;
+  transform: translateX(-50%);
+  transition-delay: 1.4s;
+}
+
+.lp-drag-hint svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Bacaan di bawah kursor: rasi dan koordinat, gaya yang sama dengan peta di aplikasi. */
+.lp-read,
+.lp-aim-card {
+  border: 1px solid rgba(255, 180, 84, 0.35);
+  border-radius: 12px;
+  background: rgba(9, 10, 15, 0.82);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.lp-read {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+}
+
+.lp-read[data-on="true"] {
+  opacity: 1;
+}
+
+.lp-read b,
+.lp-aim-card b {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lp-read span,
+.lp-aim-card span {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.lp-read em {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-style: normal;
+  color: var(--soft);
+}
+
+/* Titik yang dibidik menempel di langit saat bola berputar. */
+.lp-aim {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s;
+}
+
+.lp-aim[data-on="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+@keyframes lp-aim-in {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+.lp-aim-ring {
+  position: absolute;
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(255, 170, 70, 0.6);
+  animation: lp-aim-in 0.5s var(--ease);
+}
+
+.lp-aim-card {
+  position: absolute;
+  left: 26px;
+  top: -34px;
+  display: grid;
+  gap: 4px;
+  padding: 11px 36px 12px 14px;
+  pointer-events: auto;
+  animation: lp-swap 0.4s var(--ease) both;
+}
+
+.lp-aim[data-flip="true"] .lp-aim-card {
+  left: auto;
+  right: 26px;
+}
+
+.lp .lp-aim-card a {
+  margin-top: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.lp-aim-card a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lp-aim-card button {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.lp-aim-card button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .lp-pin {
@@ -400,7 +651,7 @@ body {
   top: -5.5px;
   z-index: 3;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 9px;
   pointer-events: auto;
   font-size: 12px;
@@ -424,7 +675,34 @@ body {
 }
 
 .lp-pin span {
+  margin-top: -4px;
   transition: transform 0.35s var(--ease);
+}
+
+.lp-pin-thumb {
+  position: absolute;
+  left: -26.5px;
+  bottom: calc(100% + 8px);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--void);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 0 5px rgba(255, 255, 255, 0.05),
+    0 12px 30px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: translateY(6px) scale(0.85);
+  transition:
+    opacity 0.3s,
+    transform 0.4s var(--ease);
+  pointer-events: none;
+}
+
+.lp-pin:hover .lp-pin-thumb[data-ready="true"],
+.lp-pin:focus-visible .lp-pin-thumb[data-ready="true"] {
+  opacity: 1;
+  transform: none;
 }
 
 .lp-pin small {
@@ -556,77 +834,374 @@ body {
   color: transparent;
 }
 
-/* ---------- kenapa SWARA ---------- */
+/* ---------- latar halaman ---------- */
 
-.lp-why-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin-top: 54px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+/* Bintang sungguhan di belakang bagian-bagian bawah, diam saat digulir. Hero menutupnya. */
+.lp-page-stars {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.lp-why-col {
-  padding: 34px 34px 38px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.lp-why-col:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
-
-/* Cara lama dicoret sendiri saat kolomnya muncul. */
-.lp-why-col s {
+.lp > main,
+.lp > footer {
   position: relative;
-  display: inline-block;
+  z-index: 1;
+}
+
+/* ---------- kenapa SWARA: satu panel pembanding ---------- */
+
+/* Cahaya fajar dari bola langit berlanjut ke bagian ini. */
+.lp-why {
+  background:
+    radial-gradient(70% 420px at 50% 0, rgba(255, 140, 50, 0.09), transparent 70%),
+    radial-gradient(40% 320px at 85% 75%, rgba(255, 120, 40, 0.05), transparent 70%);
+}
+
+.lp-cmp {
+  --x: 69.5%;
+  --optic: 420px;
+  position: relative;
+  height: 540px;
+  margin-top: 50px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+  background: var(--card);
+  cursor: ew-resize;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Citra SPHEREx 40 menit busur; Barnard's Star di tengah citra jatuh di sisi SWARA. */
+.lp-cmp-sky {
+  position: absolute;
+  left: calc(var(--x) - 72%);
+  top: 50%;
+  width: 144%;
+  transform: translateY(-50%);
+  opacity: 0.82;
+  transition: opacity 1.2s;
+}
+
+.lp-cmp-sky[data-ready="false"] {
+  opacity: 0;
+}
+
+.lp-cmp-side {
+  position: absolute;
+  inset: 0;
+}
+
+.lp-cmp-swara {
+  clip-path: inset(0 0 0 var(--split));
+}
+
+.lp-cmp-swara::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 11, 0.42);
+}
+
+.lp-cmp-plain {
+  clip-path: inset(0 calc(100% - var(--split)) 0 0);
+  background: linear-gradient(180deg, rgba(5, 6, 11, 0.6), transparent 26%, transparent 56%, rgba(5, 6, 11, 0.88));
+}
+
+.lp-cmp-optic {
+  position: absolute;
+  left: var(--x);
+  top: 46%;
+  width: var(--optic);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.lp-cmp-lens {
+  position: absolute;
+  left: 14.2857%;
+  top: 14.2857%;
+  width: 71.4286%;
+  height: 71.4286%;
+  border-radius: 50%;
+  background: var(--void);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 0 9px rgba(255, 255, 255, 0.05),
+    0 0 60px rgba(255, 140, 50, 0.18);
+  transition: opacity 1s;
+}
+
+.lp-cmp-lens[data-ready="false"] {
+  opacity: 0;
+}
+
+/* Arah gerak terukur (utara), di samping jejaknya. */
+.lp-cmp-arrow {
+  position: absolute;
+  left: 60.5%;
+  top: 37.6%;
+  width: 1.6px;
+  height: 24.8%;
+  background: #fff;
+}
+
+.lp-cmp-arrow::before {
+  content: "";
+  position: absolute;
+  left: -4.2px;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  border-top: 1.6px solid #fff;
+  border-left: 1.6px solid #fff;
+  transform: rotate(45deg);
+}
+
+.lp-cmp-rays {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+@keyframes lp-ray-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.lp-cmp-rays .lp-ray {
+  opacity: 0;
+}
+
+.lp-cmp[data-seen="true"] .lp-cmp-rays .lp-ray {
+  opacity: 1;
+  animation: lp-ray-in 0.5s var(--ease) calc(0.4s + var(--i) * 70ms) backwards;
+}
+
+.lp-cmp-tag {
+  position: absolute;
+  left: 40px;
+  top: 36px;
+  z-index: 2;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--soft);
+  transition: color 0.3s;
+}
+
+.lp-cmp-tag-r {
+  left: auto;
+  right: 40px;
+  color: var(--accent);
+}
+
+.lp-cmp-cap {
+  position: absolute;
+  left: 40px;
+  bottom: 36px;
+  z-index: 2;
+  max-width: 330px;
+}
+
+.lp-cmp-cap b {
+  display: block;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.lp-cmp-cap p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--soft);
+}
+
+.lp-cmp-read {
+  position: absolute;
+  right: 40px;
+  bottom: 36px;
+  z-index: 2;
+  text-align: right;
+}
+
+.lp-cmp-lab {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.lp-cmp-read b {
+  display: block;
+  margin-top: 6px;
+  font-size: 54px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.lp-cmp-line {
+  display: block;
+  margin-top: 6px;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: 0.14em;
-  text-decoration: none;
-  text-transform: uppercase;
-  color: var(--muted);
+  line-height: 1.7;
+  color: var(--soft);
 }
 
-.lp-why-col s::after {
+.lp-cmp-line em {
+  font-style: normal;
+  color: var(--pale);
+}
+
+.lp .lp-cmp-go {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.lp-cmp-go:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lp-cmp .lp-br {
+  z-index: 4;
+}
+
+.lp-cmp-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--split);
+  z-index: 5;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  box-shadow: 0 0 16px rgba(255, 170, 70, 0.8);
+  pointer-events: none;
+}
+
+.lp-cmp-knob {
+  position: absolute;
+  left: var(--split);
+  top: 50%;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 0 0 6px rgba(255, 180, 84, 0.12);
+  cursor: ew-resize;
+  transition:
+    box-shadow 0.3s,
+    transform 0.3s var(--ease);
+}
+
+.lp-cmp-knob i {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  clip-path: var(--star);
+  transition: transform 0.4s var(--ease);
+}
+
+.lp-cmp-knob:hover,
+.lp-cmp[data-dragging="true"] .lp-cmp-knob {
+  box-shadow:
+    0 0 0 9px rgba(255, 180, 84, 0.18),
+    0 0 26px rgba(255, 170, 70, 0.6);
+  transform: scale(1.06);
+}
+
+.lp-cmp-knob:hover i,
+.lp-cmp[data-dragging="true"] .lp-cmp-knob i {
+  transform: scale(1.2);
+}
+
+.lp-cmp[data-dragging="true"] .lp-cmp-tag {
+  color: var(--text);
+}
+
+.lp-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  margin-top: 36px;
+}
+
+.lp-pillar {
+  position: relative;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Garis ambar tumbuh di atas tiap poin saat muncul. */
+.lp-pillar::before {
   content: "";
   position: absolute;
   left: 0;
-  right: 0.14em;
-  top: 52%;
+  right: 0;
+  top: -1px;
   height: 1px;
-  background: rgba(255, 180, 84, 0.75);
+  background: linear-gradient(90deg, var(--accent), rgba(255, 180, 84, 0));
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.9s var(--ease) calc(var(--d, 0s) + 0.45s);
+  transition: transform 1s var(--ease) calc(var(--d, 0s) + 0.3s);
 }
 
-.lp-why-col[data-in] s::after {
+.lp-pillar[data-in]::before {
   transform: scaleX(1);
 }
 
-.lp-why-col h3 {
-  margin: 14px 0 0;
-  font-size: clamp(28px, 2.65vw, 38px);
-  font-weight: 400;
-  letter-spacing: -0.025em;
-  line-height: 1.08;
+.lp-pillar-n {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
 }
 
-.lp-why-col em {
+.lp-pillar h3 {
+  margin: 10px 0 0;
+  font-size: clamp(22px, 1.9vw, 27px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.lp-pillar h3 em {
   font-style: normal;
   color: var(--accent);
-  transition: text-shadow 0.5s;
 }
 
-.lp-why-col:hover em {
-  text-shadow: 0 0 28px rgba(255, 180, 84, 0.45);
-}
-
-.lp-why-col p {
-  max-width: 330px;
-  margin: 14px 0 0;
-  font-size: 14.5px;
+.lp-pillar p {
+  max-width: 380px;
+  margin: 10px 0 0;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--soft);
 }
@@ -1879,22 +2454,14 @@ body {
     border-top: 1px solid var(--hair-2);
   }
 
-  .lp-why-grid {
+  .lp-pillars {
     grid-template-columns: 1fr;
+    gap: 22px;
   }
 
-  .lp-why-col,
-  .lp-why-col:first-child {
-    padding: 30px 0 32px;
-    border-left: 0;
-  }
-
-  .lp-why-col + .lp-why-col {
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  .lp-why-col p {
-    max-width: 520px;
+  .lp-cmp {
+    --optic: 360px;
+    height: 480px;
   }
 
   .lp-bento {
@@ -2061,6 +2628,58 @@ body {
     align-self: center;
   }
 
+  .lp-cmp {
+    --x: 64%;
+    --optic: 250px;
+    height: 440px;
+    border-radius: 22px;
+  }
+
+  .lp-cmp-tag {
+    left: 20px;
+    top: 22px;
+  }
+
+  .lp-cmp-tag-r {
+    left: auto;
+    right: 20px;
+  }
+
+  .lp-cmp-cap {
+    left: 20px;
+    bottom: 24px;
+    max-width: 30%;
+  }
+
+  .lp-cmp-cap b {
+    font-size: 20px;
+  }
+
+  .lp-cmp-cap p {
+    display: none;
+  }
+
+  .lp-cmp-optic {
+    top: 39%;
+  }
+
+  .lp-cmp-lab {
+    display: none;
+  }
+
+  .lp-cmp-read {
+    right: 20px;
+    bottom: 22px;
+  }
+
+  .lp-cmp-read b {
+    font-size: 38px;
+  }
+
+  .lp-cmp .lp-arc-year {
+    display: none;
+  }
+
   /* Lima contoh menjadi deretan pil yang bisa digeser, panggungnya di bawah. */
   .lp-rows {
     display: flex;
@@ -2160,8 +2779,19 @@ body {
     transition-delay: 0s !important;
   }
 
-  .lp-rise {
+  .lp-rise,
+  .lp-acr b,
+  .lp-cmp-rays .lp-ray {
     opacity: 1;
+  }
+
+  .lp-acr-rest {
+    max-width: none;
+    opacity: 1;
+  }
+
+  .lp-acr-word[data-join="true"] {
+    margin-right: 0.9em;
   }
 
   .lp-card[data-hot="true"] {

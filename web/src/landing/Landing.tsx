@@ -1,13 +1,16 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { loadAtlas } from "../lib/allsky";
+import { prefersReducedMotion } from "../lib/hooks";
 import { LogoMark, Wordmark } from "../components/Logo";
 import { APP_PATH, placeHref } from "../route";
 import { loadExamples, type Example } from "./data";
 import { Examples } from "./Examples";
 import { Features } from "./Features";
 import { HeroGlobe, type GlobePin } from "./HeroGlobe";
-import { reveal, useCountUp, useInView } from "./hooks";
+import { useCountUp, useInView } from "./hooks";
 import "./landing.css";
+import { Why } from "./Why";
 
 // Landing page SWARA di "/". Aplikasinya di "/sky". Arah visual dan sasaran tiap bagian ada
 // di web/DESIGN.md (bagian Landing page).
@@ -103,6 +106,47 @@ function Nav() {
   );
 }
 
+// ---------- nama panjang ----------
+
+// SWARA diketik huruf demi huruf, lalu tiap huruf membuka jadi katanya. Menunjuk barisnya
+// memutarnya lagi. Kata sambung ("with", "&") ikut muncul saat membuka.
+const WORDS: [string, string][] = [
+  ["S", "ky"],
+  ["W", "atch"],
+  ["", "with"],
+  ["A", "udio"],
+  ["", "&"],
+  ["R", "eal-time"],
+  ["A", "ccess"],
+];
+
+function Acronym() {
+  const [run, setRun] = useState(0);
+  const busy = useRef(0);
+  const replay = () => {
+    if (prefersReducedMotion() || performance.now() < busy.current) return;
+    busy.current = performance.now() + 2600;
+    setRun((n) => n + 1);
+  };
+  let key = 0;
+  return (
+    <p className="lp-acr" onPointerEnter={replay}>
+      <span className="sr-only">Sky Watch with Audio &amp; Real-time Access</span>
+      <span key={run} className="lp-acr-line" data-replay={run > 0} aria-hidden="true">
+        {WORDS.map(([init, rest]) => {
+          const i = init ? key++ : -1;
+          return (
+            <span key={init + rest} className="lp-acr-word" data-join={!init} style={{ "--k": Math.max(0, i), "--n": rest.length } as CSSProperties}>
+              {init && <b>{init}</b>}
+              <span className="lp-acr-rest">{rest}</span>
+            </span>
+          );
+        })}
+      </span>
+    </p>
+  );
+}
+
 // ---------- hero ----------
 
 function Hero({ examples }: { examples?: Example[] }) {
@@ -115,15 +159,14 @@ function Hero({ examples }: { examples?: Example[] }) {
         short: ex.value !== undefined ? `moved ${ex.short}` : ex.short,
         ra: ex.manifest.ra,
         dec: ex.manifest.dec,
+        image: ex.image,
       })) ?? [],
     [examples],
   );
   return (
     <section id="top" className="lp-hero" aria-labelledby="hero-title">
       <HeroGlobe pins={pins} above={ctas} covered={STATS_OVERLAP} />
-      <p className="lp-acr">
-        <b>S</b>ky <b>W</b>atch with <b>A</b>udio &amp; <b>R</b>eal-time <b>A</b>ccess
-      </p>
+      <Acronym />
       <h1 id="hero-title" className="lp-h1">
         Watch the sky change.
       </h1>
@@ -178,60 +221,6 @@ function Stats() {
         <Stat key={s.label} {...s} run={run} i={i} />
       ))}
     </div>
-  );
-}
-
-// ---------- kenapa ----------
-
-const WHY = [
-  {
-    not: "A single snapshot",
-    lead: "Sixteen years,",
-    accent: "in order.",
-    text: "WISE from 2010, then SPHEREx from 2025, lined up on the same patch so anything that moved gives itself away.",
-  },
-  {
-    not: "A pretty image",
-    lead: "A number,",
-    accent: "beside the catalogue's.",
-    text: "Every shift we measure is shown next to what Gaia and SIMBAD say. What cannot be measured is said plainly.",
-  },
-  {
-    not: "Only for the eyes",
-    lead: "Light you can",
-    accent: "listen to.",
-    text: "The image, the spectrum and the motion play together on one clock, so the sky can be read by ear.",
-  },
-];
-
-function Why() {
-  return (
-    <section id="why" className="lp-sec lp-why" aria-labelledby="why-title">
-      <span ref={reveal} className="lp-kick lp-rise">
-        Why SWARA
-      </span>
-      <h2 ref={reveal} id="why-title" className="lp-h2 lp-rise">
-        Sky viewers show you a picture.
-        <br />
-        SWARA shows you what happened.
-      </h2>
-      <div className="lp-why-grid">
-        {WHY.map((w, i) => (
-          <div key={w.not} ref={reveal} className="lp-why-col lp-rise" style={{ "--d": `${i * 110}ms` } as CSSProperties}>
-            <s>
-              <span className="sr-only">Not </span>
-              {w.not}
-            </s>
-            <h3>
-              {w.lead}
-              <br />
-              <em>{w.accent}</em>
-            </h3>
-            <p>{w.text}</p>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -299,6 +288,67 @@ function Footer() {
   );
 }
 
+// ---------- latar halaman ----------
+
+// Di bawah hero halaman tidak lagi hitam rata: bintang sungguhan (titik-titik garis rasi), diam
+// di tempat saat digulir. Bagian lain dari langit daripada di hero, dan lebih redup.
+function PageStars() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    let alive = true;
+    let stars: [number, number][] = [];
+    const draw = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const px = Math.min(2, window.devicePixelRatio || 1);
+      c.width = Math.round(w * px);
+      c.height = Math.round(h * px);
+      const ctx = c.getContext("2d")!;
+      ctx.setTransform(px, 0, 0, px, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      // Ekuirektangular di RA dan Dec, 150 derajat selebar layar, berpusat di RA 5h (Orion, Taurus).
+      const k = w / 150;
+      ctx.fillStyle = "#fff6e6";
+      stars.forEach(([ra, dec], i) => {
+        let d = ra - 80;
+        d = ((d + 540) % 360) - 180;
+        const x = w / 2 - d * k;
+        const y = h / 2 - dec * k;
+        if (x < -2 || x > w + 2 || y < -2 || y > h + 2) return;
+        ctx.globalAlpha = 0.22 + 0.22 * Math.abs(Math.sin(i * 12.9898));
+        ctx.beginPath();
+        ctx.arc(x, y, 0.85, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    };
+    loadAtlas()
+      .then((a) => {
+        if (!alive) return;
+        const seen = new Set<string>();
+        for (const parts of Object.values(a.constellations.lines))
+          for (const line of parts)
+            for (const [ra, dec] of line) {
+              const key = `${ra.toFixed(3)},${dec.toFixed(3)}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                stars.push([ra, dec]);
+              }
+            }
+        draw();
+      })
+      .catch(() => undefined);
+    window.addEventListener("resize", draw);
+    return () => {
+      alive = false;
+      stars = [];
+      window.removeEventListener("resize", draw);
+    };
+  }, []);
+  return <canvas ref={ref} className="lp-page-stars" aria-hidden="true" />;
+}
+
 // ---------- halaman ----------
 
 export function Landing() {
@@ -314,6 +364,7 @@ export function Landing() {
   }, []);
   return (
     <div className="lp">
+      <PageStars />
       <Nav />
       <main>
         <Hero examples={examples} />

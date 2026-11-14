@@ -214,7 +214,7 @@ export type FeatureData = {
   blink: { stack: HTMLCanvasElement; frames: BlinkFrame[] };
   diff: { now: HTMLCanvasElement; diff: HTMLCanvasElement; nowLabel: string; thenLabel: string };
   spectrum: { bins: (number | null)[]; name: string };
-  catalogue: { ours: number; gaia?: number; when: string; name: string };
+  catalogue: { ours: number; gaia?: number; when: string; direction: string; name: string };
 };
 
 const SIZE = 520;
@@ -259,8 +259,18 @@ function colorize(gray: Uint8ClampedArray): HTMLCanvasElement {
   return c;
 }
 
-/** Bahan keenam kartu fitur, dari Barnard's Star (gerak) dan Epsilon Indi B (cahaya). */
-export async function loadFeatureData(): Promise<FeatureData> {
+/** Bahan keenam kartu fitur, dari Barnard's Star (gerak) dan Epsilon Indi B (cahaya). Dimuat
+ *  sekali dan dipakai bersama oleh bagian Why dan kartu alat. */
+let features: Promise<FeatureData> | undefined;
+export function loadFeatureData(): Promise<FeatureData> {
+  if (!features) {
+    features = buildFeatureData();
+    features.catch(() => (features = undefined));
+  }
+  return features;
+}
+
+async function buildFeatureData(): Promise<FeatureData> {
   const [bm, em, spectrum] = await Promise.all([manifestOf("barnard"), manifestOf("epsindb"), loadSpectrum("epsindb", false)]);
   const wise = bm.wise!;
   // 150 detik busur di sekitar posisi: medan yang sama untuk WISE dan SPHEREx.
@@ -335,10 +345,12 @@ export async function loadFeatureData(): Promise<FeatureData> {
   const f = finding(bm);
   let ours = 0;
   let when = "";
+  let direction = "";
   let gaia: number | undefined;
   if (f.kind === "moved") {
     ours = f.total;
     when = span(f.fromMjd, f.toMjd);
+    direction = compass(f.east, f.north);
     const field = await gaiaOf(bm);
     const ref = bm.motion[0];
     const near = field ? nearestGaia(field, ref.ra, ref.dec, year(bm.windows[0].mjd_mid)) : undefined;
@@ -354,6 +366,38 @@ export async function loadFeatureData(): Promise<FeatureData> {
       thenLabel: monthYear(wise.frames[0].mjd_mid),
     },
     spectrum: { bins, name: em.name },
-    catalogue: { ours, gaia, when, name: bm.name },
+    catalogue: { ours, gaia, when, direction, name: bm.name },
+  };
+}
+
+// ---------- bagian Why ----------
+
+export type WhyData = {
+  /** Citra SPHEREx 40 menit busur di sekitar Barnard's Star, apa adanya. */
+  context: HTMLCanvasElement;
+  /** Semua epoch WISE ditumpuk: jejak geraknya. */
+  stack: HTMLCanvasElement;
+  looks: { year: number; spherex: boolean }[];
+  ours: number;
+  gaia?: number;
+  line: string;
+  name: string;
+};
+
+export async function loadWhyData(): Promise<WhyData> {
+  const [fd, bm] = await Promise.all([loadFeatureData(), manifestOf("barnard")]);
+  if (!bm.context) throw new Error("barnard: no context image");
+  const img = await imageOf(assetUrl("barnard", false, bm.context.image));
+  const context = document.createElement("canvas");
+  paint(context, img, EMBER, 900);
+  const c = fd.catalogue;
+  return {
+    context,
+    stack: fd.blink.stack,
+    looks: fd.blink.frames.map((f) => ({ year: f.year, spherex: f.spherex })),
+    ours: c.ours,
+    gaia: c.gaia,
+    line: c.direction ? `${c.direction} in ${c.when}` : c.when,
+    name: c.name,
   };
 }
