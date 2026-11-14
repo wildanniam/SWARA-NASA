@@ -51,13 +51,18 @@ Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordi
 |---|---|
 | `manifest.json` | target, jendela waktu, band, daftar frame, gerak terukur |
 | `spectrum.json` | satu titik per eksposur: panjang gelombang, fluks, penanda |
-| `frames/<jendela>_<band>.png` | citra abu-abu 240x240, utara di atas, timur di kiri |
+| `frames/<jendela>_<band>.png` | citra abu-abu 480x480 selebar 6 menit busur, utara di atas, timur di kiri |
 | `frames/<jendela>_<band>_mask.png` | 0 = baik, 128 = rusak/hilang, 255 = jenuh |
 | `context.png` | citra medan lebar 40 menit busur di sekitar posisi, 720x720, utara di atas, timur di kiri |
+| `wise/NN.png` | citra WISE W2 (4,6 mikron) per epoch, 2010-2024, medan yang sama dengan frame; untuk dilihat, bukan diukur |
 
 **Jendela waktu** (`w1`, `w2`, ...): SPHEREx melewati satu lokasi kira-kira tiap 6 bulan; eksposur yang terpisah lebih dari 30 hari masuk jendela berbeda.
 
 **Band** (`D1`-`D6`): enam detektor SPHEREx, 0,75-5,0 mikron. Satu frame = median semua eksposur detektor itu dalam satu jendela. Skala terang sama untuk semua jendela dalam satu band, jadi perubahan terang antar waktu itu nyata. Inti bintang yang jenuh dan tidak punya nilai ditampilkan putih penuh; topengnya tetap menandai piksel itu sebagai jenuh.
+
+**Medan frame.** Frame dibuat selebar 6 menit busur (`fov_arcsec: 360`, `frame_px: 480`). Viewer memperbesar bagian tengahnya (2 atau 3 menit busur) untuk membandingkan kunjungan SPHEREx, dan memakai seluruh medan saat memutar riwayat WISE. Bundle lama selebar 2 menit busur tetap bisa dibuka.
+
+**Riwayat WISE** (folder `wise/`, isian `wise` di manifest): deretan citra W2 dari koad unWISE per epoch, diambil dari layanan WiseView (proyek Backyard Worlds: Planet 9). `frames` berisi `id`, `image`, `mjd_mid`, `date_start`, `date_end`; `pixel_arcsec` adalah skala pikselnya (2,75) dan `target_px` letak posisi bundle di citra itu, dalam piksel dari kiri atas. Citra di tepi petak unWISE bisa terpotong, jadi `size_px` tidak selalu persegi. Nilainya sudah diregangkan linier dengan rentang yang sama untuk semua epoch: untuk dilihat, bukan fotometri. Isian `wise` bisa `null` kalau layanan tidak menjawab; bundle tetap sah.
 
 **Citra medan lebar** (`context.png`, isian `context` di manifest): median 4 eksposur detektor 2 (1,10-1,63 mikron) yang dipotong jauh lebih lebar dari frame blink. Dipakai viewer sebagai latar langit. Ini untuk suasana dan orientasi, bukan untuk diukur: latar tiap eksposur diratakan per baris dan kolom, tidak ada topeng piksel, dan inti bintang jenuh diisi putih. Isian `context` bisa `null` kalau citranya gagal dibuat; bundle tetap sah. Untuk menambahkannya ke bundle lama tanpa membuat ulang frame:
 

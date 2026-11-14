@@ -14,7 +14,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .bundle import build, cutout_px
+from .bundle import FOV_ARCSEC, build, cutout_px
 from .context import build_context
 from .fetch import fetch_all
 from .search import search
@@ -84,7 +84,7 @@ def main() -> None:
     c.add_argument("--out", type=Path, default=ROOT / "bundles")
     c.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
     for s in (b, p):
-        s.add_argument("--fov", type=float, default=120.0, help="lebar medan, detik busur")
+        s.add_argument("--fov", type=float, default=FOV_ARCSEC, help="lebar medan, detik busur")
         s.add_argument("--out", type=Path, default=ROOT / "bundles")
         s.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
     a = ap.parse_args()
