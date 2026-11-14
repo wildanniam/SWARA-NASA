@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CoordinateForm } from "./components/CoordinateForm";
 import { SkyStage } from "./components/SkyStage";
 import { Timeline } from "./components/Timeline";
-import { KIND_LABEL, TARGET_NOTES } from "./content";
+import { CUSTOM_NOTE, KIND_LABEL, TARGET_NOTES } from "./content";
 import {
   assetUrl,
   defaultBand,
@@ -12,11 +13,14 @@ import {
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
-import { coord, dayMonthYear, microns, monthYear, shiftWords } from "./lib/format";
+import { coord, coordShort, dayMonthYear, microns, monthYear, shiftWords } from "./lib/format";
 import { preload, useImageStore } from "./lib/images";
 import type { PaletteId } from "./lib/palette";
+import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 
 const BLINK_MS = 700;
+const POLL_MS = 1000;
+const POLL_MAX_FAILURES = 3;
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 type Loaded = { id: string; manifest?: Manifest; error?: boolean };
@@ -32,7 +36,59 @@ export function App() {
   const [playing, setPlaying] = useState(false);
   const [palette, setPalette] = useState<PaletteId>("heat");
   const [showFlags, setShowFlags] = useState(false);
+  // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
+  const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
+  const [formBusy, setFormBusy] = useState(false);
+  const [formError, setFormError] = useState<string>();
   const images = useImageStore();
+
+  const job = targetId ? jobs[targetId] : undefined;
+  const custom = job !== undefined;
+  const ready = !job || job.status === "ready";
+
+  const openSky = useCallback(async (ra: string, dec: string) => {
+    setFormBusy(true);
+    setFormError(undefined);
+    try {
+      const next = await requestSky(ra, dec);
+      setJobs((all) => ({ ...all, [next.id]: next }));
+      setTargetId(next.id);
+    } catch (err) {
+      if (err instanceof SkyRequestError) {
+        setFormError(err.message);
+      } else {
+        console.error(err);
+        setFormError("The coordinate service is not reachable right now. The targets above still work.");
+      }
+    } finally {
+      setFormBusy(false);
+    }
+  }, []);
+
+  // Selama bundle dibuat, tanyakan progresnya tiap detik.
+  const jobId = job?.id;
+  const pending = isPending(job);
+  useEffect(() => {
+    if (!jobId || !pending) return;
+    const ac = new AbortController();
+    let failures = 0;
+    const timer = window.setInterval(() => {
+      skyStatus(jobId, ac.signal)
+        .then((next) => {
+          failures = 0;
+          setJobs((all) => ({ ...all, [next.id]: next }));
+        })
+        .catch((err) => {
+          if (ac.signal.aborted || ++failures < POLL_MAX_FAILURES) return;
+          console.error(err);
+          setJobs((all) => ({ ...all, [jobId]: { ...all[jobId], status: "error", error: "failed" } }));
+        });
+    }, POLL_MS);
+    return () => {
+      window.clearInterval(timer);
+      ac.abort();
+    };
+  }, [jobId, pending]);
 
   // Daftar target.
   useEffect(() => {
@@ -54,14 +110,16 @@ export function App() {
 
   // Manifest target terpilih, lalu muat semua frame-nya.
   useEffect(() => {
-    if (!targetId) return;
+    if (!targetId || !ready) return;
     const ac = new AbortController();
     setLoaded({ id: targetId });
-    loadManifest(targetId, ac.signal)
+    loadManifest(targetId, custom, ac.signal)
       .then((manifest) => {
         const band = defaultBand(manifest);
         const first = manifest.windows.find((w) => findFrame(manifest, w.id, band));
-        preload(manifest.frames.flatMap((f) => [assetUrl(targetId, f.image), assetUrl(targetId, f.mask)]));
+        preload(
+          manifest.frames.flatMap((f) => [assetUrl(targetId, custom, f.image), assetUrl(targetId, custom, f.mask)]),
+        );
         setLoaded({ id: targetId, manifest });
         setBandId(band);
         setWindowId(first?.id);
@@ -74,10 +132,29 @@ export function App() {
         }
       });
     return () => ac.abort();
-  }, [targetId, attempt]);
+  }, [targetId, custom, ready, attempt]);
 
   const manifest = loaded?.id === targetId ? loaded?.manifest : undefined;
-  const target = targets?.find((t) => t.id === targetId);
+  const allTargets = useMemo<TargetRef[]>(
+    () => [
+      ...(targets ?? []),
+      ...Object.values(jobs).map((j) => ({
+        id: j.id,
+        name: coordShort(j.ra, j.dec),
+        kind: "custom" as const,
+        ra: j.ra,
+        dec: j.dec,
+      })),
+    ],
+    [targets, jobs],
+  );
+  const target = allTargets.find((t) => t.id === targetId);
+
+  // Daftar target bisa lebih lebar dari layar; pilihan aktif harus tetap terlihat.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    navRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [targetId, allTargets.length]);
 
   const available = useMemo(
     () => (manifest && bandId ? manifest.windows.filter((w) => findFrame(manifest, w.id, bandId)) : []),
@@ -138,12 +215,36 @@ export function App() {
   const frame = manifest && windowId && bandId ? findFrame(manifest, windowId, bandId) : undefined;
   const band = manifest?.bands.find((b) => b.id === bandId);
   const win = manifest?.windows.find((w) => w.id === windowId);
-  const imageUrl = frame && targetId ? assetUrl(targetId, frame.image) : undefined;
-  const maskUrl = frame && targetId ? assetUrl(targetId, frame.mask) : undefined;
+  const imageUrl = frame && targetId ? assetUrl(targetId, custom, frame.image) : undefined;
+  const maskUrl = frame && targetId ? assetUrl(targetId, custom, frame.mask) : undefined;
   const image = images.get(imageUrl);
 
-  const failed = indexError || loaded?.error || images.hasFailed(imageUrl);
+  const jobFailed = job?.status === "error";
+  const failed =
+    jobFailed || (!custom && indexError) || (loaded?.id === targetId && loaded?.error) || images.hasFailed(imageUrl);
   const status = failed ? "error" : image ? undefined : "loading";
+
+  // Teks panggung selama bundle koordinat bebas dibuat, atau saat gagal.
+  let statusText: string | undefined;
+  let progress: { done: number; total: number } | undefined;
+  if (jobFailed) {
+    statusText =
+      job.error === "no_data"
+        ? "SPHEREx has no usable images of this position."
+        : "This position could not be loaded.";
+  } else if (job && pending) {
+    if (job.status === "queued") statusText = "Waiting for a free slot…";
+    else if (job.stage === "fetch") {
+      statusText = "Reading SPHEREx exposures…";
+      progress = { done: job.done, total: job.total };
+    } else if (job.stage === "frames") statusText = "Aligning the images…";
+    else statusText = "Looking for SPHEREx exposures of this spot…";
+  }
+  const retry = jobFailed
+    ? job.error === "no_data"
+      ? undefined
+      : () => openSky(String(job.ra), String(job.dec))
+    : () => setAttempt((n) => n + 1);
 
   // Tanda acuan dan pergeseran terukur.
   const ref = manifest ? referenceMotion(manifest) : undefined;
@@ -162,7 +263,9 @@ export function App() {
   if (manifest && win) {
     const cur = manifest.motion.find((m) => m.window === win.id);
     if (!ref || !refWindow) {
-      shift = "The position could not be measured reliably for this target.";
+      shift = custom
+        ? "Nothing at the centre could be tracked reliably between visits."
+        : "The position could not be measured reliably for this target.";
     } else if (!cur) {
       shift = "No position measurement for this visit.";
     } else if (cur.window === ref.window) {
@@ -193,8 +296,8 @@ export function App() {
 
       <main className="layout">
         <section className="stage-col" aria-label="Sky view">
-          <nav className="targets" aria-label="Targets">
-            {targets?.map((t) => (
+          <nav className="targets" aria-label="Targets" ref={navRef}>
+            {allTargets.map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -206,6 +309,8 @@ export function App() {
               </button>
             ))}
           </nav>
+
+          <CoordinateForm busy={formBusy} error={formError} onSubmit={openSky} />
 
           <SkyStage
             image={image}
@@ -219,7 +324,14 @@ export function App() {
             bandLabel={bandLabel}
             description={description}
             status={status}
-            onRetry={() => setAttempt((n) => n + 1)}
+            statusText={statusText}
+            statusHint={
+              pending
+                ? "A new position takes a few minutes the first time. After that it opens straight away."
+                : undefined
+            }
+            progress={progress}
+            onRetry={retry}
           />
 
           <div className="transport">
@@ -285,7 +397,7 @@ export function App() {
             <section className="about">
               <p className="kind">{KIND_LABEL[target.kind]}</p>
               <h1>{target.name}</h1>
-              <p className="note">{TARGET_NOTES[target.id]}</p>
+              <p className="note">{target.kind === "custom" ? CUSTOM_NOTE : TARGET_NOTES[target.id]}</p>
               {shift && <p className="shift">{shift}</p>}
               <p className="sr-only" role="status" aria-live="polite">
                 {!playing && win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}

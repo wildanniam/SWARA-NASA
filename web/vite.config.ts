@@ -33,5 +33,6 @@ function bundles(): Plugin {
 
 export default defineConfig({
   plugins: [react(), bundles()],
-  server: { port: 5183, strictPort: true },
+  // API koordinat bebas (`skychange serve`). Preset tetap jalan tanpa API.
+  server: { port: 5183, strictPort: true, proxy: { "/api": "http://127.0.0.1:8000" } },
 });

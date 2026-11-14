@@ -18,6 +18,11 @@ export function coord(ra: number, dec: number): string {
   return `RA ${ra.toFixed(4)}°  Dec ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(4)}°`;
 }
 
+/** Nama singkat untuk koordinat bebas: "133.7951° −7.2451°" */
+export function coordShort(ra: number, dec: number): string {
+  return `${ra.toFixed(4)}° ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(4)}°`;
+}
+
 /** Pergeseran dalam kata-kata: "9.9″ north, 1.9″ west" */
 export function shiftWords(east: number, north: number): string {
   const parts: string[] = [];

@@ -20,6 +20,26 @@ uv run skychange build --id barnard --name "Barnard's Star" --ra 269.44627 --dec
 
 Hasil ditulis ke `bundles/<id>/`. Cutout disimpan di `data/cache/` (tidak ikut git), jadi menjalankan ulang tidak mengunduh lagi. Target preset ada di `presets.json`.
 
+## API koordinat bebas
+
+Viewer memakai API ini untuk koordinat di luar preset. Dari folder `pipeline/`:
+
+```bash
+uv run skychange serve
+```
+
+API berjalan di `http://127.0.0.1:8000`; dev server viewer meneruskan `/api` ke sana. Preset tidak membutuhkan API.
+
+| Permintaan | Isi |
+|---|---|
+| `POST /api/sky` dengan `{"ra": "...", "dec": "..."}` | Mulai membuat bundle, atau langsung `ready` kalau sudah pernah dibuat. Jawabannya keadaan pekerjaan, termasuk `id`. |
+| `GET /api/sky/<id>` | Keadaan pekerjaan: `status` (`queued`, `running`, `ready`, `error`), `stage` (`search`, `fetch`, `frames`), `done`, `total`, `error` (`no_data`, `failed`). |
+| `GET /api/bundles/<id>/...` | Berkas bundle, bentuknya sama dengan preset. |
+
+`ra` dan `dec` boleh derajat desimal (`133.7951`, `-7.2451`) atau jam-menit-detik (`08h55m10.831s`, `-7d14m42.53s`, `08:55:10.8`). Angka polos dibaca sebagai derajat. Koordinat dibulatkan ke 4 desimal (0,36 detik busur) dan itu menjadi `id`.
+
+Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordinat yang sama tidak dibuat dua kali. Paling banyak dua bundle dibuat bersamaan; sisanya menunggu. Keadaan pekerjaan hanya disimpan di memori: kalau API dimatikan di tengah pembuatan, kirim ulang koordinatnya.
+
 ## Isi bundle
 
 | Berkas | Isi |

@@ -1,6 +1,9 @@
 // Teks per target. Draf dari hasil pipeline 2026-11-13; perlu ditinjau tim konten.
 
-export const KIND_LABEL = { moving: "Moves", variable: "Changes brightness" } as const;
+export const KIND_LABEL = { moving: "Moves", variable: "Changes brightness", custom: "Your coordinates" } as const;
+
+export const CUSTOM_NOTE =
+  "SPHEREx images centred on the coordinates you entered. Blink between visits and watch for anything that shifts or changes brightness.";
 
 export const TARGET_NOTES: Record<string, string> = {
   barnard:

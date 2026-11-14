@@ -28,6 +28,10 @@ PIXEL_ARCSEC = 6.15
 MAIN_WINDOW_MIN = 30  # jendela dengan eksposur lebih sedikit dianggap kunjungan kecil
 
 
+class NoData(RuntimeError):
+    """Tidak ada eksposur SPHEREx yang bisa dipakai di posisi ini."""
+
+
 def cutout_px(fov_arcsec: float) -> int:
     """Ukuran cutout (piksel detektor) yang menutup FOV pada orientasi apa pun."""
     n = math.ceil(fov_arcsec * math.sqrt(2) / PIXEL_ARCSEC) + 1
@@ -53,20 +57,37 @@ def build(
     frame_px: int = 240,
     workers: int = 32,
     log=print,
+    progress=None,
 ) -> dict:
+    """`progress(stage, done, total)` dipanggil saat tahap berganti dan tiap cutout
+    selesai; tahap: "search", "fetch", "frames"."""
+    report = progress or (lambda stage, done, total: None)
     t0 = time.time()
+    report("search", 0, 0)
     exposures = search(ra, dec)
     t_search = time.time() - t0
     log(f"[{target_id}] {len(exposures)} eksposur ditemukan ({t_search:.1f}s)")
     if not exposures:
-        raise RuntimeError("Tidak ada data SPHEREx di posisi ini")
+        raise NoData("Tidak ada data SPHEREx di posisi ini")
 
     t1 = time.time()
-    cutouts, failed = fetch_all(exposures, ra, dec, cutout_px(fov_arcsec), cache_root, workers)
+    report("fetch", 0, len(exposures))
+    cutouts, failed = fetch_all(
+        exposures,
+        ra,
+        dec,
+        cutout_px(fov_arcsec),
+        cache_root,
+        workers,
+        progress=lambda done, total: report("fetch", done, total),
+    )
     t_fetch = time.time() - t1
     log(f"[{target_id}] {len(cutouts)} cutout siap, {len(failed)} gagal ({t_fetch:.1f}s)")
     if not cutouts:
-        raise RuntimeError("Tidak ada cutout yang berhasil diambil")
+        if len(failed) == len(exposures):
+            raise RuntimeError(f"Semua cutout gagal diambil: {failed[0][1]}")
+        raise NoData("Posisi ini jatuh di luar semua detektor")
+    report("frames", 0, 0)
 
     win_idx = fr.split_windows([c.mjd for c in cutouts])
     n_win = max(win_idx) + 1

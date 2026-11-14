@@ -14,6 +14,10 @@ type Props = {
   bandLabel: string;
   description: string;
   status?: "loading" | "error";
+  /** Teks pengganti saat memuat atau gagal; tanpa ini dipakai teks umum. */
+  statusText?: string;
+  statusHint?: string;
+  progress?: { done: number; total: number };
   onRetry?: () => void;
 };
 
@@ -104,12 +108,21 @@ export function SkyStage(p: Props) {
 
       {p.status === "loading" && (
         <div className="stage-status" role="status">
-          Loading sky…
+          <p>{p.statusText ?? "Loading sky…"}</p>
+          {p.progress && p.progress.total > 0 && (
+            <>
+              <progress className="stage-progress" value={p.progress.done} max={p.progress.total} />
+              <p className="stage-count" aria-hidden="true">
+                {p.progress.done} of {p.progress.total}
+              </p>
+            </>
+          )}
+          {p.statusHint && <p className="stage-hint">{p.statusHint}</p>}
         </div>
       )}
       {p.status === "error" && (
         <div className="stage-status" role="alert">
-          <p>This view could not be loaded.</p>
+          <p>{p.statusText ?? "This view could not be loaded."}</p>
           {p.onRetry && (
             <button type="button" className="btn" onClick={p.onRetry}>
               Try again

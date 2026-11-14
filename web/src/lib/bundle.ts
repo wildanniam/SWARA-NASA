@@ -3,7 +3,8 @@
 export type TargetRef = {
   id: string;
   name: string;
-  kind: "moving" | "variable";
+  /** "custom" = koordinat yang dimasukkan pengguna; bundelnya dibuat API. */
+  kind: "moving" | "variable" | "custom";
   ra: number;
   dec: number;
 };
@@ -53,21 +54,22 @@ export type Manifest = {
   source: { n_exposures_used: number; collections: string[] };
 };
 
-const BASE = `${import.meta.env.BASE_URL}bundles`;
+// Preset adalah berkas statis; bundle koordinat bebas disajikan API dengan bentuk yang sama.
+const base = (custom: boolean) => `${import.meta.env.BASE_URL}${custom ? "api/bundles" : "bundles"}`;
 
-async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${BASE}/${path}`, { signal });
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return (await res.json()) as T;
 }
 
 export const loadIndex = (signal?: AbortSignal) =>
-  getJson<{ targets: TargetRef[] }>("index.json", signal).then((d) => d.targets);
+  getJson<{ targets: TargetRef[] }>(`${base(false)}/index.json`, signal).then((d) => d.targets);
 
-export const loadManifest = (id: string, signal?: AbortSignal) =>
-  getJson<Manifest>(`${id}/manifest.json`, signal);
+export const assetUrl = (targetId: string, custom: boolean, path: string) => `${base(custom)}/${targetId}/${path}`;
 
-export const assetUrl = (targetId: string, path: string) => `${BASE}/${targetId}/${path}`;
+export const loadManifest = (id: string, custom: boolean, signal?: AbortSignal) =>
+  getJson<Manifest>(assetUrl(id, custom, "manifest.json"), signal);
 
 export const findFrame = (m: Manifest, windowId: string, bandId: string) =>
   m.frames.find((f) => f.window === windowId && f.band === bandId);

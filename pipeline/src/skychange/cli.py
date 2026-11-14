@@ -4,6 +4,7 @@
   skychange presets            # semua target di presets.json
   skychange presets barnard    # hanya yang disebut
   skychange index              # tulis ulang bundles/index.json
+  skychange serve              # API koordinat bebas untuk viewer (lihat server.py)
 """
 
 from __future__ import annotations
@@ -59,6 +60,11 @@ def main() -> None:
     p.add_argument("ids", nargs="*")
     i = sub.add_parser("index", help="tulis ulang bundles/index.json")
     i.add_argument("--out", type=Path, default=ROOT / "bundles")
+    v = sub.add_parser("serve", help="API koordinat bebas")
+    v.add_argument("--host", default="127.0.0.1")
+    v.add_argument("--port", type=int, default=8000)
+    v.add_argument("--bundles", type=Path, default=ROOT / "data" / "bundles", help="bundle koordinat bebas")
+    v.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
     for s in (b, p):
         s.add_argument("--fov", type=float, default=120.0, help="lebar medan, detik busur")
         s.add_argument("--out", type=Path, default=ROOT / "bundles")
@@ -67,6 +73,16 @@ def main() -> None:
 
     if a.cmd == "index":
         print(write_index(a.out))
+        return
+    if a.cmd == "serve":
+        import logging
+
+        import uvicorn
+
+        from .server import create_app
+
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+        uvicorn.run(create_app(a.bundles, a.cache), host=a.host, port=a.port)
         return
     if a.cmd == "build":
         targets = [{"id": a.id, "name": a.name, "ra": a.ra, "dec": a.dec}]
