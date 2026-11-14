@@ -332,19 +332,19 @@
  "motion": [
   {
    "window": "w1",
-   "ra": 331.095669,
-   "dec": -56.800306,
+   "ra": 331.09567,
+   "dec": -56.80031,
    "d_east_arcsec": 0.0,
    "d_north_arcsec": 0.0,
-   "scatter_arcsec": 0.38,
-   "n": 120
+   "scatter_arcsec": 0.37,
+   "n": 119
   },
   {
    "window": "w2",
    "ra": 331.096147,
    "dec": -56.800742,
    "d_east_arcsec": 0.94,
-   "d_north_arcsec": -1.57,
+   "d_north_arcsec": -1.56,
    "scatter_arcsec": 0.33,
    "n": 137
   },
@@ -353,7 +353,7 @@
    "ra": 331.097547,
    "dec": -56.800953,
    "d_east_arcsec": 3.7,
-   "d_north_arcsec": -2.33,
+   "d_north_arcsec": -2.31,
    "scatter_arcsec": 0.37,
    "n": 71
   },
@@ -362,7 +362,7 @@
    "ra": 331.098098,
    "dec": -56.801423,
    "d_east_arcsec": 4.79,
-   "d_north_arcsec": -4.02,
+   "d_north_arcsec": -4.0,
    "scatter_arcsec": 0.37,
    "n": 120
   }
@@ -378,6 +378,6 @@
   "n_exposures_found": 463,
   "n_exposures_used": 463,
   "n_failed": 0,
-  "generated_at": "2026-11-13T14:51:38+00:00"
+  "generated_at": "2026-11-13T16:42:34+00:00"
  }
 }

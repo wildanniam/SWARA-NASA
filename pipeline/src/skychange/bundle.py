@@ -109,7 +109,9 @@ def build(
     points = []
     for c, w in zip(cutouts, win_idx):
         p = measure(c, ra, dec)
-        if p is None:
+        # Piksel tanpa solusi panjang gelombang memberi NaN: titik itu tidak punya
+        # tempat di spektrum, dan NaN bukan JSON yang sah untuk browser.
+        if p is None or not (math.isfinite(p.lambda_um) and math.isfinite(p.flux_jy) and math.isfinite(p.flux_err_jy)):
             continue
         d = asdict(p)
         points.append(
@@ -260,8 +262,8 @@ def build(
         "windows": [{k: w[k] for k in ("id", "date_start", "date_end", "n_exposures", "main")} for w in windows],
         "points": points,
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
-    (out / "spectrum.json").write_text(json.dumps(spectrum, indent=1))
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=1, allow_nan=False))
+    (out / "spectrum.json").write_text(json.dumps(spectrum, indent=1, allow_nan=False))
 
     timing = {"search_s": round(t_search, 1), "fetch_s": round(t_fetch, 1), "total_s": round(time.time() - t0, 1)}
     log(f"[{target_id}] bundle ditulis ke {out} ({timing['total_s']}s total)")
