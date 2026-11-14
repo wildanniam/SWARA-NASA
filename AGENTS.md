@@ -22,7 +22,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 ## Konsep
 
 - **Untuk siapa:** orang umum. Yang ditekankan: keindahan, UX yang mudah, dan data astronomi yang tetap ilmiah. Ilmuwan menilai kebenarannya, bukan penggunanya.
-- **Cerita dua babak:** data WISE (2010-2024) menunjukkan benda itu bergerak; data SPHEREx (2025-2026) memberi spektrumnya, yang juga bisa didengar. Babak WISE belum dibangun.
+- **Cerita dua babak:** data WISE (2010-2024) menunjukkan benda itu bergerak; data SPHEREx (2025-2026) memberi spektrumnya, yang juga bisa didengar. Benda yang punya riwayat WISE dibuka di rentang "16 years"; sakelar "SPHEREx" kembali ke kunjungan SPHEREx saja.
 - **Yang membuatnya dipercaya:** tiap angka gerak tampil di samping angka katalog, dan yang tidak bisa diukur ditulis terus terang.
 - **Yang bukan:** mesin pencari benda otomatis, klaim penemuan baru, atau pengganti alat IRSA.
 
@@ -39,7 +39,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 |---|---|
 | Web tool yang terbuka untuk publik | Belum di-deploy |
 | Pengguna memasukkan koordinat (RA dan Dec) | Ada: satu kotak untuk nama benda atau RA dan Dec |
-| Deretan citra patch itu "seperti video kecil" | Ada: blink antar kunjungan |
+| Deretan citra patch itu "seperti video kecil" | Ada: 13-18 citra WISE lalu 3-4 kunjungan SPHEREx diputar berurutan; blink antar kunjungan SPHEREx |
 | Diuji pada Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | Sudah; lihat hasil per target |
 
 | Saran opsional | Status |
@@ -48,8 +48,8 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Koordinat di URL | Ada |
 | Penanda kontaminasi | Ada: piksel jenuh dan rusak |
 | Menjumlahkan data per detektor | Ada: satu frame = median per detektor per kunjungan |
-| Pengguna memilih lebar medan | Belum; direncanakan |
-| Menimpa data WISE atau Gaia | Belum; WISE direncanakan |
+| Pengguna memilih lebar medan | Ada: lensa bisa diperbesar, 6, 3, atau 2 menit busur |
+| Menimpa data WISE atau Gaia | Ada untuk WISE (W2, 2010-2024, untuk dilihat); Gaia belum |
 | Menjumlah atau mengurangkan citra antar waktu | Belum |
 | Mudah diperbarui saat rilis data baru | Sebagian: nama koleksi masih tertulis di kode |
 
@@ -57,11 +57,11 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 Urutan platform berikutnya:
 
-1. Lebar medan yang bisa diubah (syarat untuk WISE, sekaligus zoom).
-2. Ruas WISE di garis waktu, lewat backend dengan cache.
-3. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
-4. Deploy: backend di VPS, frontend statis.
-5. Halaman proyek dan video demo berbahasa Inggris.
+1. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
+2. Deploy: backend di VPS, frontend statis.
+3. Halaman proyek dan video demo berbahasa Inggris.
+
+Sudah selesai: medan 6 menit busur dengan zoom di lensa, dan riwayat WISE di garis waktu.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -69,7 +69,7 @@ Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 det
 
 ```
 pipeline/     paket Python `skychange` (pencarian, cutout, frame, spektrum, bundle, API)
-bundles/      hasil pipeline untuk 5 contoh, dipakai langsung oleh viewer
+bundles/      hasil pipeline untuk 5 contoh (frame, spektrum, citra medan lebar, riwayat WISE), dipakai langsung oleh viewer
 web/          viewer: blink, spektrum, suara (`web/src/sound/`)
 data/         cache unduhan dan bundle koordinat bebas; tidak ikut git
 ```
@@ -87,8 +87,9 @@ Semua poin ini sudah diuji langsung terhadap data.
 - **Bintang terang jenuh.** Definisi bit penanda ada di `pipeline/src/skychange/flags.py`.
 - **Pencarian posisi pakai SIA, bukan TAP** (2-4 detik lawan 203 detik).
 - **Piksel dibaca langsung dari bucket publik `nasa-irsa-spherex`** lewat HTTP range, sekitar 0,4 detik per berkas.
-- **Satu koordinat baru butuh 2-3,5 menit** (258-545 eksposur). Contoh aman karena sudah jadi berkas statis.
-- **Medan 6 menit busur menambah waktu sekitar sepertiga** dibanding 2 menit busur (157 lawan 115 detik pada satu uji), dengan hasil ukur yang sama.
+- **Satu koordinat baru butuh 2,5-6 menit** (258-545 eksposur, medan 6 menit busur). Contoh aman karena sudah jadi berkas statis.
+- **Frame dibuat selebar 6 menit busur.** Itu menambah waktu sekitar sepertiga dibanding 2 menit busur (157 lawan 115 detik pada satu uji), dengan hasil ukur yang sama.
+- **Citra WISE dipotong dari satu petak unWISE.** Di dekat tepi petak citranya terpotong; pipeline meminta ulang dari petak tetangga dan memakai yang menutup medan paling banyak. Epsilon Indi B tertutup 90%, empat contoh lain di atas 99%.
 
 ## Hasil per target
 
@@ -122,5 +123,6 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: riwayat WISE dan zoom lensa jalan.** Letak posisi di citra WISE diperiksa pada Epsilon Indi B: posisi yang diprediksi dari gerak diri katalog cocok dengan bintang di citra 2010 dan 2024 dalam 0,2 piksel (0,5 detik busur). Kelima contoh dibuat ulang selebar 6 menit busur; gerak terukurnya sama dengan sebelumnya. WISE 0855 redup di tampilan ini dan sulit dilihat tanpa memperbesar.
 - **KEPUTUSAN:** nama produk SWARA; arah produk seperti di bagian Konsep.
 - **TEMUAN:** layanan WiseView memberi frame WISE 2010-2024 untuk satu posisi dalam sekitar 3 detik. Dicoba pada WISE 0855, Epsilon Indi B, dan Luhman 16: ketiganya terlihat bergerak. Gambarnya sudah diregangkan, jadi untuk dilihat, bukan diukur.
