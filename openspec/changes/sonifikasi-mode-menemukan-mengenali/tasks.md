@@ -8,10 +8,10 @@
 
 ## 2. Mode-shell: pengumuman, kontrol, aksesibilitas
 
-- [ ] 2.1 Implementasikan earcon khas + nada kalibrasi min–maks per mode (parameter di `mapping.ts`, persetujuan Alif); verifikasi: ganti mode empat kali — tiap kali earcon berbeda lalu kalibrasi rendah-tinggi terdengar.
-- [ ] 2.2 Implementasikan pemilih mode radiogroup/tablist + shortcut Alt+G/K/P/S dan Space, tanpa tabrakan 1–6/L/M///N/panah; verifikasi: uji keyboard (Tab, panah, tiap shortcut) dan konfirmasi shortcut lama tetap berfungsi.
-- [ ] 2.3 Implementasikan pengumuman tiga jalur (suara, `role="status"` screen reader, label visual + penanda pasangan); verifikasi: ganti mode dan ganti epoch — screen reader mengumumkan teks spek dan label visual cocok dengan mode aktif.
-- [ ] 2.4 Tambahkan kontrol sentuh setara dan urutan tab logis + fokus jelas; verifikasi: alur discovery selesai di HP (sentuh saja) dan lolos cek fokus/tab keyboard.
+- [x] 2.1 Implementasikan earcon khas + nada kalibrasi min–maks per mode (parameter di `mapping.ts`, persetujuan Alif); verifikasi: ganti mode empat kali — tiap kali earcon berbeda lalu kalibrasi rendah-tinggi terdengar.
+- [x] 2.2 Implementasikan pemilih mode radiogroup/tablist + shortcut Alt+G/K/P/S dan Space, tanpa tabrakan 1–6/L/M///N/panah; verifikasi: uji keyboard (Tab, panah, tiap shortcut) dan konfirmasi shortcut lama tetap berfungsi.
+- [x] 2.3 Implementasikan pengumuman tiga jalur (suara, `role="status"` screen reader, label visual + penanda pasangan); verifikasi: ganti mode dan ganti epoch — screen reader mengumumkan teks spek dan label visual cocok dengan mode aktif.
+- [x] 2.4 Tambahkan kontrol sentuh setara dan urutan tab logis + fokus jelas; verifikasi: alur discovery selesai di HP (sentuh saja) dan lolos cek fokus/tab keyboard.
 
 ## 3. Mode Gerak
 

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
 import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
+import { ModeSwitch } from "./components/ModeSwitch";
 import { Notes } from "./components/Notes";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
@@ -39,7 +40,8 @@ import { preload, useImageStore } from "./lib/images";
 import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import type { Spectrum } from "./lib/spectrum";
-import { motionNote, sonifier } from "./sound/sonify";
+import { modeById, modeForKey, type ModeId } from "./sound/modes";
+import { announceMode, motionNote, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
 const POLL_MS = 1000;
@@ -75,6 +77,9 @@ export function App() {
   const [palette, setPalette] = useState<PaletteId>("heat");
   const [showFlags, setShowFlags] = useState(false);
   const [motionSound, setMotionSound] = useState(false);
+  // Mode suara aktif; pengumuman dibacakan screen reader tiap ganti mode.
+  const [mode, setMode] = useState<ModeId>("gerak");
+  const [modeMsg, setModeMsg] = useState("");
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
   const [query, setQuery] = useState("");
@@ -319,9 +324,28 @@ export function App() {
     [manifest],
   );
 
+  // Ganti mode suara: umumkan lewat tiga jalur (suara, teks, visual).
+  const selectMode = useCallback((id: ModeId) => {
+    const m = modeById(id);
+    if (!m) return;
+    setMode(id);
+    announceMode(id);
+    setModeMsg(m.announcement);
+  }, []);
+
   // Papan ketik: spasi = putar/jeda, panah = pindah kunjungan, 1-6 = band.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Shortcut mode Alt+G/K/P/S: berlaku juga saat fokus di dalam isian,
+      // supaya ganti mode tidak pernah terkunci dari keyboard.
+      if (e.altKey && !e.metaKey && !e.ctrlKey) {
+        const m = modeForKey(e.key);
+        if (m) {
+          e.preventDefault();
+          selectMode(m.id);
+        }
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement;
       if (el.closest?.("input, select, textarea, [role=dialog]")) return;
@@ -350,7 +374,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, chooseBand, manifest]);
+  }, [step, chooseBand, manifest, selectMode]);
 
   // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
   const shownBandId =
@@ -607,6 +631,13 @@ export function App() {
       </main>
 
       <section className="dock" aria-label="Controls">
+        <div className="dock-row dock-modes">
+          <div className="dock-lead">
+            <span className="dial-caption">Sound</span>
+          </div>
+          <ModeSwitch mode={mode} onMode={selectMode} />
+          <div className="dock-tail" />
+        </div>
         <div className="dock-row">
           <div className="dock-lead">
             <button
@@ -722,6 +753,9 @@ export function App() {
 
       <p className="sr-only" role="status" aria-live="polite">
         {!playing && win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
+      </p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {modeMsg}
       </p>
     </div>
   );

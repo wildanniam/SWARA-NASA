@@ -15,6 +15,7 @@ const KEYS: [string, string][] = [
   ["Space", "blink"],
   ["← →", "step through visits"],
   ["1 to 6", "image band"],
+  ["Alt+G/K/P/S", "sound mode"],
   ["L", "listen to the spectrum"],
   ["M", "motion sound"],
   ["/", "go to a place"],
@@ -123,6 +124,12 @@ export function Notes({ open, onClose, manifest, win, frame }: Props) {
           <p>
             Motion sound plays one note per visit while blinking. Higher is further north, lower is further south,
             and the note moves left or right with the picture. The same note means no measurable shift.
+          </p>
+          <p>
+            Four sound modes answer four questions by ear: Motion (where did it move), Brightness (dimmer or
+            brighter), Scan (which part of the picture is bright), and Spectrum (what light does it give off).
+            Switching modes plays that mode&apos;s earcon and its lowest-to-highest tones, and the meaning is also
+            announced as text.
           </p>
         </section>
 

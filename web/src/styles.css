@@ -318,6 +318,61 @@ kbd {
   border-color: #ffc57a;
 }
 
+/* Pemilih mode suara: empat label pil dengan radio asli di dalamnya. */
+.modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  font-size: 13.5px;
+  white-space: nowrap;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.mode:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.mode[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.mode input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.mode-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--faint);
+}
+
+.mode[data-active="true"] .mode-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.mode kbd {
+  padding: 0 5px;
+  font-size: 10.5px;
+}
+
 .round {
   flex: none;
   display: grid;

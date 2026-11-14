@@ -2,7 +2,8 @@
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
 import type { Bin } from "../lib/spectrum";
-import { MOTION, SOUND, type MotionSettings, type SoundSettings } from "./mapping";
+import { CALIBRATION_HZ, EARCONS, MODE_ANNOUNCE, MOTION, SOUND, type MotionSettings, type SoundSettings } from "./mapping";
+import { modeById, type ModeId } from "./modes";
 
 export type Note = {
   /** Detik sejak awal frasa. */
@@ -102,6 +103,33 @@ export function motionNote(east: number, north: number, m: MotionSettings = MOTI
   };
 }
 
+/** Frasa pengumuman ganti mode: earcon khas lalu kalibrasi rendah-tinggi. */
+export function modePhrase(id: ModeId): Note[] {
+  const ear = EARCONS[id];
+  const [lo, hi] = CALIBRATION_HZ[id];
+  const step = MODE_ANNOUNCE.noteSeconds + MODE_ANNOUNCE.gapSeconds;
+  const at = (i: number, hz: number): Note => ({
+    t: i * step,
+    dur: MODE_ANNOUNCE.noteSeconds,
+    hz,
+    unverified: false,
+    vol: 1,
+    lowConf: false,
+    pan: 0,
+    lambda: 0,
+  });
+  const notes = ear.steps.map((s, i) => at(i, ear.baseHz * Math.pow(2, s / 12)));
+  const base = ear.steps.length + 1;
+  notes.push(at(base, lo), at(base + 1, hi));
+  return notes;
+}
+
+/** Umumkan ganti mode lewat jalur suara (earcon + kalibrasi). */
+export function announceMode(id: ModeId): void {
+  if (!modeById(id)) return;
+  sonifier.play([modePhrase(id)], SOUND, MODE_ANNOUNCE.gain);
+}
+
 /** Pemutar: satu konteks audio untuk seluruh aplikasi, dibuat saat tombol pertama ditekan. */
 export class Sonifier {
   private ctx?: AudioContext;
@@ -109,12 +137,12 @@ export class Sonifier {
   private sources: AudioScheduledSourceNode[] = [];
 
   /** Putar beberapa frasa berurutan. Mengembalikan waktu mulai tiap frasa (waktu konteks). */
-  play(phrases: Note[][], s: SoundSettings = SOUND): number[] {
+  play(phrases: Note[][], s: SoundSettings = SOUND, gain?: number): number[] {
     this.stop();
     const ctx = (this.ctx ??= new AudioContext());
     void ctx.resume();
     this.master = ctx.createGain();
-    this.master.gain.value = s.gain;
+    this.master.gain.value = gain ?? s.gain;
     this.master.connect(ctx.destination);
     const starts: number[] = [];
     let at = ctx.currentTime + 0.08;

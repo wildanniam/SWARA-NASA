@@ -70,3 +70,34 @@ export const MOTION = {
 };
 
 export type MotionSettings = typeof MOTION;
+
+// Pengumuman ganti mode: tiap mode punya motif pendek khas (earcon), lalu dua
+// nada kalibrasi terendah-tertinggi dari rentang mode itu. Bentuk motif dan
+// rentang kalibrasi adalah rasa dan milik berkas ini; arti tiap mode dikunci
+// spek mode-shell. Kalibrasi memakai rentang penuh citarasa; dipersempit ke
+// rentang objek saat pembuat frasa tiap mode sudah ada (tugas 3-6).
+
+export const MODE_ANNOUNCE = {
+  /** Lama tiap nada earcon dan kalibrasi, detik. */
+  noteSeconds: 0.22,
+  /** Jeda antar nada earcon dan kalibrasi, detik. */
+  gapSeconds: 0.06,
+  /** Keras pengumuman, 0-1. */
+  gain: 0.3,
+};
+
+/** Motif earcon tiap mode: nada dasar + langkah semiton. */
+export const EARCONS = {
+  gerak: { baseHz: 329.63, steps: [0, 7, 12] },
+  kecerahan: { baseHz: 261.63, steps: [0, 4, 7] },
+  pindai: { baseHz: 392.0, steps: [7, 4, 0] },
+  spektrum: { baseHz: 220.0, steps: [0, 7, 12, 19] },
+} as const;
+
+/** Rentang kalibrasi tiap mode: [terendah, tertinggi], Hz. */
+export const CALIBRATION_HZ: Record<string, readonly [number, number]> = {
+  gerak: [164.81, 659.25],
+  kecerahan: [130.81, 523.25],
+  pindai: [196.0, 784.0],
+  spektrum: [SOUND.baseHz, SOUND.baseHz * 8],
+};
