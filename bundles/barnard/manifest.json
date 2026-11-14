@@ -1,0 +1,322 @@
+{
+ "id": "barnard",
+ "name": "Barnard's Star",
+ "ra": 269.44627,
+ "dec": 4.76821,
+ "fov_arcsec": 120.0,
+ "frame_px": 240,
+ "native_pixel_arcsec": 6.15,
+ "orientation": "north up, east left",
+ "stretch": "asinh(v/knee)/asinh(vmax/knee) on background-subtracted MJy/sr; knee = 3x sky noise; same knee and vmax for all windows of a band",
+ "mask_values": {
+  "0": "ok",
+  "128": "bad or missing in most exposures",
+  "255": "saturated in most exposures"
+ },
+ "windows": [
+  {
+   "id": "w1",
+   "date_start": "2025-08-15",
+   "date_end": "2025-10-01",
+   "mjd_mid": 60914.3823,
+   "n_exposures": 118,
+   "main": true
+  },
+  {
+   "id": "w2",
+   "date_start": "2026-03-11",
+   "date_end": "2026-05-05",
+   "mjd_mid": 61116.6838,
+   "n_exposures": 121,
+   "main": true
+  },
+  {
+   "id": "w3",
+   "date_start": "2026-08-16",
+   "date_end": "2026-09-22",
+   "mjd_mid": 61273.65,
+   "n_exposures": 123,
+   "main": true
+  }
+ ],
+ "bands": [
+  {
+   "id": "D1",
+   "detector": 1,
+   "lambda_min": 0.75,
+   "lambda_max": 1.1
+  },
+  {
+   "id": "D2",
+   "detector": 2,
+   "lambda_min": 1.1,
+   "lambda_max": 1.63
+  },
+  {
+   "id": "D3",
+   "detector": 3,
+   "lambda_min": 1.63,
+   "lambda_max": 2.42
+  },
+  {
+   "id": "D4",
+   "detector": 4,
+   "lambda_min": 2.42,
+   "lambda_max": 3.82
+  },
+  {
+   "id": "D5",
+   "detector": 5,
+   "lambda_min": 3.82,
+   "lambda_max": 4.42
+  },
+  {
+   "id": "D6",
+   "detector": 6,
+   "lambda_min": 4.42,
+   "lambda_max": 5.0
+  }
+ ],
+ "frames": [
+  {
+   "window": "w1",
+   "band": "D1",
+   "image": "frames/w1_D1.png",
+   "mask": "frames/w1_D1_mask.png",
+   "n_exposures": 24,
+   "knee_mjy_sr": 2.011,
+   "vmax_mjy_sr": 1245.0,
+   "saturated_fraction": 0.1055,
+   "bad_fraction": 0.1057
+  },
+  {
+   "window": "w2",
+   "band": "D1",
+   "image": "frames/w2_D1.png",
+   "mask": "frames/w2_D1_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 2.011,
+   "vmax_mjy_sr": 1245.0,
+   "saturated_fraction": 0.101,
+   "bad_fraction": 0.1013
+  },
+  {
+   "window": "w3",
+   "band": "D1",
+   "image": "frames/w3_D1.png",
+   "mask": "frames/w3_D1_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 2.011,
+   "vmax_mjy_sr": 1245.0,
+   "saturated_fraction": 0.1044,
+   "bad_fraction": 0.1044
+  },
+  {
+   "window": "w1",
+   "band": "D2",
+   "image": "frames/w1_D2.png",
+   "mask": "frames/w1_D2_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 2.404,
+   "vmax_mjy_sr": 1557.0,
+   "saturated_fraction": 0.1064,
+   "bad_fraction": 0.1064
+  },
+  {
+   "window": "w2",
+   "band": "D2",
+   "image": "frames/w2_D2.png",
+   "mask": "frames/w2_D2_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 2.404,
+   "vmax_mjy_sr": 1557.0,
+   "saturated_fraction": 0.0983,
+   "bad_fraction": 0.0983
+  },
+  {
+   "window": "w3",
+   "band": "D2",
+   "image": "frames/w3_D2.png",
+   "mask": "frames/w3_D2_mask.png",
+   "n_exposures": 25,
+   "knee_mjy_sr": 2.404,
+   "vmax_mjy_sr": 1557.0,
+   "saturated_fraction": 0.1334,
+   "bad_fraction": 0.1336
+  },
+  {
+   "window": "w1",
+   "band": "D3",
+   "image": "frames/w1_D3.png",
+   "mask": "frames/w1_D3_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 2.899,
+   "vmax_mjy_sr": 2133.0,
+   "saturated_fraction": 0.1158,
+   "bad_fraction": 0.1158
+  },
+  {
+   "window": "w2",
+   "band": "D3",
+   "image": "frames/w2_D3.png",
+   "mask": "frames/w2_D3_mask.png",
+   "n_exposures": 24,
+   "knee_mjy_sr": 2.899,
+   "vmax_mjy_sr": 2133.0,
+   "saturated_fraction": 0.1299,
+   "bad_fraction": 0.1302
+  },
+  {
+   "window": "w3",
+   "band": "D3",
+   "image": "frames/w3_D3.png",
+   "mask": "frames/w3_D3_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 2.899,
+   "vmax_mjy_sr": 2133.0,
+   "saturated_fraction": 0.127,
+   "bad_fraction": 0.1296
+  },
+  {
+   "window": "w1",
+   "band": "D4",
+   "image": "frames/w1_D4.png",
+   "mask": "frames/w1_D4_mask.png",
+   "n_exposures": 23,
+   "knee_mjy_sr": 1.891,
+   "vmax_mjy_sr": 1006.0,
+   "saturated_fraction": 0.164,
+   "bad_fraction": 0.164
+  },
+  {
+   "window": "w2",
+   "band": "D4",
+   "image": "frames/w2_D4.png",
+   "mask": "frames/w2_D4_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 1.891,
+   "vmax_mjy_sr": 1006.0,
+   "saturated_fraction": 0.1677,
+   "bad_fraction": 0.1678
+  },
+  {
+   "window": "w3",
+   "band": "D4",
+   "image": "frames/w3_D4.png",
+   "mask": "frames/w3_D4_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 1.891,
+   "vmax_mjy_sr": 1006.0,
+   "saturated_fraction": 0.1621,
+   "bad_fraction": 0.1623
+  },
+  {
+   "window": "w1",
+   "band": "D5",
+   "image": "frames/w1_D5.png",
+   "mask": "frames/w1_D5_mask.png",
+   "n_exposures": 18,
+   "knee_mjy_sr": 1.175,
+   "vmax_mjy_sr": 1353.0,
+   "saturated_fraction": 0.0458,
+   "bad_fraction": 0.0434
+  },
+  {
+   "window": "w2",
+   "band": "D5",
+   "image": "frames/w2_D5.png",
+   "mask": "frames/w2_D5_mask.png",
+   "n_exposures": 19,
+   "knee_mjy_sr": 1.175,
+   "vmax_mjy_sr": 1353.0,
+   "saturated_fraction": 0.0494,
+   "bad_fraction": 0.0451
+  },
+  {
+   "window": "w3",
+   "band": "D5",
+   "image": "frames/w3_D5.png",
+   "mask": "frames/w3_D5_mask.png",
+   "n_exposures": 25,
+   "knee_mjy_sr": 1.175,
+   "vmax_mjy_sr": 1353.0,
+   "saturated_fraction": 0.0441,
+   "bad_fraction": 0.0378
+  },
+  {
+   "window": "w1",
+   "band": "D6",
+   "image": "frames/w1_D6.png",
+   "mask": "frames/w1_D6_mask.png",
+   "n_exposures": 17,
+   "knee_mjy_sr": 0.8788,
+   "vmax_mjy_sr": 1010.0,
+   "saturated_fraction": 0.0264,
+   "bad_fraction": 0.0172
+  },
+  {
+   "window": "w2",
+   "band": "D6",
+   "image": "frames/w2_D6.png",
+   "mask": "frames/w2_D6_mask.png",
+   "n_exposures": 24,
+   "knee_mjy_sr": 0.8788,
+   "vmax_mjy_sr": 1010.0,
+   "saturated_fraction": 0.0279,
+   "bad_fraction": 0.0181
+  },
+  {
+   "window": "w3",
+   "band": "D6",
+   "image": "frames/w3_D6.png",
+   "mask": "frames/w3_D6_mask.png",
+   "n_exposures": 19,
+   "knee_mjy_sr": 0.8788,
+   "vmax_mjy_sr": 1010.0,
+   "saturated_fraction": 0.027,
+   "bad_fraction": 0.0228
+  }
+ ],
+ "motion": [
+  {
+   "window": "w1",
+   "ra": 269.446503,
+   "dec": 4.767289,
+   "d_east_arcsec": 0.0,
+   "d_north_arcsec": 0.0,
+   "scatter_arcsec": 1.93,
+   "n": 118
+  },
+  {
+   "window": "w2",
+   "ra": 269.446365,
+   "dec": 4.768883,
+   "d_east_arcsec": -0.5,
+   "d_north_arcsec": 5.74,
+   "scatter_arcsec": 1.26,
+   "n": 121
+  },
+  {
+   "window": "w3",
+   "ra": 269.44596,
+   "dec": 4.770041,
+   "d_east_arcsec": -1.95,
+   "d_north_arcsec": 9.91,
+   "scatter_arcsec": 1.04,
+   "n": 121
+  }
+ ],
+ "spectrum": "spectrum.json",
+ "source": {
+  "mission": "SPHEREx",
+  "archive": "NASA/IPAC Infrared Science Archive (IRSA)",
+  "collections": [
+   "spherex_dr1",
+   "spherex_qr3"
+  ],
+  "n_exposures_found": 362,
+  "n_exposures_used": 362,
+  "n_failed": 0,
+  "generated_at": "2026-11-13T14:18:24+00:00"
+ }
+}

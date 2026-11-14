@@ -1,0 +1,50 @@
+{
+  "note": "Koordinat ICRS dipropagasi ke epoch 2026.0 dari posisi dan gerak diri SIMBAD (diambil 2026-11-13 lewat CDS Sesame), supaya target bergerak cepat berada di tengah medan selama misi SPHEREx.",
+  "targets": [
+    {
+      "id": "barnard",
+      "name": "Barnard's Star",
+      "ra": 269.44627,
+      "dec": 4.76821,
+      "kind": "moving",
+      "pm_mas_yr": [-801.551, 10362.394],
+      "simbad": "NAME Barnard's star"
+    },
+    {
+      "id": "wise0855",
+      "name": "WISE 0855-0714",
+      "ra": 133.75976,
+      "dec": -7.24219,
+      "kind": "moving",
+      "pm_mas_yr": [-8123.7, 673.2],
+      "simbad": "WISEA J085510.74-071442.5"
+    },
+    {
+      "id": "epsindb",
+      "name": "Epsilon Indi B",
+      "ra": 331.09664,
+      "dec": -56.80066,
+      "kind": "moving",
+      "pm_mas_yr": [3981.977, -2466.832],
+      "simbad": "* eps Ind B"
+    },
+    {
+      "id": "rwaur",
+      "name": "RW Aurigae",
+      "ra": 76.95653,
+      "dec": 30.40144,
+      "kind": "variable",
+      "pm_mas_yr": [7.23, -20.33],
+      "simbad": "V* RW Aur"
+    },
+    {
+      "id": "rdra",
+      "name": "R Draconis",
+      "ra": 248.16761,
+      "dec": 66.75498,
+      "kind": "variable",
+      "pm_mas_yr": [-20.643, 6.149],
+      "simbad": "V* R Dra"
+    }
+  ]
+}
