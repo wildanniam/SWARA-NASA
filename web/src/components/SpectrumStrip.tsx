@@ -525,7 +525,25 @@ export function SpectrumStrip(p: Props) {
                     title={has ? microns(b.lambda_min, b.lambda_max) : "No image in this band"}
                     onClick={() => p.onBand(b.id)}
                   >
-                    <span aria-hidden="true">{i + 1}</span>
+                    <span className="segment-number" aria-hidden="true">{i + 1}</span>
+                    <span className="segment-notes" aria-hidden="true">
+                      <i
+                        className="segment-note segment-note--scan"
+                        data-active={!!play && currentLayers?.scan ? "true" : undefined}
+                      />
+                      <i
+                        className="segment-note segment-note--spectrum"
+                        data-active={
+                          !!play && heardLambda !== undefined && heardLambda >= b.lambda_min && heardLambda < b.lambda_max
+                            ? "true"
+                            : undefined
+                        }
+                      />
+                      <i
+                        className="segment-note segment-note--motion"
+                        data-active={motionNoteActive ? "true" : undefined}
+                      />
+                    </span>
                   </button>
                 );
             })}

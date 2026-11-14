@@ -1489,13 +1489,50 @@ kbd {
   border-right: 1px solid var(--hair);
 }
 
-.segment span {
+.segment > .segment-number {
   position: absolute;
   left: 6px;
   top: 1px;
   color: var(--faint);
   font-family: var(--mono);
   font-size: 10.5px;
+}
+
+.segment-notes {
+  position: absolute;
+  left: 6px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.segment-note {
+  width: 4px;
+  height: 4px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.3;
+  transition: opacity 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.segment-note--scan {
+  color: #c9d46f;
+}
+
+.segment-note--spectrum {
+  color: #ffad55;
+}
+
+.segment-note--motion {
+  color: #79aefc;
+}
+
+.segment-note[data-active="true"] {
+  transform: scale(1.35);
+  background: currentColor;
+  opacity: 1;
+  box-shadow: 0 0 6px currentColor;
 }
 
 .segment:hover:not(:disabled) {
@@ -1507,7 +1544,7 @@ kbd {
   box-shadow: inset 0 2px 0 var(--accent);
 }
 
-.segment[aria-pressed="true"] span {
+.segment[aria-pressed="true"] > .segment-number {
   color: var(--accent);
 }
 
@@ -1516,7 +1553,7 @@ kbd {
   box-shadow: inset 0 2px 0 #ffad55, inset 0 0 18px rgba(255, 173, 85, 0.15);
 }
 
-.segment[data-heard="true"] span {
+.segment[data-heard="true"] > .segment-number {
   color: #ffc58b;
   text-shadow: 0 0 8px rgba(255, 173, 85, 0.65);
 }
