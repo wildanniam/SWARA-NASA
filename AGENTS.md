@@ -103,8 +103,8 @@ Semua poin ini sudah diuji langsung terhadap data.
 - **Piksel besar:** 6,15 detik busur. Gerak beberapa detik busur per tahun hanya bergeser sekitar 1 piksel.
 - **Bintang terang jenuh.** Definisi bit penanda ada di `pipeline/src/skychange/flags.py`.
 - **Pencarian posisi pakai SIA, bukan TAP** (2-4 detik lawan 203 detik).
-- **Piksel dibaca langsung dari bucket publik `nasa-irsa-spherex`** lewat HTTP range, sekitar 0,4 detik per berkas.
-- **Satu koordinat baru butuh 2,5-6 menit** (258-545 eksposur, medan 6 menit busur). Contoh aman karena sudah jadi berkas statis.
+- **Piksel dibaca langsung dari bucket publik `nasa-irsa-spherex`** (wilayah us-east-1, sekitar 260 milidetik bolak-balik dari Indonesia) lewat HTTP range. `remote.py` meminta tepat bagian yang dibutuhkan: lima permintaan dan sekitar 1,25 MB per eksposur. Lewat astropy dan fsspec satu eksposur butuh sekitar 360 permintaan dan 10,7 MB, hampir semuanya untuk HDU FLAGS yang terkompresi per baris; cara itu tinggal sebagai cadangan.
+- **Satu koordinat baru butuh sekitar 1 sampai 1,5 menit** (diukur pada 291 dan 334 eksposur; sebelumnya 2,5 menit di laptop dan 6 menit di server). Yang paling lama sekarang unduhan itu sendiri: sekitar 360 MB untuk 291 eksposur. Contoh aman karena sudah jadi berkas statis.
 - **Frame dibuat selebar 6 menit busur.** Itu menambah waktu sekitar sepertiga dibanding 2 menit busur (157 lawan 115 detik pada satu uji), dengan hasil ukur yang sama.
 - **Citra WISE dipotong dari satu petak unWISE.** Di dekat tepi petak citranya terpotong; pipeline meminta ulang dari petak tetangga dan memakai yang menutup medan paling banyak. Epsilon Indi B tertutup 90%, empat contoh lain di atas 99%.
 
@@ -140,6 +140,14 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: kenapa benda baru lambat, dan perbaikannya.** Diukur di laptop dan di server, keduanya di Indonesia.
+  - Sebab: tiap eksposur dibaca dengan sekitar 360 permintaan kecil berurutan (10,7 MB, 21-30 detik sendirian). Hampir semuanya untuk penanda piksel (FLAGS), yang disimpan terkompresi satu baris per petak dan dibaca 64 KB per baris.
+  - Perbaikan 1, `remote.py`: susunan berkas tetap, jadi header, baris IMAGE, tabel penunjuk dan baris FLAGS, serta tabel panjang gelombang diminta langsung. Hasilnya identik dengan cara lama pada semua larik (citra, penanda, panjang gelombang, lebar pita, posisi, header) di tiga detektor. Unduhan 291 eksposur: 264 jadi sekitar 45 detik di server.
+  - Perbaikan 2, `frames.coarse_map`: transformasi langit ke piksel dihitung di kisi 16 piksel lalu diinterpolasi. Galat posisi terukur sekitar 0,00001 piksel detektor; dari 37 gambar, 0,007% piksel berbeda satu tingkat abu. Menyusun frame: 34 jadi 9 detik di server.
+  - Perbaikan 3: WISE dimulai sejak awal, citra medan lebar berjalan berbarengan dengan frame, dan rentang besarnya dipecah jadi permintaan serentak.
+  - Gerak, spektrum (291 titik), dan statistik frame Wolf 359 identik sebelum dan sesudah.
+  - Menambah jumlah unduhan serentak di atas 32 tidak membantu: batasnya sekarang jumlah byte.
+  - Alat spektrofotometri IRSA menaksir waktunya 1,67 detik per citra ditambah 50 detik (dari halaman bantuannya, tidak diukur di sini): sekitar 9 menit untuk 291 citra.
 - **TEMUAN: latar dan lensa adalah langit yang sama, dan itu terukur.** Latar (citra SPHEREx 40 menit busur) dipusatkan tepat di bawah lensa. Korelasi silang antara isi lensa 6 menit busur dan petak latar yang sama pada Epsilon Indi B: 0,91, dengan selisih letak 0,8 detik busur (kurang dari setengah piksel layar saat lensa menutup). Pada 1440 x 900 lensa adalah pembesaran 2,5 kali atas latar di tingkat 6 menit busur, dan 7,4 kali di tingkat 2 menit busur.
 - **KEPUTUSAN (Wildan): rasa teleskop harus nyata, bukan hiasan.** Menjauh dari tingkat terlebar menutup lensa ke latar; mengeklik cincin membukanya lagi; pindah tempat memakai arah, jarak sudut, dan koordinat yang sebenarnya. Tidak ada bintang karangan.
 - **TEMUAN: riwayat WISE dan zoom lensa jalan.** Letak posisi di citra WISE diperiksa pada Epsilon Indi B: posisi yang diprediksi dari gerak diri katalog cocok dengan bintang di citra 2010 dan 2024 dalam 0,2 piksel (0,5 detik busur). Kelima contoh dibuat ulang selebar 6 menit busur; gerak terukurnya sama dengan sebelumnya. WISE 0855 redup di tampilan ini dan sulit dilihat tanpa memperbesar.

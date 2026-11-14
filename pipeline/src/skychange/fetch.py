@@ -5,6 +5,10 @@ potongan (tabel PSF ikut) dan ~11 detik per berkas. Di sini hanya header dan
 baris piksel yang dibutuhkan yang dibaca lewat HTTP range, lalu disimpan
 sebagai .npz kecil supaya tidak perlu diunduh ulang. HDU VARIANCE sengaja
 tidak dibaca: galat fluks dihitung dari sebaran latar di sekitar target.
+
+Pembacaan memakai `remote.py` (beberapa permintaan tepat sasaran per berkas). Cara
+lama lewat astropy dan fsspec tetap ada sebagai cadangan kalau susunan sebuah
+berkas berbeda dari yang diandaikan.
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS, FITSFixedWarning
 
+from .remote import Head, Layout
 from .search import Exposure
 
 from astropy import log as _astropy_log
@@ -31,6 +36,8 @@ warnings.filterwarnings("ignore", module="astropy.wcs")
 
 FSSPEC = {"block_size": 64 * 1024, "cache_type": "bytes"}
 DETECTOR_PX = 2040
+# Utas untuk bagian-bagian satu berkas; terpisah dari utas per berkas di fetch_all.
+_PARTS = ThreadPoolExecutor(256, thread_name_prefix="part")
 
 
 @dataclass
@@ -73,6 +80,52 @@ def _padded_section(hdu, x0: int, y0: int, n: int, fill):
 
 
 def _read_remote(exp: Exposure, ra: float, dec: float, n: int) -> dict | None:
+    try:
+        return _read_direct(exp, ra, dec, n)
+    except Layout:
+        return _read_lazy(exp, ra, dec, n)
+
+
+def _read_direct(exp: Exposure, ra: float, dec: float, n: int) -> dict | None:
+    """Lima permintaan per berkas: awal berkas, baris IMAGE, tabel dan baris FLAGS,
+    dan tabel panjang gelombang."""
+    head = Head(exp.url)
+    header = head.header
+    x, y = WCS(header).world_to_pixel_values(ra, dec)
+    x0, y0 = int(round(float(x))) - n // 2, int(round(float(y))) - n // 2
+    if x0 + n <= 0 or y0 + n <= 0 or x0 >= DETECTOR_PX or y0 >= DETECTOR_PX:
+        return None  # posisi jatuh di luar detektor ini
+    image = np.full((n, n), float("nan"), dtype=np.float32)
+    flags = np.zeros((n, n), dtype=np.int32)
+    xa, xb = max(x0, 0), min(x0 + n, DETECTOR_PX)
+    ya, yb = max(y0, 0), min(y0 + n, DETECTOR_PX)
+    # Tiga bagian berkas diminta serentak: tiap permintaan ke server di seberang
+    # samudra butuh beberapa kali bolak-balik, jadi berurutan berarti menunggu tiga kali.
+    wave = _PARTS.submit(head.wave_table)
+    if xa < xb and ya < yb:
+        img = _PARTS.submit(head.image_rows, ya, yb, xa, xb)
+        flg = _PARTS.submit(head.flag_rows, ya, yb, xa, xb)
+        image[ya - y0 : yb - y0, xa - x0 : xb - x0] = img.result()
+        flags[ya - y0 : yb - y0, xa - x0 : xb - x0] = flg.result()
+    yy, xx = np.mgrid[y0 : y0 + n, x0 : x0 + n]
+    with wave.result() as hdul:
+        lam, bw = WCS(header, fobj=hdul, key="W").pixel_to_world_values(xx, yy)
+    return {
+        "image": image,
+        "flags": flags,
+        "lam": np.asarray(lam, dtype=np.float32),
+        "bandwidth": np.asarray(bw, dtype=np.float32),
+        "x0": x0,
+        "y0": y0,
+        "header": header.tostring(),
+        "mjd": float(header["MJD-AVG"]),
+        "omega_sr": float(header["OMEGA_MEDIAN"]) / 206264.806**2,
+    }
+
+
+def _read_lazy(exp: Exposure, ra: float, dec: float, n: int) -> dict | None:
+    """Cara lama: astropy membuka berkas lewat fsspec. Lambat (ratusan permintaan
+    kecil per berkas) tapi tidak bergantung pada susunan berkas."""
     with fits.open(exp.url, use_fsspec=True, fsspec_kwargs=FSSPEC) as hdul:
         header = hdul["IMAGE"].header
         x, y = WCS(header).world_to_pixel_values(ra, dec)

@@ -48,6 +48,45 @@ def sky_grid(ra0: float, dec0: float, fov_arcsec: float, size_px: int):
     return ra, dec
 
 
+# Jarak titik kendali di grid keluaran, piksel. Transformasi langit ke piksel
+# detektor sangat halus pada jarak ini, jadi interpolasi liniernya meleset jauh di
+# bawah seperseribu piksel detektor (diukur: lihat pipeline/README.md).
+MAP_STEP = 16
+
+
+def _spread(coarse: np.ndarray, at: np.ndarray, n: int, axis: int) -> np.ndarray:
+    """Interpolasi linier nilai di indeks `at` ke semua indeks 0..n-1 sepanjang `axis`."""
+    full = np.arange(n)
+    k = np.clip(np.searchsorted(at, full, side="right") - 1, 0, len(at) - 2)
+    t = (full - at[k]) / (at[k + 1] - at[k])
+    lo, hi = np.take(coarse, k, axis=axis), np.take(coarse, k + 1, axis=axis)
+    shape = [1, 1]
+    shape[axis] = n
+    t = t.reshape(shape)
+    return lo * (1 - t) + hi * t
+
+
+def coarse_map(to_pixel, ra: np.ndarray, dec: np.ndarray, step: int = MAP_STEP):
+    """Posisi piksel untuk tiap titik grid langit, tanpa memanggil WCS di tiap titik.
+
+    WCS (dengan distorsinya) hanya dihitung di titik kendali tiap `step` piksel
+    keluaran; di antaranya diinterpolasi linier. Menyusun satu frame butuh
+    transformasi untuk ratusan ribu piksel kali puluhan eksposur, dan itulah yang
+    paling lama setelah unduhan."""
+    ny, nx = ra.shape
+    iy = np.unique(np.append(np.arange(0, ny, step), ny - 1))
+    ix = np.unique(np.append(np.arange(0, nx, step), nx - 1))
+    if len(iy) < 2 or len(ix) < 2:
+        x, y = to_pixel(ra, dec)
+        return np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    cx, cy = to_pixel(ra[np.ix_(iy, ix)], dec[np.ix_(iy, ix)])
+    out = []
+    for c in (cx, cy):
+        rows = _spread(np.asarray(c, dtype=float), ix, nx, axis=1)
+        out.append(_spread(rows, iy, ny, axis=0))
+    return out[0], out[1]
+
+
 def _bilinear(im: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     h, w = im.shape
     x0 = np.floor(x).astype(int)
@@ -79,7 +118,7 @@ def stack(cutouts: list[Cutout], ra: np.ndarray, dec: np.ndarray):
     """
     layers, sat, bad, lost = [], [], [], []
     for c in cutouts:
-        x, y = c.world_to_cutout(ra, dec)
+        x, y = coarse_map(c.world_to_cutout, ra, dec)
         im = c.image.astype(float)
         layer = _bilinear(im - np.nanmedian(im), x, y)
         fl = _nearest(c.flags, x, y, 0)

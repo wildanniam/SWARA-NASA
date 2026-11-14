@@ -24,6 +24,7 @@ from PIL import Image
 
 from . import frames as fr
 from .fetch import DETECTOR_PX, Cutout
+from .remote import Head, Layout
 from .search import Exposure
 
 FOV_ARCSEC = 2400.0
@@ -48,21 +49,45 @@ def _read_wide(exp: Exposure, ra: float, dec: float, n: int, cache: Path) -> dic
     if path.exists():
         with np.load(path) as z:
             return {k: z[k] for k in z.files}
-    with fits.open(exp.url, use_fsspec=True, fsspec_kwargs=FSSPEC) as hdul:
-        header = hdul["IMAGE"].header
-        x, y = WCS(header).world_to_pixel_values(ra, dec)
-        x0, y0 = int(round(float(x))) - n // 2, int(round(float(y))) - n // 2
-        xa, xb = max(x0, 0), min(x0 + n, DETECTOR_PX)
-        ya, yb = max(y0, 0), min(y0 + n, DETECTOR_PX)
-        if xa >= xb or ya >= yb:
-            return None
-        image = np.full((n, n), np.nan, dtype=np.float32)
-        image[ya - y0 : yb - y0, xa - x0 : xb - x0] = hdul["IMAGE"].section[ya:yb, xa:xb]
-        data = {"image": image, "x0": x0, "y0": y0, "header": header.tostring()}
+    try:
+        data = _wide_direct(exp, ra, dec, n)
+    except Layout:
+        data = _wide_lazy(exp, ra, dec, n)
+    if data is None:
+        return None
     tmp = path.with_suffix(".tmp.npz")
     np.savez_compressed(tmp, **data)
     tmp.rename(path)
     return data
+
+
+def _window(header, ra: float, dec: float, n: int):
+    x, y = WCS(header).world_to_pixel_values(ra, dec)
+    x0, y0 = int(round(float(x))) - n // 2, int(round(float(y))) - n // 2
+    return x0, y0, max(x0, 0), min(x0 + n, DETECTOR_PX), max(y0, 0), min(y0 + n, DETECTOR_PX)
+
+
+def _wide_direct(exp: Exposure, ra: float, dec: float, n: int) -> dict | None:
+    """Dua permintaan: awal berkas, lalu baris-baris IMAGE dalam satu rentang."""
+    head = Head(exp.url)
+    x0, y0, xa, xb, ya, yb = _window(head.header, ra, dec, n)
+    if xa >= xb or ya >= yb:
+        return None
+    image = np.full((n, n), np.nan, dtype=np.float32)
+    image[ya - y0 : yb - y0, xa - x0 : xb - x0] = head.image_rows(ya, yb, xa, xb)
+    return {"image": image, "x0": x0, "y0": y0, "header": head.header.tostring()}
+
+
+def _wide_lazy(exp: Exposure, ra: float, dec: float, n: int) -> dict | None:
+    """Cara lama lewat astropy dan fsspec, kalau susunan berkasnya berbeda."""
+    with fits.open(exp.url, use_fsspec=True, fsspec_kwargs=FSSPEC) as hdul:
+        header = hdul["IMAGE"].header
+        x0, y0, xa, xb, ya, yb = _window(header, ra, dec, n)
+        if xa >= xb or ya >= yb:
+            return None
+        image = np.full((n, n), np.nan, dtype=np.float32)
+        image[ya - y0 : yb - y0, xa - x0 : xb - x0] = hdul["IMAGE"].section[ya:yb, xa:xb]
+        return {"image": image, "x0": x0, "y0": y0, "header": header.tostring()}
 
 
 def _flatten(image: np.ndarray) -> np.ndarray:
@@ -112,8 +137,8 @@ def build_context(cutouts: list[Cutout], ra: float, dec: float, out: Path, cache
     layers = []
     for w in wide:
         wcs = WCS(fits.Header.fromstring(str(w["header"])))
-        x, y = wcs.world_to_pixel_values(gra, gdec)
-        layers.append(fr._bilinear(_flatten(w["image"]), np.asarray(x) - int(w["x0"]), np.asarray(y) - int(w["y0"])))
+        x, y = fr.coarse_map(wcs.world_to_pixel_values, gra, gdec)
+        layers.append(fr._bilinear(_flatten(w["image"]), x - int(w["x0"]), y - int(w["y0"])))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         image = np.nanmedian(layers, axis=0)
