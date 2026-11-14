@@ -48,7 +48,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Koordinat di URL | Ada |
 | Penanda kontaminasi | Ada: piksel jenuh dan rusak |
 | Menjumlahkan data per detektor | Ada: satu frame = median per detektor per kunjungan |
-| Pengguna memilih lebar medan | Ada: seluruh langit, pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
+| Pengguna memilih lebar medan | Ada: peta seluruh langit yang bisa diperbesar sampai medan 1,8 derajat, pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
 | Menimpa data WISE atau Gaia | Ada untuk WISE (W2, 2010-2024, untuk dilihat); Gaia belum |
 | Menjumlah atau mengurangkan citra antar waktu | Belum |
 | Mudah diperbarui saat rilis data baru | Sebagian: nama koleksi masih tertulis di kode |
@@ -138,6 +138,12 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: peta seluruh langit bisa diperbesar dan digeser sampai resolusi SPHEREx.** IRSA melayani peta DR1 sebagai potongan HiPS sampai order 5 (12,9 detik busur per piksel) yang boleh dibaca langsung dari browser. Viewer menggambarnya dengan WebGL di atas peta dasar, dalam proyeksi Hammer yang kerangkanya berputar ke utara-di-atas saat diperbesar. Menyelam ke satu tempat sekarang zoom yang menyambung sampai pandangan lebarnya. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
+  - Terukur di lokal (Chromium headless dengan GPU laptop): titik langit di bawah kursor bergeser paling banyak 0,41 px per langkah zoom; waktu per bingkai saat menggeser median 16,7 ms; pada medan 51 derajat titik ujung garis rasi jatuh di bintang peta dengan median selisih 0,70 px (33 bintang).
+  - Peta pada zoom terdalam di Barnard's Star lawan pandangan lebar 40 menit busurnya: selisih letak 3,5 detik busur, korelasi 0,80.
+  - Tiap potongan butuh sekitar 1 sampai 2 detik dari Indonesia. Potongan tujuan mulai dimuat saat penanda ditunjuk atau titik dibidik; kalau belum tiba, ujung gerak menyelam tampak lunak. Tidak ada permintaan ke IRSA sebelum orang memperbesar.
+  - Menunjuk penanda sekarang menampilkan cuplikan citra asli tempat itu dan angka terukurnya.
+  - Tanpa WebGL peta tetap tampil sebagai gambar diam (diuji dengan WebGL dimatikan).
 - **TEMUAN: pembuka seluruh langit jalan.** Situs tanpa tautan ke satu tempat dibuka di peta seluruh langit SPHEREx DR1: tingkat terluar teleskop (seluruh langit, pandangan lebar 40′, lensa). Menjauh dari pandangan lebar atau tombol Whole sky membukanya; memilih penanda, tombol "Show me a moving star", atau titik yang dibidik membuat peta membesar ke titik itu lalu larut ke tempatnya. Cara kerja dan kontraknya di [pipeline/README.md](pipeline/README.md) dan [web/DESIGN.md](web/DESIGN.md).
   - Sumber: HiPS kubus SPHEREx DR1 di IRSA (rilis 1 November 2026), 102 panjang gelombang, data 30 April 2025 sampai 20 Mei 2026; enam peta dipakai, satu per band. Resolusinya sekitar 6,9 menit busur per piksel.
   - Diuji di browser: lima contoh dan enam look, bacaan koordinat di bawah penunjuk cocok dengan posisi (Orion terbaca 5h 35m 17s, −5° 23′ 24″), bidikan dan Esc, enam panjang gelombang, penanda menyelam tanpa gerak berpindah, kembali ke tempat terakhir, rantai zoom dua langkah dari pandangan lebar, tautan langsung, gerak dikurangi, layar 390 px, dan pesan saat API tidak terjangkau (permintaan sengaja digagalkan). Bidikan sampai ke tempat diuji dengan respons API yang dimock ke bundle yang sudah ada.

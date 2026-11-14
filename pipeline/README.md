@@ -96,6 +96,8 @@ uv run --extra sky skychange allsky
 
 **`constellations`**: `names` (nama rasi per singkatan IAU), `labels` (titik label), `lines` (garis rasi, RA dan Dec dalam derajat), dan `grid`: singkatan rasi di kisi 0,5 derajat dari batas resmi IAU (astropy), dipadatkan per baris sebagai pasangan (indeks, panjang). Garis rasi dari d3-celestial oleh Olaf Frohn (lisensi BSD-3-Clause, commit dicatat di `source`).
 
+**Zoom di viewer.** Enam peta ini adalah lapis dasar. Saat peta diperbesar, viewer membaca potongan HiPS yang sama langsung dari IRSA (`<source.url>/Norder{k}/Dir{10000*floor(n/10000)}/Npix{n}_{frame}.png`, order 1 sampai 5, 512 piksel per potongan, 12,9 detik busur per piksel di order 5) dan menaruhnya di atas lapis dasar; `source.url` dan `frames[].frame` di manifest adalah yang dipakainya. Susunan piksel di dalam potongan sama dengan yang dipastikan di sini.
+
 Peta ini untuk orientasi; tidak ada yang diukur darinya. Beberapa bercak hitam di dekat daerah yang sangat terang adalah celah di peta SPHEREx sendiri.
 
 ## spectrum.json (kontrak untuk sonifikasi)
