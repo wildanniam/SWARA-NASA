@@ -1203,13 +1203,9 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
       <footer className="atlas-foot">
         <div className="atlas-intro">
           <h1>The whole sky</h1>
-          <p>
-            Our galaxy runs across the middle. Every point of light is SPHEREx data, here at {lambda || "one wavelength"}.{" "}
-            {!gl
-              ? "Choose a spot to look closer."
-              : touch
-                ? "Pinch to zoom in, drag to move, and tap to aim the telescope."
-                : "Scroll to zoom in, drag to move, and click to aim the telescope."}
+          <p>Every point of light is SPHEREx data, here at {lambda || "one wavelength"}. Our galaxy runs across the middle.</p>
+          <p className="atlas-hint">
+            {!gl ? "Choose a spot to look closer" : touch ? "Pinch to zoom · drag to move · tap to aim" : "Scroll to zoom · drag to move · click to aim"}
           </p>
         </div>
 

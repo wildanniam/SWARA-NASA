@@ -4335,3 +4335,123 @@ kbd {
     display: none;
   }
 }
+
+/* ---------- peta seluruh langit memenuhi layar ---------- */
+
+.atlas-hint {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Di layar lebar halaman ini bukan lagi "gambar lalu kaki halaman": elipsnya sebesar
+   yang muat di layar, dan judul serta kontrol menempati sudut kosongnya (elips selalu
+   menyisakan empat sudut). Estetikanya tetap, hanya tidak ada lagi ruang mati. */
+@media (min-width: 861px) {
+  .atlas {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .atlas-head {
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .atlas-stage {
+    position: absolute;
+    inset: 90px 0 12px;
+  }
+
+  .atlas-plot {
+    width: min(100vw - 28px, calc((100dvh - 102px) * 2));
+  }
+
+  /* Tombol zoom dan keterangan pindah ke sudut atas pelat; sudut bawah untuk judul dan kontrol. */
+  .atlas-zoom {
+    top: 10px;
+    bottom: auto;
+  }
+
+  .atlas-status {
+    top: 10px;
+    bottom: auto;
+  }
+
+  .atlas-foot {
+    position: absolute;
+    inset: auto 30px 22px;
+    z-index: 2;
+    justify-self: stretch;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "intro controls"
+      "tour controls";
+    gap: 14px 24px;
+    width: auto;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .atlas-foot > * {
+    pointer-events: auto;
+  }
+
+  /* Saat diperbesar langit sampai ke sudut; gradasi gelap menjaga teksnya terbaca. */
+  .atlas-foot::before {
+    content: "";
+    position: absolute;
+    inset: -70px -30px -22px;
+    z-index: -1;
+    background: linear-gradient(to top, rgb(5 6 11 / 0.92), rgb(5 6 11 / 0.6) 55%, transparent);
+    opacity: 0;
+    transition: opacity 300ms ease;
+    pointer-events: none;
+  }
+
+  .atlas[data-zoomed="true"] .atlas-foot::before {
+    opacity: var(--veil, 1);
+  }
+
+  .atlas-intro {
+    grid-area: intro;
+    max-width: 300px;
+    text-shadow:
+      0 0 14px var(--void),
+      0 0 4px var(--void);
+  }
+
+  .atlas-intro h1 {
+    font-size: 21px;
+  }
+
+  .atlas-intro p {
+    margin-top: 7px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .atlas-intro .atlas-hint {
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+
+  .atlas-tour {
+    grid-area: tour;
+    justify-self: start;
+  }
+
+  .atlas-controls {
+    grid-area: controls;
+    align-self: end;
+    width: 312px;
+  }
+}
