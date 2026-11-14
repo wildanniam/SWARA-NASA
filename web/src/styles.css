@@ -4299,3 +4299,39 @@ kbd {
     right: 14px;
   }
 }
+
+/* ---------- cahaya langit di luar elips ---------- */
+
+/* Halaman tempat berlatar langit; halaman peta dulu berlatar hitam polos. Ini peta yang
+   sama, diperbesar dan dikaburkan di belakang pelat: pita Bima Sakti merembes sampai ke
+   tepi layar. Tidak ada elemen baru untuk dibaca. Hilang saat peta diperbesar, karena
+   saat itu ia tidak lagi cocok dengan yang tampil. */
+.atlas-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--veil, 1);
+  transition: opacity 500ms ease;
+  -webkit-mask-image: radial-gradient(ellipse 80% 78% at 50% 46%, #000 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 78% at 50% 46%, #000 45%, transparent 100%);
+}
+
+.atlas-glow canvas {
+  position: absolute;
+  aspect-ratio: 2;
+  transform: translate(-50%, -50%) scale(2.1, 2.3);
+  filter: blur(32px) brightness(1.7) saturate(1.1);
+}
+
+.atlas[data-zoomed="true"] .atlas-glow,
+.atlas[data-look="paper"] .atlas-glow {
+  opacity: 0;
+}
+
+@media (max-width: 860px) {
+  .atlas-glow {
+    display: none;
+  }
+}
