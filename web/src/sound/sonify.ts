@@ -10,10 +10,22 @@ export type Note = {
   dur: number;
   /** null = langkah tanpa data. */
   hz: number | null;
+  /** Pengali volume nada ini; default 1 (perilaku lama). */
+  vol?: number;
   unverified: boolean;
   /** -1 kiri .. 1 kanan. */
   pan: number;
   lambda: number;
+};
+
+/** Kebutuhan minimum penjadwal: dipenuhi SoundSettings maupun ScanSettings. */
+export type Voice = {
+  waveform: OscillatorType;
+  unverifiedWaveform: OscillatorType;
+  unverifiedGain: number;
+  gapTick: boolean;
+  gapTickHz: number;
+  gapTickGain: number;
 };
 
 /** Fluks -> frekuensi. Fluks nol = nada dasar, `top` = nada tertinggi. */
@@ -50,7 +62,7 @@ export function schedule(
   out: AudioNode,
   notes: Note[],
   at: number,
-  s: SoundSettings = SOUND,
+  s: Voice,
 ): AudioScheduledSourceNode[] {
   const sources: AudioScheduledSourceNode[] = [];
   for (const n of notes) {
@@ -61,7 +73,7 @@ export function schedule(
     const pan = ctx.createStereoPanner();
     const start = at + n.t;
     const dur = tick ? 0.012 : n.dur;
-    const peak = tick ? s.gapTickGain : n.unverified ? s.unverifiedGain : 1;
+    const peak = (tick ? s.gapTickGain : n.unverified ? s.unverifiedGain : 1) * (n.vol ?? 1);
     osc.type = tick ? "sine" : n.unverified ? s.unverifiedWaveform : s.waveform;
     osc.frequency.value = tick ? s.gapTickHz : n.hz!;
     pan.pan.value = n.pan;

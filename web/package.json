@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:scan": "tsc --ignoreConfig src/lib/scan.test.ts src/lib/scan.ts src/sound/sonify.ts src/sound/mapping.ts --outDir /tmp/opencode/scanjs --module commonjs --target es2022 --lib es2022,dom --strict --skipLibCheck --types node && node /tmp/opencode/scanjs/lib/scan.test.js"
   },
   "engines": {
     "node": "24.x"

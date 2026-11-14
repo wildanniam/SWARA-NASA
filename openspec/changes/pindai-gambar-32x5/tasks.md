@@ -7,9 +7,9 @@
 
 ## 2. Frasa pindai 32x5
 
-- [ ] 2.1 Implementasikan ekstraksi puncak per kolom dari abu display setelah tone sebelum palet (maks 5 puncak, tick untuk kolom kosong, flag mask untuk timbre, earcon tengah) dan verifikasi: uji unit dengan citra sintetis (satu titik, tiga titik, kosong, berflag) lolos
-- [ ] 2.2 Tambahkan parameter rasa pindai (kolom, nada maks, durasi, ambang, timbre flag, tick, earcon) sebagai usulan di `sound/mapping.ts` dan verifikasi: nilai default terdokumentasi dan tidak mengubah rasa spektrum/gerak existing (uji dengar existing tetap sama)
-- [ ] 2.3 Jadwalkan frasa pindai lewat engine existing (satu AudioContext, stop bersih, tanpa tumpuk dengan motif gerak) dan verifikasi: putar-henti-putar cepat tidak menumpuk nada (cek manual + tidak ada error console)
+- [x] 2.1 Implementasikan ekstraksi puncak per kolom dari abu display setelah tone sebelum palet (maks 5 puncak, tick untuk kolom kosong, flag mask untuk timbre, earcon tengah) dan verifikasi: uji unit dengan citra sintetis (satu titik, tiga titik, kosong, berflag) lolos
+- [x] 2.2 Tambahkan parameter rasa pindai (kolom, nada maks, durasi, ambang, timbre flag, tick, earcon) sebagai usulan di `sound/mapping.ts` dan verifikasi: nilai default terdokumentasi dan tidak mengubah rasa spektrum/gerak existing (uji dengar existing tetap sama)
+- [x] 2.3 Jadwalkan frasa pindai lewat engine existing (satu AudioContext, stop bersih, tanpa tumpuk dengan motif gerak) dan verifikasi: putar-henti-putar cepat tidak menumpuk nada (cek manual + tidak ada error console)
 
 ## 3. Integrasi viewer
 

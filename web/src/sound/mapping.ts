@@ -70,3 +70,49 @@ export const MOTION = {
 };
 
 export type MotionSettings = typeof MOTION;
+
+// Sapuan gambar 32x5 (usul awal dari measurements.md; nilai akhir wewenang Alif).
+// Satu sapuan = 32 kolom melintasi medan 6 menit busur, tiap kolom hingga 5 nada.
+// Ambang dan normalisasi dihitung per objek per band saat ekstraksi.
+
+export const SCAN = {
+  /** Jumlah kolom barat-ke-timur. */
+  columns: 32,
+  /** Nada serentak terbanyak per kolom (puncak terkuat). */
+  maxNotes: 5,
+  /** Detik per kolom: 32 x 0,34 ~ 11 detik per kunjungan. */
+  colSeconds: 0.34,
+  /** Bagian tiap kolom yang berbunyi; sisanya jeda antar kolom. */
+  noteFill: 0.8,
+  /** Ambang puncak = latar + kSigma * sigma (diukur: k=4, lihat measurements.md). */
+  kSigma: 4,
+  /** Batas atas volume = min(255, p98 * topMargin). */
+  topMargin: 1.25,
+  /** Volume minimum puncak yang lolos ambang, supaya tetap terdengar. */
+  minVol: 0.08,
+
+  /** Nada baris paling utara, Hz (A3). Selatan turun `octaves` oktaf. */
+  baseHz: 220,
+  octaves: 2,
+  scale: [0, 2, 4, 7, 9],
+
+  /** Bentuk gelombang nada data; kolom berflag memakai yang kasar. */
+  waveform: "triangle" as OscillatorType,
+  unverifiedWaveform: "sawtooth" as OscillatorType,
+  unverifiedGain: 0.45,
+
+  /** Kolom tanpa puncak: ketukan pelan penanda waktu berjalan. */
+  gapTick: true,
+  gapTickHz: 1400,
+  gapTickGain: 0.12,
+
+  /** Earcon tengah medan: nada pendek berbeda dari nada data. */
+  earconHz: 1760,
+  earconSeconds: 0.15,
+  earconGain: 0.5,
+
+  /** Jarak minimum antar puncak, piksel pada citra 480px. */
+  minDistPx: 6,
+};
+
+export type ScanSettings = typeof SCAN;
