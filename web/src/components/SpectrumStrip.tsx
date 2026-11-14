@@ -9,6 +9,7 @@ import {
   fluxLabel,
   fluxTop,
   isUsable,
+  stepIndexAt,
   LAMBDA_MAX,
   LAMBDA_MIN,
   type Bin,
@@ -83,6 +84,7 @@ export function SpectrumStrip(p: Props) {
     }
   });
   const headRef = useRef<SVGLineElement>(null);
+  const headLabelRef = useRef<SVGTextElement>(null);
   const listenRef = useRef(p.onListen);
   listenRef.current = p.onListen;
   const hearRef = useRef(p.onHear);
@@ -103,6 +105,7 @@ export function SpectrumStrip(p: Props) {
   const stop = useCallback(() => {
     sonifier.stop();
     if (headRef.current) headRef.current.style.visibility = "hidden";
+    if (headLabelRef.current) headLabelRef.current.textContent = "";
     p.soundRing.current?.setAttribute("stroke-dasharray", "0 100");
     setPlay(undefined);
     setPlayVisit(undefined);
@@ -149,7 +152,11 @@ export function SpectrumStrip(p: Props) {
         setPlayVisit(play.visits[i]);
         listenRef.current(play.visits[i]);
       }
-      const lambda = LAMBDA_MIN + clamp01(frac) * (LAMBDA_MAX - LAMBDA_MIN);
+      // Penanda mengikuti nada, bukan waktu kontinu: jepret ke tengah langkah.
+      const bins = binned.get(play.visits[i]) ?? [];
+      const k = stepIndexAt(clamp01(frac), SOUND.steps);
+      const bin = bins[k];
+      const lambda = bin ? bin.lambda : LAMBDA_MIN + clamp01(frac) * (LAMBDA_MAX - LAMBDA_MIN);
       const band = (bands.find((b) => lambda >= b.lambda_min && lambda < b.lambda_max) ?? bands[bands.length - 1])?.id;
       if (frac >= 0 && band !== lastBand) {
         lastBand = band;
@@ -162,6 +169,10 @@ export function SpectrumStrip(p: Props) {
         head.setAttribute("x1", String(x));
         head.setAttribute("x2", String(x));
         head.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
+      }
+      const headLabel = headLabelRef.current;
+      if (headLabel) {
+        headLabel.textContent = frac >= 0 && frac <= 1 ? `${k + 1}/${SOUND.steps} · ${lambda.toFixed(2)} µm` : "";
       }
       p.soundRing.current?.setAttribute("stroke-dasharray", `${clamp01(frac) * 100} 100`);
       raf = requestAnimationFrame(tick);
@@ -287,6 +298,10 @@ export function SpectrumStrip(p: Props) {
               <path key={w.id} className="spec-other" d={linePath(binned.get(w.id) ?? [])} />
             ))}
             {drawn && <path className="spec-line" d={linePath((shown && binned.get(shown)) || [])} />}
+          {drawn &&
+            ((shown && binned.get(shown)) || [])
+              .filter((b) => b.lowConf && b.flux !== null)
+              .map((b, i) => <circle key={i} className="spec-ring" cx={xOf(b.lambda)} cy={y(b.flux!)} r={3.5} />)}
             {unusable.map((q, i) => (
               <line
                 key={i}
@@ -316,6 +331,7 @@ export function SpectrumStrip(p: Props) {
             )}
             {hover && <circle className="spec-hover" cx={xOf(hover.lambda_um)} cy={y(Math.min(hover.flux_jy, top))} r={5} />}
             <line ref={headRef} className="spec-head" x1={M.left} y1={M.top - 6} x2={M.left} y2={baseline} />
+          <text ref={headLabelRef} className="spec-label" x={M.left + 4} y={M.top - 2} textAnchor="start" />
           </svg>
 
           <div className="segments" role="group" aria-label="Image band, by wavelength">

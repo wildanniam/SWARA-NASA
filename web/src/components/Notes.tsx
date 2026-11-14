@@ -109,6 +109,9 @@ export function Notes({ open, onClose, manifest, win, frame }: Props) {
               <i className="key key-ring" /> flagged saturated, value not verified
             </li>
             <li>
+              <i className="key key-ring" /> hollow ring on the line: narrow dip hidden by averaging
+            </li>
+            <li>
               <i className="key key-tick" /> measured but unusable
             </li>
           </ul>

@@ -157,8 +157,8 @@ describe("phrase", () => {
   it("memberi vol 1 dan lowConf false supaya suara lama tidak berubah", () => {
     const notes = phrase(
       [
-        { lambda: 1, flux: 0.5, unverified: false },
-        { lambda: 2, flux: null, unverified: false },
+        { lambda: 1, flux: 0.5, unverified: false, lowConf: false },
+        { lambda: 2, flux: null, unverified: false, lowConf: false },
       ],
       1,
     );

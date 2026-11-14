@@ -62,7 +62,20 @@ export type Bin = {
   flux: number | null;
   /** Nilainya hanya dari titik yang ditandai jenuh oleh SPHEREx. */
   unverified: boolean;
+  /** Lembah sempit yang terhapus median: ada titik dalam yang jauh di bawah
+   *  median langkah ini. Terdengar beda, pitch tetap mengikuti median. */
+  lowConf: boolean;
 };
+
+/** Ambang lembah: titik terdalam di bawah (1 - DIP_FRAC) × median, dengan
+ *  SNR cukup untuk dipercaya sebagai lembah beneran, bukan derau. */
+export const DIP_FRAC = 0.3;
+export const DIP_MIN_SNR = 5;
+
+/** Indeks langkah yang sedang berbunyi dari pecahan frasa 0-1. */
+export function stepIndexAt(frac: number, steps: number): number {
+  return Math.min(steps - 1, Math.max(0, Math.floor(frac * steps)));
+}
 
 /** Satu kunjungan dibagi rata menjadi `steps` langkah panjang gelombang. */
 export function binVisit(points: SpectrumPoint[], windowId: string, steps: number): Bin[] {
@@ -77,10 +90,17 @@ export function binVisit(points: SpectrumPoint[], windowId: string, steps: numbe
     // Titik jenuh kadang melonjak jauh; selama ada titik bersih di langkah yang sama, pakai itu.
     const clean = cell.filter((p) => p.flag === "ok");
     const used = clean.length ? clean : cell;
+    const fluxes = used.map((p) => p.flux_jy);
+    const med = fluxes.length ? median(fluxes) : null;
+    // Lembah sempit yang terhapus median: titik terdalam jauh di bawah median
+    // dan cukup signifikan untuk dipercaya sebagai lembah beneran, bukan derau.
+    const trusted = used.filter((p) => p.snr >= DIP_MIN_SNR);
+    const dip = trusted.length ? Math.min(...trusted.map((p) => p.flux_jy)) : null;
     return {
       lambda: LAMBDA_MIN + (i + 0.5) * width,
-      flux: used.length ? median(used.map((p) => p.flux_jy)) : null,
+      flux: med,
       unverified: used.length > 0 && !clean.length,
+      lowConf: med !== null && dip !== null && dip < (1 - DIP_FRAC) * med,
     };
   });
 }

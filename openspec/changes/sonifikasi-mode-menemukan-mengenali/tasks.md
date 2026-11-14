@@ -30,8 +30,8 @@
 
 ## 6. Mode Spektrum
 
-- [ ] 6.1 Implementasikan penanda lowConf pada binning 102 → 48 (lembah sempit terhapus) + timbre penanda tanpa mengubah pitch; verifikasi: data sintetis dengan lembah sempit — nadanya bertanda tetapi pitch tetap mengikuti fluks bin, dan angka mentah terbaca di teks.
-- [ ] 6.2 Implementasikan pitch follower nada-per-nada di SpectrumStrip; verifikasi: saat nada ke-N berbunyi, penanda menunjuk langkah ke-N dengan label panjang gelombang yang benar (Epsilon Indi B: 48 nada utuh).
+- [x] 6.1 Implementasikan penanda lowConf pada binning 102 → 48 (lembah sempit terhapus) + timbre penanda tanpa mengubah pitch; verifikasi: data sintetis dengan lembah sempit — nadanya bertanda tetapi pitch tetap mengikuti fluks bin, dan angka mentah terbaca di teks.
+- [x] 6.2 Implementasikan pitch follower nada-per-nada di SpectrumStrip; verifikasi: saat nada ke-N berbunyi, penanda menunjuk langkah ke-N dengan label panjang gelombang yang benar (Epsilon Indi B: 48 nada utuh).
 
 ## 7. Uji pendengar dan submission
 

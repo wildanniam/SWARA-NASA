@@ -61,7 +61,7 @@ export function phrase(bins: Bin[], top: number, s: SoundSettings = SOUND): Note
     hz: b.flux === null ? null : pitch(b.flux, top, s),
     unverified: b.unverified,
     vol: 1,
-    lowConf: false,
+    lowConf: b.lowConf,
     pan: bins.length > 1 ? (i / (bins.length - 1)) * 2 * s.pan - s.pan : 0,
     lambda: b.lambda,
   }));
