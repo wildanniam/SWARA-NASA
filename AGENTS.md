@@ -59,7 +59,7 @@ Urutan platform berikutnya:
 
 1. Input RA dan Dec: pratinjau "dibaca sebagai" dan klik di peta sudah ada; dua kotak berlabel belum.
 2. Halaman proyek dan video demo berbahasa Inggris.
-3. Identitas visual: logo (belum ada; yang dipakai sekarang tanda sementara) dan penerapan arah tarot dan rasi bintang ke cuplikan penanda, hasil Go to, dan halaman pembuka. Guide sudah diganti bacaan tiga kartu. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
+3. Identitas visual: logo sudah ada; sisanya penerapan ke cuplikan penanda dan hasil Go to. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
 Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), dan pembuka seluruh langit.
 
@@ -138,6 +138,7 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **KEPUTUSAN (Wildan): logo SWARA, dok bergaya skala instrumen, dan peta seluruh langit memenuhi layar.** Logo: tanda cakram ambar dengan bintang empat sudut berlubang, dan nama SWARA digambar satu garis; dipilih dari enam jenis dan lima variasi tanda. Dok: kotak panel diganti skala yang terukir, baris diberi label II Path dan III Light. Peta: elips sebesar layar, kontrol di sudut kosongnya. Usulan bingkai dan dek kartu di sisi peta ditolak karena terlalu ramai; ruang kosong tidak dijawab dengan menambah panel atau kartu. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
 - **KEPUTUSAN (Wildan): bilah atas diberi karakter ukiran kartu, Guide berganti nama jadi "The cards", dan ada mode fokus layar penuh (F).** Alasannya: bilah lama terasa seperti aplikasi biasa dan "Guide" menjanjikan petunjuk padahal isinya cerita benda. Dok bawah belum diubah. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
 - **TEMUAN: menyelam dari seluruh langit tersendat karena bug penjadwalan, sudah diperbaiki.** Tiap bingkai gerak otomatis menjadwalkan lukisan dua kali, jadi jumlahnya berlipat dua tiap bingkai. Di situs live sebelum: 108 bingkai dalam 6 detik, bingkai terpanjang 1,7 detik; sesudah: 390 bingkai, terpanjang 17,7 ms. Uji kecepatan berikutnya perlu mengukur tiap gerak otomatis, bukan hanya geser.
 - **KEPUTUSAN (Wildan): Guide diganti bacaan tiga kartu, dan tarot serta rasi bintang mulai diterapkan sebagai sistem.** Alasannya: laci Guide terlalu banyak teks dan tidak menjelaskan bendanya. Syaratnya: boleh liar, tetapi tetap nyambung dengan desain kosmik yang sudah ada. Aturannya di [web/DESIGN.md](web/DESIGN.md): alat ukur saat orang mengukur, kartu saat SWARA bercerita.

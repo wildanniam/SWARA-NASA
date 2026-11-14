@@ -14,7 +14,7 @@ Keputusan Wildan, 14 November 2026: **tarot dan rasi bintang** menjadi DNA visua
 
 Cara kita memakainya: tarot memberi **formatnya** (kartu tinggi, jendela melengkung, angka Romawi, pita julukan, sinar), langit memberi **isinya**. Tiap tempat yang di kartu tarot diisi hiasan, di sini diisi data. Emasnya adalah aksen ambar yang sudah ada, dan huruf tidak berubah.
 
-Yang sudah memakai arah ini: kartu berbagi, peta seluruh langit, dan bacaan tiga kartu yang menggantikan Guide (lihat di bawah). Yang belum ada dan perlu dibuat: **logo** (sekarang hanya tanda sementara: cincin lensa dan satu titik), lalu penerapan arah ini ke cuplikan penanda, hasil Go to, dan halaman pembuka.
+Yang sudah memakai arah ini: kartu berbagi, peta seluruh langit, dan bacaan tiga kartu yang menggantikan Guide (lihat di bawah). Yang belum: penerapan arah ini ke cuplikan penanda dan hasil Go to.
 
 Dua watak, satu aturan: **alat ukur saat orang mengukur** (lensa, garis waktu, tombol putar, bacaan koordinat), **kartu saat SWARA bercerita** (bacaan, kartu berbagi). Tarot tidak ditempel di semua tempat. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
 
@@ -138,6 +138,19 @@ Tombol **The cards** (dulu Guide) membuka dialog di tengah layar berisi kartu, b
 
 - **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (mengekliknya kembali ke seluruh langit), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
 - **Mode fokus** (tombol pojok atau F): bilah atas dan dok menghilang, lensa membesar, nama di kiri dan angka terukur di kanan tetap ada. Browser diminta masuk layar penuh; kalau ditolak, mode fokus tetap jalan. Esc, F, atau tombol kecil di pojok untuk keluar. Blink tetap dengan Spasi dan panah.
+
+## Logo
+
+Dua bagian (`web/src/components/Logo.tsx`; bentuk yang sama ada di `web/public/favicon.svg` dan di kartu berbagi, `lib/card.ts`):
+
+- **Tanda:** cakram ambar dengan bintang empat sudut yang dilubangi, sehingga langit di belakangnya terlihat lewat bintang itu. Dipakai sendirian di tempat sempit: ikon tab, ponsel, avatar.
+- **Nama:** SWARA digambar satu garis berujung bulat, A tanpa palang, dan bintang ambar kecil sebagai palang A pertama.
+- Saat ditunjuk, bintang di tanda berputar seperdelapan putaran: berkelip, bukan berputar penuh.
+- Dipilih Wildan (14 November 2026) dari enam jenis (wordmark garis, monogram, tanda abstrak, ruang negatif, emblem, wordmark huruf) dan lima variasi tanda.
+
+## Halaman seluruh langit di layar lebar
+
+Elips sebesar yang muat di layar; judul dan kontrol menempati sudut kosong elips (kiri bawah: judul, satu kalimat, petunjuk, tombol tur; kanan bawah: panjang gelombang dan look; kanan atas pelat: zoom). Tidak ada kaki halaman. Ponsel tetap bertumpuk.
 
 ## Pangkat tombol
 
