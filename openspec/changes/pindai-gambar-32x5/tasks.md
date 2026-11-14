@@ -2,8 +2,8 @@
 
 ## 1. Ukur ambang dari preset
 
-- [ ] 1.1 Ukur distribusi terang kolom 32 di 5 preset (Barnard, Eps Indi B, RW Aur, WISE 0855, R Dra) per band dan tetapkan ambang puncak + normalisasi per objek per band; verifikasi: tabel angka tercatat di change dan tidak ada kolom yang 100% kosong atau 100% penuh di Eps Indi B
-- [ ] 1.2 Tetapkan posisi pemicu Listen (ganti tombol Listen spektrum vs tombol terpisah) dan perilaku "All visits"; verifikasi: keputusan tertulis satu paragraf di change sebelum grup 3 dimulai
+- [x] 1.1 Ukur distribusi terang kolom 32 di 5 preset (Barnard, Eps Indi B, RW Aur, WISE 0855, R Dra) per band dan tetapkan ambang puncak + normalisasi per objek per band; verifikasi: tabel angka tercatat di change dan tidak ada kolom yang 100% kosong atau 100% penuh di Eps Indi B
+- [x] 1.2 Tetapkan posisi pemicu Listen (ganti tombol Listen spektrum vs tombol terpisah) dan perilaku "All visits"; verifikasi: keputusan tertulis satu paragraf di change sebelum grup 3 dimulai
 
 ## 2. Frasa pindai 32x5
 

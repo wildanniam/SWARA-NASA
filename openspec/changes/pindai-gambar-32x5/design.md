@@ -42,5 +42,9 @@ Lihat `proposal.md` untuk motivasi. Keadaan sekarang: Listen memutar 48 nada spe
 
 ## Open Questions
 
-- Ambang puncak dan normalisasi volume per objek per band: diukur saat implementasi dari 5 preset, tidak mengubah spec.
-- Posisi pemicu Listen (mengganti tombol Listen spektrum vs tombol terpisah) diputuskan saat apply; spec berlaku untuk keduanya.
+- Ambang puncak dan normalisasi volume per objek per band: sudah diukur, lihat
+  `measurements.md` (thr = bg + 4*sig, top = min(255, p98*1.25)).
+- ~~Posisi pemicu Listen diputuskan saat apply~~ diputuskan (task 1.2):
+  tombol Listen existing diganti menjadi pemicu sapuan gambar (suara spektrum
+  48 nada dihapus dari tombol itu), dan tombol All visits memutar sapuan tiap
+  kunjungan berurutan dari yang pertama sampai yang tampil.
