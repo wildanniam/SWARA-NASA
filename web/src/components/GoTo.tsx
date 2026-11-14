@@ -1,11 +1,13 @@
 import { ArrowRight, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { atlasUrl, constellationAt, decDms, raHms, readCoordinates, toMap, type Atlas } from "../lib/allsky";
 import { KIND_LABEL } from "../content";
 import { assetUrl, defaultBand, findFrame, loadManifest, type Manifest, type TargetRef } from "../lib/bundle";
 import { coord } from "../lib/format";
 import { useDialog } from "../lib/hooks";
 import { paint } from "../lib/paint";
-import { LUTS } from "../lib/palette";
+import { LUTS, type PaletteId } from "../lib/palette";
+import { loadGray, paintSky } from "../lib/skyimage";
 
 type Props = {
   open: boolean;
@@ -21,7 +23,46 @@ type Props = {
   building: Set<string>;
   currentId?: string;
   onPick: (id: string) => void;
+  /** Peta seluruh langit, untuk menunjukkan di mana koordinat yang diketik berada. */
+  atlas?: Atlas;
+  look: PaletteId;
 };
+
+/** Di mana koordinat yang sedang diketik berada di langit, sebelum dikirim. */
+function ReadAs({ atlas, look, ra, dec }: { atlas: Atlas; look: PaletteId; ra: number; dec: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const frame = atlas.frames.find((f) => f.band === atlas.default_band) ?? atlas.frames[0];
+    let alive = true;
+    loadGray(atlasUrl(frame.small))
+      .then((gray) => alive && ref.current && paintSky(ref.current, gray, LUTS[look]))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [atlas, look]);
+  const p = toMap(atlas, ra, dec);
+  const x = (p.x / atlas.projection.width) * 100;
+  const y = (p.y / atlas.projection.height) * 100;
+  const where = atlas.constellations.names[constellationAt(atlas, ra, dec)];
+  return (
+    <div className="readas" role="status">
+      <div className="readas-map" aria-hidden="true">
+        <canvas ref={ref} />
+        <span className="readas-mark" style={{ left: `${x}%`, top: `${y}%` }} />
+      </div>
+      <p>
+        <span className="readas-label">Read as</span>
+        <span className="mono">
+          RA {raHms(ra)}
+          <br />
+          Dec {decDms(dec)}
+        </span>
+        {where && <span className="readas-where">In {where}</span>}
+      </p>
+    </div>
+  );
+}
 
 const manifests = new Map<string, Promise<Manifest>>();
 
@@ -124,6 +165,18 @@ export function GoTo(p: Props) {
             {p.error}
           </p>
         )}
+
+        {(() => {
+          const reading = readCoordinates(p.query);
+          if (!reading) return null;
+          if ("error" in reading)
+            return p.error ? null : (
+              <p className="goto-error" role="status">
+                {reading.error}
+              </p>
+            );
+          return p.atlas ? <ReadAs atlas={p.atlas} look={p.look} ra={reading.ra} dec={reading.dec} /> : null;
+        })()}
 
         <p className="goto-hint">
           Try a name like <b>Wolf 359</b>, or a position like <span className="mono">269.4463 +4.7682</span>.{" "}
