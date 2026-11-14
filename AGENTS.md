@@ -57,11 +57,13 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 Urutan platform berikutnya:
 
-1. Pilihan warna yang dikurasi, tombol Share dan Guide yang menonjol, kartu berbagi.
-2. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
+1. Kartu berbagi (bentuknya dipilih Wildan dari mockup dulu; tanpa kata "discovery").
+2. Input RA dan Dec yang lebih mudah: dua kotak berlabel, pratinjau "dibaca sebagai", dan memaafkan salah ketik.
 3. Halaman proyek dan video demo berbahasa Inggris.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, dan peralihan WISE ke SPHEREx yang setara tampilannya.
+Tambahan yang disetujui Wildan untuk sesudahnya: peta seluruh langit sebagai pembuka, tabel pengukuran per kunjungan, selisih citra antar waktu, label kualitas data per benda, kurva terang per kunjungan, unduh CSV spektrum, dan tutorial tiga langkah (paling akhir).
+
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, dan tombol Share serta Guide.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -138,6 +140,7 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: enam look terkurasi.** Ember, Glacier, Aurora, Nebula, Mono, Paper. Terang relatif tiap peta diperiksa di 256 tingkat: lima naik terus, Paper turun terus, tidak ada yang berbalik arah. Masukan teman Wildan: Copy link dan Notes tidak terasa bisa diklik; keduanya diganti Share (berbingkai aksen) dan Guide (dengan penanda sampai dibuka, dimulai dengan legenda bergambar).
 - **TEMUAN: kenapa pindah dari WISE ke SPHEREx terasa meloncat, dan perbaikannya.**
   - Sebab terukur: latar citra WISE bernilai abu 23-33 dari 255 sedangkan latar frame SPHEREx 0; rata-rata terang lensa 2-4 kali lebih tinggi; dan citra dari layanan WiseView terpotong di 500 satuan, jadi bintang terang menyilaukan (Barnard's Star: rata-rata 57 lawan 14).
   - Layanan WiseView menerima rentang terang dan parameter asinh. Diperiksa dengan tiga permintaan: keluarannya mengikuti `AsinhStretch` astropy dalam satu tingkat abu, jadi bisa dikembalikan ke satuan unWISE.

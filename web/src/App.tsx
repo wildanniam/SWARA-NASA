@@ -1,17 +1,18 @@
 import {
   CaretLeft,
   CaretRight,
-  CircleHalf,
+  BookOpenText,
   Flag,
-  LinkSimple,
   MagnifyingGlass,
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
-  Notebook,
+  Palette,
   Pause,
   Play,
+  ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
+  SunDim,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
@@ -42,7 +43,7 @@ import {
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
-import { LUTS, type PaletteId } from "./lib/palette";
+import { backdropPalette, isPalette, lookGradient, LOOKS, LUTS, REVEAL_LUT, type PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
@@ -82,6 +83,8 @@ const LINK_RA = Number(LINK.get("ra") ?? NaN);
 const LINK_DEC = Number(LINK.get("dec") ?? NaN);
 const LINK_HAS_POSITION = Number.isFinite(LINK_RA) && Number.isFinite(LINK_DEC);
 const LINK_VIEW = LINK.get("view");
+const LINK_LOOK = LINK.get("look");
+const GUIDE_KEY = "swara.guide";
 
 type Era = "long" | "spherex";
 
@@ -114,7 +117,19 @@ export function App() {
   const slotRef = useRef<HTMLDivElement>(null);
   const zoomerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
-  const [palette, setPalette] = useState<PaletteId>("heat");
+  const [palette, setPalette] = useState<PaletteId>(isPalette(LINK_LOOK) ? LINK_LOOK : "heat");
+  // Roda filter: pilihan look di cincin lensa.
+  const [wheelOpen, setWheelOpen] = useState(false);
+  // Mengangkat yang redup di lensa dan latar.
+  const [reveal, setReveal] = useState(false);
+  // Penanda kecil di tombol Guide sampai pernah dibuka sekali.
+  const [guideSeen, setGuideSeen] = useState(() => {
+    try {
+      return window.localStorage.getItem(GUIDE_KEY) === "1";
+    } catch {
+      return true;
+    }
+  });
   const [showFlags, setShowFlags] = useState(false);
   const [motionSound, setMotionSound] = useState(false);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
@@ -129,6 +144,16 @@ export function App() {
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
   const images = useImageStore();
+
+  const openGuide = useCallback(() => {
+    setNotesOpen(true);
+    setGuideSeen(true);
+    try {
+      window.localStorage.setItem(GUIDE_KEY, "1");
+    } catch {
+      // penyimpanan diblokir: penandanya hanya muncul lagi lain kali
+    }
+  }, []);
 
   const bandFromLink = useRef(LINK.get("band"));
   const viewFromLink = useRef(LINK_VIEW);
@@ -317,8 +342,9 @@ export function App() {
     } else p.set("target", targetId);
     p.set("band", bandId);
     if (manifest.wise?.frames.length && era === "spherex") p.set("view", "spherex");
+    if (palette !== "heat") p.set("look", palette);
     window.history.replaceState(null, "", `${window.location.pathname}?${p}`);
-  }, [targetId, bandId, manifest, job, era]);
+  }, [targetId, bandId, manifest, job, era, palette]);
 
   // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
   useEffect(() => {
@@ -518,8 +544,20 @@ export function App() {
         setGotoOpen(true);
         return;
       }
-      if (e.key.toLowerCase() === "n") {
-        setNotesOpen(true);
+      if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "g") {
+        openGuide();
+        return;
+      }
+      if (e.key.toLowerCase() === "c") {
+        setPalette((cur) => LOOKS[(LOOKS.findIndex((l) => l.id === cur) + 1) % LOOKS.length].id);
+        return;
+      }
+      if (e.key.toLowerCase() === "r") {
+        setReveal((v) => !v);
+        return;
+      }
+      if (e.key === "Escape") {
+        setWheelOpen(false);
         return;
       }
       if (e.key === " " && !el.closest("button, a")) {
@@ -540,7 +578,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, chooseBand, manifest, zoom]);
+  }, [step, chooseBand, manifest, zoom, openGuide]);
 
   // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
   const shownBandId =
@@ -668,6 +706,7 @@ export function App() {
       ? `${long ? "SPHEREx " : ""}${microns(band.lambda_min, band.lambda_max)}`
       : "";
   // Citra WISE dilukis dengan aturan regangan yang sama dengan frame SPHEREx.
+  const targetName = target?.name;
   const firstWise = wise?.frames[0];
   const firstWiseImage = images.get(firstWise && targetId ? assetUrl(targetId, custom, firstWise.image) : undefined);
   // Hanya untuk bundle lama: yang baru sudah ditulis pipeline dengan aturan itu.
@@ -676,6 +715,14 @@ export function App() {
     shownWise && wise && !wise.matched && firstWiseImage && targetId
       ? wiseTone(targetId, firstWiseImage, soften)
       : undefined;
+  // Reveal faint ditumpuk di atas penyetaraan nada WISE kalau keduanya berlaku.
+  const shownTone = useMemo(() => {
+    if (!reveal) return tone;
+    if (!tone) return REVEAL_LUT;
+    const both = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) both[v] = REVEAL_LUT[tone[v]];
+    return both;
+  }, [reveal, tone]);
   const description = !target
     ? "Infrared image"
     : shownWise
@@ -731,12 +778,24 @@ export function App() {
     return notes;
   }, [manifest]);
 
-  const copyLink = useCallback(() => {
-    void navigator.clipboard?.writeText(window.location.href).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    });
-  }, []);
+  // Berbagi: di ponsel lewat lembar berbagi sistem, di tempat lain tautannya disalin.
+  const share = useCallback(() => {
+    const url = window.location.href;
+    const copy = () =>
+      navigator.clipboard?.writeText(url).then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1800);
+      });
+    const touch = window.matchMedia?.("(pointer: coarse)").matches;
+    if (touch && typeof navigator.share === "function") {
+      const title = targetName ? `${targetName} on SWARA` : "SWARA";
+      void navigator
+        .share({ title, text: "Watch this patch of sky change and hear its spectrum.", url })
+        .catch((err: unknown) => {
+          if (!(err instanceof DOMException && err.name === "AbortError")) void copy();
+        });
+    } else void copy();
+  }, [targetName]);
 
   const openGoTo = () => {
     setFormError(undefined);
@@ -758,7 +817,8 @@ export function App() {
         id={target?.id}
         url={contextUrl}
         size={manifest?.context?.size_px}
-        lut={LUTS[palette]}
+        lut={LUTS[backdropPalette(palette)]}
+        tone={reveal ? REVEAL_LUT : undefined}
         geometry={geometry}
         bright={collapsed}
         bearing={route.bearing}
@@ -780,19 +840,20 @@ export function App() {
           <kbd aria-hidden="true">/</kbd>
         </button>
         <div className="top-actions">
-          <button type="button" className="pill pill-quiet" aria-label="Copy a link to this view" onClick={copyLink}>
-            <LinkSimple aria-hidden="true" />
-            <span aria-live="polite">{copied ? "Link copied" : "Copy link"}</span>
+          <button type="button" className="pill pill-share" aria-label="Share a link to this view" onClick={share}>
+            <ShareNetwork aria-hidden="true" />
+            <span aria-live="polite">{copied ? "Link copied" : "Share"}</span>
           </button>
           <button
             type="button"
-            className="pill pill-quiet"
-            aria-label="Notes on this view"
+            className="pill pill-guide"
+            aria-label="Guide to this view"
             aria-expanded={notesOpen}
-            onClick={() => setNotesOpen(true)}
+            data-new={!guideSeen}
+            onClick={openGuide}
           >
-            <Notebook aria-hidden="true" />
-            <span>Notes</span>
+            <BookOpenText aria-hidden="true" />
+            <span>Guide</span>
           </button>
         </div>
       </header>
@@ -815,7 +876,7 @@ export function App() {
           palette={palette}
           showFlags={showFlags}
           view={imageView}
-          tone={tone}
+          tone={shownTone}
           soften={soften}
           source={`${targetId ?? ""}:${shownWise ? "wise" : "spherex"}`}
           markView={markView}
@@ -857,12 +918,37 @@ export function App() {
             type="button"
             className="satellite"
             style={{ "--a": "126deg" } as React.CSSProperties}
-            aria-pressed={palette === "gray"}
-            aria-label="Gray scale"
-            data-tip="Gray scale"
-            onClick={() => setPalette((v) => (v === "heat" ? "gray" : "heat"))}
+            aria-expanded={wheelOpen}
+            aria-label="Choose a look"
+            data-tip={`Look: ${LOOKS.find((l) => l.id === palette)?.name}`}
+            onClick={() => setWheelOpen((v) => !v)}
           >
-            <CircleHalf aria-hidden="true" />
+            <Palette aria-hidden="true" />
+          </button>
+          {/* Roda filter: enam look terkurasi, berjajar di cincin seperti filter teleskop. */}
+          {wheelOpen &&
+            LOOKS.map((look, i) => (
+              <button
+                key={look.id}
+                type="button"
+                className="satellite swatch"
+                style={{ "--a": `${112 - i * 11}deg`, background: lookGradient(look.id, "135deg") } as React.CSSProperties}
+                aria-pressed={look.id === palette}
+                aria-label={`${look.name} look`}
+                data-tip={look.name}
+                onClick={() => setPalette(look.id)}
+              />
+            ))}
+          <button
+            type="button"
+            className="satellite"
+            style={{ "--a": "166deg" } as React.CSSProperties}
+            aria-pressed={reveal}
+            aria-label="Reveal faint things"
+            data-tip="Reveal faint"
+            onClick={() => setReveal((v) => !v)}
+          >
+            <SunDim aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -1104,6 +1190,7 @@ export function App() {
         win={win}
         frame={frame}
         wiseFrame={shownWise}
+        look={palette}
       />
 
       <p className="sr-only" role="status" aria-live="polite">

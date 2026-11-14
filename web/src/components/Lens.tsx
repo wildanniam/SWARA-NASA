@@ -143,7 +143,13 @@ export function Lens(p: Props) {
   const slotStyle = { "--k": p.collapseScale, "--foot": `${p.footprintPx}px` } as React.CSSProperties;
 
   return (
-    <div className="lens" data-open={open} data-status={p.status ?? "ready"} data-collapsed={p.collapsed}>
+    <div
+      className="lens"
+      data-open={open}
+      data-status={p.status ?? "ready"}
+      data-collapsed={p.collapsed}
+      data-look={p.palette}
+    >
       <div className="lens-slot" ref={p.slotRef} style={slotStyle}>
         <div className="lens-body" inert={p.collapsed}>
           <div className="lens-aperture">

@@ -11,6 +11,8 @@ type Props = {
   size?: number;
   /** Peta warna yang sama dengan lensa: latar adalah langit yang sama, lebih jauh. */
   lut: Uint8ClampedArray;
+  /** Pemetaan ulang tingkat abu sebelum diwarnai, sama dengan yang dipakai lensa. */
+  tone?: Uint8ClampedArray;
   /** Letak pusat lensa dan sisi latar, supaya bintangnya sejajar dengan isi lensa. */
   geometry?: SkyGeometry;
   /** Lensa sedang tertutup: latar tampil terang penuh sebagai pandangan lebar. */
@@ -27,7 +29,7 @@ type Layer = { id: string; url: string; bearing: { x: number; y: number } };
 /** Latar langit: citra SPHEREx medan lebar di posisi yang sama dengan lensa,
  *  dipusatkan tepat di bawahnya. Saat tempat berganti, latar lama bergeser pergi
  *  searah gerak teleskop dan latar baru datang dari arah sebaliknya. */
-export function Backdrop({ id, url, size = 720, lut, geometry, bright, bearing, slewMs, travel }: Props) {
+export function Backdrop({ id, url, size = 720, lut, tone, geometry, bright, bearing, slewMs, travel }: Props) {
   const [leaving, setLeaving] = useState<Layer>();
   const last = useRef<{ id?: string; url?: string }>({});
 
@@ -60,7 +62,7 @@ export function Backdrop({ id, url, size = 720, lut, geometry, bright, bearing, 
   return (
     <div className="backdrop" data-bright={bright} style={style} aria-hidden="true">
       {layers.map((l) => (
-        <SkyLayer key={l.id} {...l} size={size} lut={lut} travel={travel} onGone={() => setLeaving(undefined)} />
+        <SkyLayer key={l.id} {...l} size={size} lut={lut} tone={tone} travel={travel} onGone={() => setLeaving(undefined)} />
       ))}
       <div className="backdrop-veil" />
     </div>
@@ -71,6 +73,7 @@ function SkyLayer({
   url,
   size,
   lut,
+  tone,
   state,
   bearing,
   travel,
@@ -78,6 +81,7 @@ function SkyLayer({
 }: Layer & {
   size: number;
   lut: Uint8ClampedArray;
+  tone?: Uint8ClampedArray;
   state: "in" | "out";
   travel: number;
   onGone: () => void;
@@ -96,8 +100,8 @@ function SkyLayer({
   }, [url]);
 
   useEffect(() => {
-    if (image && canvasRef.current) paint(canvasRef.current, image, lut, size);
-  }, [image, lut, size]);
+    if (image && canvasRef.current) paint(canvasRef.current, image, lut, size, undefined, undefined, tone);
+  }, [image, lut, size, tone]);
 
   // Teleskop bergerak ke timur (kiri layar) berarti langit bergeser ke kanan;
   // bergerak ke utara (atas) berarti langit bergeser ke bawah.

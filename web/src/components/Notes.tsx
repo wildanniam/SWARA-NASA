@@ -1,5 +1,6 @@
 import { X } from "@phosphor-icons/react";
 import type { Frame, Manifest, TimeWindow, WiseFrame } from "../lib/bundle";
+import { lookGradient, LOOKS, type PaletteId } from "../lib/palette";
 import { coord, dayMonthYear, microns } from "../lib/format";
 import { useDialog } from "../lib/hooks";
 
@@ -11,6 +12,8 @@ type Props = {
   frame?: Frame;
   /** Citra WISE yang sedang tampil di lensa, kalau ada. */
   wiseFrame?: WiseFrame;
+  /** Look yang sedang dipakai, untuk legenda terangnya. */
+  look: PaletteId;
 };
 
 const KEYS: [string, string][] = [
@@ -18,14 +21,16 @@ const KEYS: [string, string][] = [
   ["← →", "step through visits"],
   ["1 to 6", "image band"],
   ["+ −", "zoom the lens, out to the wide view"],
+  ["C", "next look"],
+  ["R", "reveal faint things"],
   ["L", "listen to the spectrum"],
   ["M", "motion sound"],
   ["/", "go to a place"],
-  ["N", "these notes"],
+  ["G", "this guide"],
 ];
 
 /** Laci catatan: semua yang benar tapi tidak perlu tampil terus. */
-export function Notes({ open, onClose, manifest, win, frame, wiseFrame }: Props) {
+export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: Props) {
   const ref = useDialog<HTMLElement>(open, onClose);
   if (!open) return null;
   const ctx = manifest?.context;
@@ -38,13 +43,67 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame }: Props)
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <aside ref={ref} className="notes" role="dialog" aria-modal="true" aria-label="Notes on this view">
+      <aside ref={ref} className="notes" role="dialog" aria-modal="true" aria-label="Guide to this view">
         <header className="notes-head">
-          <h2>Notes</h2>
+          <h2>Guide</h2>
           <button type="button" className="round" aria-label="Close" data-autofocus onClick={onClose}>
             <X aria-hidden="true" />
           </button>
         </header>
+
+        <section>
+          <h3>Reading the lens</h3>
+          <ul className="guide-rows">
+            <li>
+              <svg viewBox="-14 -14 28 28" aria-hidden="true">
+                <path className="g-mark" d="M-11 0H-4M4 0H11M0 -11V-4M0 4V11" />
+              </svg>
+              <span>
+                <b>The mark</b> is where the object was at the first SPHEREx visit. It stays fixed on the sky, so
+                anything that leaves it has moved.
+              </span>
+            </li>
+            <li>
+              <svg viewBox="-14 -14 28 28" aria-hidden="true">
+                <path className="g-trail" d="M-9 7L0 1L9 -7" />
+                <circle className="g-dot" cx="0" cy="1" r="2.6" />
+                <circle className="g-dot g-dot-now" cx="9" cy="-7" r="2.6" />
+              </svg>
+              <span>
+                <b>The dots</b> are the position measured at each later visit. The filled one is the visit on
+                screen.
+              </span>
+            </li>
+            <li>
+              <svg viewBox="-14 -14 28 28" aria-hidden="true">
+                <circle className="g-ring" r="10" />
+                <path className="g-ring" d="M0 -10V-13M-10 0H-13" />
+                <path className="g-arc" d="M0 -10A10 10 0 0 1 10 0" />
+              </svg>
+              <span>
+                <b>The ring</b> has north at the top and east on the left. It fills while data is read and sweeps
+                while the spectrum plays.
+              </span>
+            </li>
+            <li>
+              <i className="g-ramp" style={{ background: lookGradient(look) }} aria-hidden="true" />
+              <span>
+                <b>The colours</b> ({LOOKS.find((l) => l.id === look)?.name}) run from faint to bright. Every look
+                keeps that order, so a look changes the mood, never which thing is brighter.
+              </span>
+            </li>
+            <li>
+              <svg viewBox="-14 -14 28 28" aria-hidden="true">
+                <circle className="g-reticle" r="7" />
+                <path className="g-reticle" d="M0 -7V-11M0 7V11M-7 0H-11M7 0H11" />
+              </svg>
+              <span>
+                <b>Zoom out</b> past the widest level and the lens closes onto the sky behind it, which is the
+                same place seen wider. Select the ring to look closer again.
+              </span>
+            </li>
+          </ul>
+        </section>
 
         {manifest && wiseFrame && (
           <section>
