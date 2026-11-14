@@ -130,8 +130,8 @@ export function scheduleMixed(
           })),
           ...(note.voice === "spectrum"
             ? [
-                { hz: note.hz! * 2, gain: 0.02 + heat * 0.12, waveform: "sine" as OscillatorType },
-                { hz: note.hz! * 3, gain: heat * 0.05, waveform: "triangle" as OscillatorType },
+                { hz: note.hz! * 2, gain: 0.015 + heat * 0.065, waveform: "sine" as OscillatorType },
+                { hz: note.hz! * 3, gain: heat * 0.02, waveform: "triangle" as OscillatorType },
               ]
             : []),
         ];
