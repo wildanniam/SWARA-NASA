@@ -162,7 +162,8 @@ export function Lens(p: Props) {
             <text className="ring-label" x={-(R + 14.5)} y={1.8} textAnchor="middle">
               E
             </text>
-            {p.status === "loading" && (
+            {/* Progres juga tampil saat lensa sudah berisi pratinjau dan sisanya masih dikumpulkan. */}
+            {(p.status === "loading" || (loadPct !== undefined && p.status !== "error")) && (
               <circle
                 className={loadPct === undefined ? "ring-arc ring-spin" : "ring-arc"}
                 r={R + 2.2}

@@ -8,6 +8,10 @@ bentuk yang sama seperti preset.
   GET  /api/sky/{id}       keadaan pekerjaan
   GET  /api/bundles/{id}/  manifest.json, spectrum.json, frames/*.png
 
+Selagi sebuah bundle dibuat, keadaan pekerjaan menyebut apa yang sudah siap:
+`wise` dan `context` (rinciannya di /api/bundles/{id}/preview.json), dan `seen_um`,
+panjang gelombang tiap eksposur yang sudah terbaca.
+
 Kalau variabel lingkungan SWARA_API_KEY diisi, setiap permintaan harus membawa
 kunci itu di header X-Swara-Key. Dipakai saat layanan terbuka ke internet dan
 hanya boleh dipanggil lewat proxy situsnya.
@@ -22,7 +26,7 @@ import os
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import astropy.units as u
@@ -81,6 +85,11 @@ class Job:
     done: int = 0
     total: int = 0
     error: str = ""  # no_data | failed
+    # Yang sudah bisa ditampilkan selagi bundle dibuat (lihat preview.json di folder bundle).
+    wise: bool = False
+    context: bool = False
+    # Panjang gelombang (mikron) yang diamati tiap eksposur yang sudah terbaca.
+    seen_um: list[float] = field(default_factory=list)
 
 
 class SkyRequest(BaseModel):
@@ -116,7 +125,18 @@ def create_app(bundles: Path, cache: Path) -> FastAPI:
 
         try:
             name = f"RA {job.ra:.4f} Dec {job.dec:+.4f}"
-            build(job.id, name, job.ra, job.dec, bundles, cache, log=log.info, progress=progress)
+            build(
+                job.id,
+                name,
+                job.ra,
+                job.dec,
+                bundles,
+                cache,
+                log=log.info,
+                progress=progress,
+                on_part=lambda kind: setattr(job, kind, True),
+                on_wavelength=lambda um: job.seen_um.append(round(um, 3)),
+            )
             job.status = "ready"
         except NoData:
             job.status, job.error = "error", "no_data"

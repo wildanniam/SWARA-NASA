@@ -95,7 +95,7 @@ Dengan `prefers-reduced-motion`: tidak ada geser, perpindahan, atau gerak pembes
 
 ## Keadaan yang wajib ada
 
-Memuat (cincin berputar), membuat bundle baru (cincin terisi sesuai jumlah eksposur), gagal (pesan dan coba lagi), tanpa data SPHEREx, tanpa spektrum (pita tetap menjadi pemilih band dan menjelaskan alasannya), posisi tidak terlacak, layanan tidak terjangkau. Semua kendali punya keadaan hover, fokus (garis luar ambar 2 px), ditekan, aktif, dan nonaktif.
+Memuat (cincin berputar), membuat bundle baru (cincin terisi sesuai jumlah eksposur; begitu riwayat WISE tiba lensa sudah memutarnya, pita spektrum menambah satu garis untuk tiap eksposur yang terbaca, dan blok temuan menghitung eksposur alih-alih menampilkan ukuran yang belum ada), gagal (pesan dan coba lagi), tanpa data SPHEREx, tanpa spektrum (pita tetap menjadi pemilih band dan menjelaskan alasannya), posisi tidak terlacak, layanan tidak terjangkau. Semua kendali punya keadaan hover, fokus (garis luar ambar 2 px), ditekan, aktif, dan nonaktif.
 
 ## Jujur soal data
 

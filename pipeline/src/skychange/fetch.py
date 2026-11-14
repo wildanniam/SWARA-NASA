@@ -197,8 +197,10 @@ def fetch_all(
     cache_root: Path,
     workers: int = 24,
     progress=None,
+    on_cutout=None,
 ) -> tuple[list[Cutout], list[tuple[Exposure, str]]]:
-    """Ambil semua cutout secara paralel. Mengembalikan (cutout, daftar gagal)."""
+    """Ambil semua cutout secara paralel. Mengembalikan (cutout, daftar gagal).
+    `on_cutout(cutout)` dipanggil tiap satu cutout selesai dibaca."""
     cache = cache_dir(cache_root, ra, dec, n)
     done: list[Cutout] = []
     failed: list[tuple[Exposure, str]] = []
@@ -210,6 +212,8 @@ def fetch_all(
                 c = fut.result()
                 if c is not None:
                     done.append(c)
+                    if on_cutout:
+                        on_cutout(c)
             except Exception as err:  # satu berkas gagal tidak menggagalkan target
                 failed.append((exp, f"{type(err).__name__}: {err}"))
             if progress:

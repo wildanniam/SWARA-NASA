@@ -6,6 +6,11 @@ export type SkyJob = {
   dec: number;
   status: "queued" | "running" | "ready" | "error";
   stage: "" | "search" | "fetch" | "frames" | "context" | "wise";
+  /** Yang sudah bisa ditampilkan selagi bundle dibuat. */
+  wise?: boolean;
+  context?: boolean;
+  /** Panjang gelombang (mikron) tiap eksposur yang sudah terbaca. */
+  seen_um?: number[];
   done: number;
   total: number;
   error: "" | "no_data" | "failed";
