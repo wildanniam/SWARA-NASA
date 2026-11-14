@@ -37,7 +37,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 | Permintaan wajib | Status |
 |---|---|
-| Web tool yang terbuka untuk publik | Belum di-deploy |
+| Web tool yang terbuka untuk publik | Ada: https://swara-nasa.vercel.app |
 | Pengguna memasukkan koordinat (RA dan Dec) | Ada: satu kotak untuk nama benda atau RA dan Dec |
 | Deretan citra patch itu "seperti video kecil" | Ada: 13-18 citra WISE lalu 3-4 kunjungan SPHEREx diputar berurutan; blink antar kunjungan SPHEREx |
 | Diuji pada Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | Sudah; lihat hasil per target |
@@ -57,18 +57,35 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 Urutan platform berikutnya:
 
-1. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
-2. Deploy: backend di VPS, frontend statis.
-3. Halaman proyek dan video demo berbahasa Inggris.
+1. Peralihan WISE ke SPHEREx yang lebih halus (nada citra disamakan, serah-terima yang terlihat).
+2. Pilihan warna yang dikurasi, tombol Share dan Guide yang menonjol, kartu berbagi.
+3. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
+4. Pemuatan bertahap untuk tempat baru: riwayat WISE dan langit lebar tampil lebih dulu.
+5. Halaman proyek dan video demo berbahasa Inggris.
 
-Sudah selesai: medan 6 menit busur dengan zoom di lensa, dan riwayat WISE di garis waktu.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, dan deploy publik.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
+
+## Deploy
+
+Situs publik: https://swara-nasa.vercel.app
+
+- **Frontend** di Vercel, proyek `swara-nasa`. Dibangun di mesin sendiri lalu diunggah, karena build membutuhkan `bundles/` di luar folder `web/`. Dari `web/`:
+  ```
+  vercel pull --yes --environment=production
+  vercel build --prod
+  vercel deploy --prebuilt --prod
+  ```
+- **API** di server tim sebagai layanan systemd `swara-api` ([deploy/swara-api.service](deploy/swara-api.service)), kode di `/opt/swara/app`, data di `/opt/swara/data`. Memperbarui: `git pull` di sana, lalu `systemctl restart swara-api`. Kalau dependensi berubah, pasang ulang dari `pipeline/requirements.txt` (dibuat dengan `uv export`).
+- **Sambungan.** `/api/...` di situs diteruskan ke API oleh `web/api/proxy.js`. Alamat API dan kunci bersamanya adalah pengaturan proyek Vercel (`SWARA_API_ORIGIN`, `SWARA_API_KEY`); kunci yang sama ada di `/etc/swara-api.env` di server. Jangan menulis alamat server atau kunci di repo.
+- Lima contoh adalah berkas statis di Vercel, jadi tetap terbuka kalau API mati. Yang butuh API hanya cari nama dan koordinat bebas.
 
 ## Struktur repo
 
 ```
 pipeline/     paket Python `skychange` (pencarian, cutout, frame, spektrum, bundle, API)
+deploy/       unit layanan untuk API
 bundles/      hasil pipeline untuk 5 contoh (frame, spektrum, citra medan lebar, riwayat WISE), dipakai langsung oleh viewer
 web/          viewer: blink, spektrum, suara (`web/src/sound/`)
 data/         cache unduhan dan bundle koordinat bebas; tidak ikut git
