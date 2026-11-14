@@ -39,6 +39,7 @@ from pydantic import BaseModel
 
 from .bundle import NoData, build
 from .resolve import resolve
+from .search import ArchiveUnavailable
 
 log = logging.getLogger("skychange.server")
 
@@ -87,7 +88,7 @@ class Job:
     stage: str = ""  # search | fetch | frames | context | wise
     done: int = 0
     total: int = 0
-    error: str = ""  # no_data | failed
+    error: str = ""  # no_data | archive | failed
     # Yang sudah bisa ditampilkan selagi bundle dibuat (lihat preview.json di folder bundle).
     wise: bool = False
     context: bool = False
@@ -143,6 +144,9 @@ def create_app(bundles: Path, cache: Path) -> FastAPI:
             job.status = "ready"
         except NoData:
             job.status, job.error = "error", "no_data"
+        except ArchiveUnavailable as err:
+            log.warning("build %s: arsip IRSA tidak menjawab (%s)", job.id, err)
+            job.status, job.error = "error", "archive"
         except Exception:
             log.exception("build %s gagal", job.id)
             job.status, job.error = "error", "failed"

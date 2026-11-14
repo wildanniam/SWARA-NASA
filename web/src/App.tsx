@@ -886,7 +886,9 @@ export function App() {
     statusText =
       job.error === "no_data"
         ? "SPHEREx has no usable images of this position."
-        : "This position could not be loaded.";
+        : job.error === "archive"
+          ? "NASA's SPHEREx archive (IRSA) is not answering right now. Try again in a minute."
+          : "This position could not be loaded.";
   } else if (job && pending) {
     if (job.status === "queued") statusText = "Waiting for a free slot…";
     else if (job.stage === "fetch") {
@@ -1465,7 +1467,8 @@ export function App() {
         </Lens>
 
         <section className="finding" aria-label="What was measured">
-          {manifest?.preview && job && (
+          {/* Setelah gagal tidak ada yang akan datang lagi: pesan dan Try again ada di lensa. */}
+          {manifest?.preview && job && !jobFailed && (
             <>
               <p className="finding-word">Collecting</p>
               <p className="finding-number">{expected ? `${collected} / ${expected}` : "…"}</p>

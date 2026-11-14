@@ -13,7 +13,8 @@ export type SkyJob = {
   seen_um?: number[];
   done: number;
   total: number;
-  error: "" | "no_data" | "failed";
+  /** archive: arsip IRSA tidak menjawab, juga setelah dicoba ulang di server. */
+  error: "" | "no_data" | "archive" | "failed";
   /** Nama yang dicari pengguna, kalau posisinya datang dari katalog. */
   label?: string | null;
   /** Besar gerak diri menurut katalog, detik busur per tahun. */

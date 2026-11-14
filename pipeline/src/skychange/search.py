@@ -10,6 +10,7 @@ import csv
 import io
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -56,17 +57,45 @@ def _file_url(row: dict) -> str:
         )
 
 
+# IRSA kadang membalas 5xx saat sibuk. Diamati 14-15 November 2026: "502 Proxy Error" untuk
+# spherex_dr1 enam kali berturut-turut, spherex_qr3 berselang-seling. Kegagalan sesaat dicoba
+# ulang dengan jeda yang makin panjang. Kalau tetap gagal, pembuatan bundle berhenti dengan
+# ArchiveUnavailable: lebih baik gagal terus terang daripada bundle yang diam-diam kurang eksposur.
+RETRY_STATUS = {429, 500, 502, 503, 504}
+RETRY_DELAYS = (1.0, 2.0, 4.0, 8.0)
+RETRY_BUDGET_S = 90.0
+
+
+class ArchiveUnavailable(RuntimeError):
+    """Layanan SIA IRSA tidak menjawab, juga setelah dicoba ulang."""
+
+
+def _get(params: dict[str, str]) -> httpx.Response:
+    deadline = time.monotonic() + RETRY_BUDGET_S
+    last: Exception | None = None
+    for delay in (*RETRY_DELAYS, None):
+        try:
+            r = httpx.get(SIA_URL, params=params, timeout=60)
+            if r.status_code not in RETRY_STATUS:
+                r.raise_for_status()
+                return r
+            last = httpx.HTTPStatusError(f"HTTP {r.status_code}", request=r.request, response=r)
+        except httpx.TransportError as err:
+            last = err
+        if delay is None or time.monotonic() + delay > deadline:
+            break
+        time.sleep(delay)
+    raise ArchiveUnavailable(f"SIA {params.get('COLLECTION')}: {last}") from last
+
+
 def _query(collection: str, ra: float, dec: float, radius_deg: float) -> list[Exposure]:
-    r = httpx.get(
-        SIA_URL,
-        params={
+    r = _get(
+        {
             "COLLECTION": collection,
             "POS": f"circle {ra} {dec} {radius_deg}",
             "RESPONSEFORMAT": "CSV",
-        },
-        timeout=120,
+        }
     )
-    r.raise_for_status()
     if not r.text.startswith("s_ra"):
         raise RuntimeError(f"SIA {collection} membalas bukan CSV: {r.text[:200]}")
     out = []
