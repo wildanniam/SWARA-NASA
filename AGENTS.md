@@ -48,7 +48,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Koordinat di URL | Ada |
 | Penanda kontaminasi | Ada: piksel jenuh dan rusak |
 | Menjumlahkan data per detektor | Ada: satu frame = median per detektor per kunjungan |
-| Pengguna memilih lebar medan | Ada: lensa bisa diperbesar, 6, 3, atau 2 menit busur |
+| Pengguna memilih lebar medan | Ada: pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
 | Menimpa data WISE atau Gaia | Ada untuk WISE (W2, 2010-2024, untuk dilihat); Gaia belum |
 | Menjumlah atau mengurangkan citra antar waktu | Belum |
 | Mudah diperbarui saat rilis data baru | Sebagian: nama koleksi masih tertulis di kode |
@@ -123,6 +123,8 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: latar dan lensa adalah langit yang sama, dan itu terukur.** Latar (citra SPHEREx 40 menit busur) dipusatkan tepat di bawah lensa. Korelasi silang antara isi lensa 6 menit busur dan petak latar yang sama pada Epsilon Indi B: 0,91, dengan selisih letak 0,8 detik busur (kurang dari setengah piksel layar saat lensa menutup). Pada 1440 x 900 lensa adalah pembesaran 2,5 kali atas latar di tingkat 6 menit busur, dan 7,4 kali di tingkat 2 menit busur.
+- **KEPUTUSAN (Wildan): rasa teleskop harus nyata, bukan hiasan.** Menjauh dari tingkat terlebar menutup lensa ke latar; mengeklik cincin membukanya lagi; pindah tempat memakai arah, jarak sudut, dan koordinat yang sebenarnya. Tidak ada bintang karangan.
 - **TEMUAN: riwayat WISE dan zoom lensa jalan.** Letak posisi di citra WISE diperiksa pada Epsilon Indi B: posisi yang diprediksi dari gerak diri katalog cocok dengan bintang di citra 2010 dan 2024 dalam 0,2 piksel (0,5 detik busur). Kelima contoh dibuat ulang selebar 6 menit busur; gerak terukurnya sama dengan sebelumnya. WISE 0855 redup di tampilan ini dan sulit dilihat tanpa memperbesar.
 - **KEPUTUSAN:** nama produk SWARA; arah produk seperti di bagian Konsep.
 - **TEMUAN:** layanan WiseView memberi frame WISE 2010-2024 untuk satu posisi dalam sekitar 3 detik. Dicoba pada WISE 0855, Epsilon Indi B, dan Luhman 16: ketiganya terlihat bergerak. Gambarnya sudah diregangkan, jadi untuk dilihat, bukan diukur.
