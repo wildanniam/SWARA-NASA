@@ -37,6 +37,8 @@ type Props = {
   onRetry?: () => void;
   /** Busur di cincin yang digerakkan langsung oleh pemutar suara. */
   soundRing: RefObject<SVGCircleElement | null>;
+  /** Garis pindai vertikal; digerakkan langsung oleh sapuan gambar. */
+  scanLineRef: RefObject<SVGLineElement | null>;
   /** Kotak tata letak lensa; diukur supaya latar bisa dipusatkan di bawahnya. */
   slotRef: RefObject<HTMLDivElement | null>;
   /** Isi lensa yang dibesarkan dan dikecilkan saat berganti pembesaran. */
@@ -189,6 +191,14 @@ export function Lens(p: Props) {
                       <line x1={0} y1={gap} x2={0} y2={gap + arm} />
                     </g>
                   ))}
+              </svg>
+              <svg
+                className="lens-scan"
+                viewBox="0 0 32 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <line ref={p.scanLineRef} className="scan-line" x1={-10} y1={0} x2={-10} y2={100} />
               </svg>
             </div>
             <div className="lens-scale" style={{ width: `${(scaleArcsec / p.viewArcsec) * 100}%` }} aria-hidden="true">

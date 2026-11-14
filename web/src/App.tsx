@@ -41,6 +41,7 @@ import {
   type TargetRef,
 } from "./lib/bundle";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
+import { readFramePixels } from "./lib/framePixels";
 import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
 import { backdropPalette, isPalette, lookGradient, LOOKS, LUTS, REVEAL_LUT, type PaletteId } from "./lib/palette";
@@ -140,9 +141,8 @@ export function App() {
   const [gotoOpen, setGotoOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Band yang sedang terdengar saat suara spektrum berjalan; lensa ikut menampilkannya.
-  const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
+  const scanLine = useRef<SVGLineElement>(null);
   const images = useImageStore();
 
   const openGuide = useCallback(() => {
@@ -519,6 +519,45 @@ export function App() {
     [availableIds],
   );
 
+  // Sapuan dimulai: lensa dipaksa ke medan penuh, blink berhenti. Citra WISE
+  // (yang tidak dibunyikan) diganti kunjungan SPHEREx pertama sapuan.
+  const startScan = useCallback(
+    (visits: string[]) => {
+      if (!manifest) return;
+      window.clearTimeout(diveTimer.current);
+      homeZoom.current = undefined;
+      setPlaying(false);
+      setSky(false);
+      setZoomArcsec(manifest.fov_arcsec);
+      setWiseId(undefined);
+      if (visits[0] && visits[0] !== windowId) setWindowId(visits[0]);
+    },
+    [manifest, windowId],
+  );
+
+  // Piksel abu display satu kunjungan (band yang tampil), untuk sapuan.
+  const readVisit = useCallback(
+    (id: string) => {
+      if (!manifest || !targetId || !bandId) return undefined;
+      const f = findFrame(manifest, id, bandId);
+      if (!f) return undefined;
+      const img = images.get(assetUrl(targetId, custom, f.image));
+      if (!img) return undefined;
+      const mask = f.mask ? images.get(assetUrl(targetId, custom, f.mask)) : undefined;
+      return readFramePixels(img, mask);
+    },
+    [manifest, targetId, custom, bandId, images],
+  );
+
+  const hasImage = useCallback(
+    (id: string) => {
+      if (!manifest || !targetId || !bandId) return false;
+      const f = findFrame(manifest, id, bandId);
+      return !!f && !!images.get(assetUrl(targetId, custom, f.image));
+    },
+    [manifest, targetId, custom, bandId, images],
+  );
+
   const chooseBand = useCallback(
     (id: string) => {
       if (!manifest || !manifest.frames.some((f) => f.band === id)) return;
@@ -580,11 +619,8 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [step, chooseBand, manifest, zoom, openGuide]);
 
-  // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
-  const shownBandId =
-    heardBand && manifest && windowId && findFrame(manifest, windowId, heardBand) ? heardBand : bandId;
-  const frame = manifest && windowId && shownBandId ? findFrame(manifest, windowId, shownBandId) : undefined;
-  const band = manifest?.bands.find((b) => b.id === shownBandId);
+  const frame = manifest && windowId && bandId ? findFrame(manifest, windowId, bandId) : undefined;
+  const band = manifest?.bands.find((b) => b.id === bandId);
   const win = manifest?.windows.find((w) => w.id === windowId);
   const imageUrl = !targetId
     ? undefined
@@ -893,6 +929,7 @@ export function App() {
           progress={progress}
           onRetry={retry}
           soundRing={soundRing}
+          scanLineRef={scanLine}
           slotRef={slotRef}
           zoomerRef={zoomerRef}
           collapsed={collapsed}
@@ -1157,8 +1194,11 @@ export function App() {
               bandHasFrames={(id) => manifest.frames.some((f) => f.band === id)}
               onBand={chooseBand}
               onListen={listen}
-              onHear={setHeardBand}
+              onScanStart={startScan}
+              readVisit={readVisit}
+              hasImage={hasImage}
               soundRing={soundRing}
+              scanLine={scanLine}
             />
           ) : (
             <div className="strip strip-empty" />

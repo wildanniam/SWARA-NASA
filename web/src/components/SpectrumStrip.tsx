@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, t
 import type { Band, TimeWindow } from "../lib/bundle";
 import { microns, monthYear } from "../lib/format";
 import { useWidth } from "../lib/hooks";
+import { scanGrid, scanPhrase } from "../lib/scan";
 import {
   assess,
   binVisit,
@@ -15,8 +16,8 @@ import {
   type Spectrum,
   type SpectrumPoint,
 } from "../lib/spectrum";
-import { SOUND } from "../sound/mapping";
-import { phrase, sonifier } from "../sound/sonify";
+import { SCAN, SOUND } from "../sound/mapping";
+import { sonifier, type Note } from "../sound/sonify";
 
 type Props = {
   spectrum?: Spectrum;
@@ -31,10 +32,16 @@ type Props = {
   onBand: (id: string) => void;
   /** Suara mulai memutar kunjungan ini: lensa ikut pindah dan blink berhenti. */
   onListen: (windowId: string) => void;
-  /** Band yang sedang terdengar, supaya lensa menampilkan band yang sama. */
-  onHear: (bandId: string | undefined) => void;
+  /** Paksa lensa ke medan penuh dan hentikan blink sebelum sapuan berbunyi. */
+  onScanStart: (visits: string[]) => void;
+  /** Piksel abu display kunjungan ini (band yang tampil), kalau citranya sudah dimuat. */
+  readVisit: (windowId: string) => { gray: Uint8ClampedArray; mask: Uint8ClampedArray | null; size: number } | undefined;
+  /** Citra kunjungan ini (band yang tampil) sudah dimuat. */
+  hasImage: (windowId: string) => boolean;
   /** Busur di cincin lensa; menyapu seiring suara. */
   soundRing: RefObject<SVGCircleElement | null>;
+  /** Garis pindai di lensa; digerakkan kolom-per-kolom mengikuti jam audio. */
+  scanLine: RefObject<SVGLineElement | null>;
 };
 
 const H = 84;
@@ -42,6 +49,8 @@ const M = { left: 2, right: 2, top: 12, bottom: 18 };
 const MIN_POINTS = 8; // kunjungan dengan titik layak lebih sedikit tidak dibunyikan
 const TICKS = [1, 2, 3, 4, 5];
 const HEARD_KEY = "swara.heard";
+// Jeda antar kunjungan saat All visits memutar sapuan berurutan, detik.
+const SCAN_PAUSE = 0.8;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -70,10 +79,10 @@ export function SpectrumStrip(p: Props) {
     [W],
   );
 
-  // Selama suara berjalan: kunjungan mana saja yang diputar dan kapan tiap frasa mulai.
-  const [play, setPlay] = useState<{ visits: string[]; starts: number[] }>();
+  // Selama sapuan berjalan: kunjungan mana saja yang diputar dan kapan tiap kunjungan mulai.
+  const [play, setPlay] = useState<{ visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
   const [playVisit, setPlayVisit] = useState<string>();
-  const [heard, setHeard] = useState<string>();
+  const [announce, setAnnounce] = useState<string>();
   const [hover, setHover] = useState<SpectrumPoint>();
   const [fresh, setFresh] = useState(() => {
     try {
@@ -85,8 +94,10 @@ export function SpectrumStrip(p: Props) {
   const headRef = useRef<SVGLineElement>(null);
   const listenRef = useRef(p.onListen);
   listenRef.current = p.onListen;
-  const hearRef = useRef(p.onHear);
-  hearRef.current = p.onHear;
+  const scanStartRef = useRef(p.onScanStart);
+  scanStartRef.current = p.onScanStart;
+  const readVisitRef = useRef(p.readVisit);
+  readVisitRef.current = p.readVisit;
 
   const points = useMemo(() => spectrum?.points ?? [], [spectrum]);
   const quality = useMemo(() => (spectrum ? assess(spectrum.points) : undefined), [spectrum]);
@@ -103,18 +114,34 @@ export function SpectrumStrip(p: Props) {
   const stop = useCallback(() => {
     sonifier.stop();
     if (headRef.current) headRef.current.style.visibility = "hidden";
+    const line = p.scanLine.current;
+    if (line) line.style.visibility = "hidden";
     p.soundRing.current?.setAttribute("stroke-dasharray", "0 100");
     setPlay(undefined);
     setPlayVisit(undefined);
-    setHeard(undefined);
-    hearRef.current(undefined);
-  }, [p.soundRing]);
+  }, [p.soundRing, p.scanLine]);
 
+  // Satu sapuan = satu frasa gabungan: tiap kunjungan 32 kolom lalu jeda.
   const start = useCallback(
     (visits: string[]) => {
       if (!visits.length) return;
-      const starts = sonifier.play(visits.map((id) => phrase(binned.get(id) ?? [], top)));
-      setPlay({ visits, starts });
+      scanStartRef.current(visits);
+      let notes: Note[] = [];
+      const bounds: { visit: string; start: number }[] = [];
+      let refStats: { bg: number; sigma: number; top: number } | undefined;
+      for (const v of visits) {
+        const fr = readVisitRef.current(v);
+        if (!fr) continue;
+        const grid = scanGrid(fr.gray, fr.size, fr.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
+        if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
+        const at = notes.length ? notes[notes.length - 1].t + SCAN.colSeconds + SCAN_PAUSE : 0;
+        bounds.push({ visit: v, start: at });
+        for (const n of scanPhrase(grid, SCAN)) notes.push({ ...n, t: n.t + at });
+      }
+      if (!notes.length) return;
+      const total = notes[notes.length - 1].t + SCAN.colSeconds;
+      const starts = sonifier.play([notes]);
+      setPlay({ visits: bounds.map((b) => b.visit), starts, total, bounds });
       setFresh(false);
       try {
         window.localStorage.setItem(HEARD_KEY, "1");
@@ -122,61 +149,64 @@ export function SpectrumStrip(p: Props) {
         // penyimpanan diblokir: petunjuknya hanya muncul lagi lain kali
       }
     },
-    [binned, top],
+    [],
   );
 
   // Benda berganti atau pita hilang: suara berhenti.
   useEffect(() => stop, [spectrum, stop]);
 
-  // Penanda, busur cincin, dan band yang terdengar mengikuti jam audio. Digerakkan
-  // langsung di DOM supaya grafik tidak dirender ulang 60 kali per detik.
+  // Garis pindai, busur cincin, dan pindah kunjungan mengikuti jam audio.
+  // Digerakkan langsung di DOM supaya tidak dirender ulang 60 kali per detik.
   useEffect(() => {
     if (!play) return;
     let raf = 0;
     let lastVisit = -1;
-    let lastBand: string | undefined;
+    let centerTold = "";
     const tick = () => {
-      const now = sonifier.now();
-      let i = 0;
-      while (i < play.starts.length - 1 && now >= play.starts[i + 1]) i++;
-      const frac = (now - play.starts[i]) / SOUND.visitSeconds;
-      if (i === play.starts.length - 1 && frac >= 1) {
+      const elapsed = sonifier.now() - play.starts[0];
+      if (elapsed >= play.total) {
+        setAnnounce("Scan finished.");
         stop();
         return;
       }
+      let i = 0;
+      while (i < play.bounds.length - 1 && elapsed >= play.bounds[i + 1].start) i++;
       if (i !== lastVisit) {
         lastVisit = i;
+        centerTold = "";
         setPlayVisit(play.visits[i]);
         listenRef.current(play.visits[i]);
+        const w = windows.find((q) => q.id === play.visits[i]);
+        setAnnounce(`Scanning visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`);
       }
-      const lambda = LAMBDA_MIN + clamp01(frac) * (LAMBDA_MAX - LAMBDA_MIN);
-      const band = (bands.find((b) => lambda >= b.lambda_min && lambda < b.lambda_max) ?? bands[bands.length - 1])?.id;
-      if (frac >= 0 && band !== lastBand) {
-        lastBand = band;
-        setHeard(band);
-        hearRef.current(band);
+      const col = (elapsed - play.bounds[i].start) / SCAN.colSeconds;
+      const line = p.scanLine.current;
+      if (line) {
+        if (col >= 0 && col < SCAN.columns) {
+          line.setAttribute("x1", String(col + 0.5));
+          line.setAttribute("x2", String(col + 0.5));
+          line.style.visibility = "visible";
+        } else line.style.visibility = "hidden";
       }
-      const head = headRef.current;
-      if (head) {
-        const x = xOf(lambda);
-        head.setAttribute("x1", String(x));
-        head.setAttribute("x2", String(x));
-        head.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
+      if (col >= SCAN.columns / 2 && centerTold !== play.visits[i]) {
+        centerTold = play.visits[i];
+        setAnnounce("Target.");
       }
-      p.soundRing.current?.setAttribute("stroke-dasharray", `${clamp01(frac) * 100} 100`);
+      p.soundRing.current?.setAttribute("stroke-dasharray", `${clamp01(elapsed / play.total) * 100} 100`);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [play, stop, bands, xOf, p.soundRing]);
+  }, [play, stop, windows, p.soundRing, p.scanLine]);
 
   const shown = playVisit ?? windowId;
-  const canListen = quality === "ok" && playable.some((w) => w.id === windowId);
+  const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
+  const canScan = !!windowId && p.hasImage(windowId);
 
   const toggle = useCallback(() => {
     if (play) stop();
-    else if (canListen && windowId) start([windowId]);
-  }, [play, stop, canListen, windowId, start]);
+    else if (canScan && windowId) start([windowId]);
+  }, [play, stop, canScan, windowId, start]);
 
   // L = dengarkan / berhenti.
   useEffect(() => {
@@ -240,13 +270,13 @@ export function SpectrumStrip(p: Props) {
           type="button"
           className="dial"
           onClick={toggle}
-          disabled={!play && !canListen}
+          disabled={!play && !canScan}
           aria-pressed={!!play}
-          aria-label={play ? "Stop the sound" : "Listen to the spectrum of this visit"}
+          aria-label={play ? "Stop the sound" : "Scan the image of this visit"}
         >
           {play ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
-        <span className="dial-caption">{play ? "Stop" : fresh && canListen ? "Hear what it is" : "Listen"}</span>
+        <span className="dial-caption">{play ? "Stop" : fresh && canScan ? "Hear what it is" : "Listen"}</span>
       </div>
 
       <div className="strip">
@@ -329,7 +359,6 @@ export function SpectrumStrip(p: Props) {
                   style={{ left: `${(xOf(b.lambda_min) / W) * 100}%`, width: `${((xOf(b.lambda_max) - xOf(b.lambda_min)) / W) * 100}%` }}
                   aria-pressed={b.id === p.bandId}
                   aria-label={`Show the image at ${microns(b.lambda_min, b.lambda_max)}`}
-                  data-heard={b.id === heard}
                   disabled={!has}
                   title={has ? microns(b.lambda_min, b.lambda_max) : "No image in this band"}
                   onClick={() => p.onBand(b.id)}
@@ -353,15 +382,15 @@ export function SpectrumStrip(p: Props) {
         <button
           type="button"
           className="pill"
-          onClick={() => start(playable.map((w) => w.id))}
-          disabled={!!play || !drawn || playable.length < 2}
+          onClick={() => start(scanReady)}
+          disabled={!!play || scanReady.length < 2}
         >
-          All {playable.length || windows.length} visits
+          All {scanReady.length || windows.length} visits
         </button>
       </div>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {play && playVisit ? `Playing the spectrum of ${when}.` : ""}
+        {announce ?? ""}
       </p>
     </>
   );

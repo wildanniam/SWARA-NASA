@@ -766,12 +766,25 @@ kbd {
 }
 
 .lens-aperture canvas,
-.lens-marks {
+.lens-marks,
+.lens-scan {
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Garis pindai sapuan gambar: satu kolom per langkah, digerakkan jam audio. */
+.lens-scan {
+  pointer-events: none;
+}
+
+.scan-line {
+  stroke: var(--accent);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  visibility: hidden;
 }
 
 .mark line {

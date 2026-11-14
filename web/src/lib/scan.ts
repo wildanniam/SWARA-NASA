@@ -36,6 +36,9 @@ export type ScanExtractOptions = {
   /** Jarak minimum antar puncak, dalam piksel pada citra 480px. */
   minDistPx?: number;
   topMargin?: number;
+  /** Statistik dari kunjungan acuan (per objek per band): kalau ada, ambang dan
+   *  normalisasi kunjungan ini memakai angka acuan, bukan citranya sendiri. */
+  stats?: { bg: number; sigma: number; top: number };
 };
 
 const median = (v: number[]): number => {
@@ -59,14 +62,22 @@ export function scanGrid(
   const minDist = Math.max(2, Math.round((opts.minDistPx ?? 6) * (size / 480)));
   const margin = opts.topMargin ?? 1.25;
 
-  const n = size * size;
-  const vals = new Array<number>(n);
-  for (let i = 0; i < n; i++) vals[i] = gray[i];
-  const bg = median(vals);
-  const above = vals.filter((v) => v > bg).map((v) => v - bg);
-  const sigma = above.length ? quantile([...above].sort((a, b) => a - b), 0.68) : 1;
+  let bg: number;
+  let sigma: number;
+  let top: number;
+  if (opts.stats) {
+    ({ bg, sigma, top } = opts.stats);
+  } else {
+    const n = size * size;
+    const vals = new Array<number>(n);
+    for (let i = 0; i < n; i++) vals[i] = gray[i];
+    bg = median(vals);
+    const above = vals.filter((v) => v > bg).map((v) => v - bg);
+    sigma = above.length ? quantile([...above].sort((a, b) => a - b), 0.68) : 1;
+    top = Math.min(255, Math.round(quantile([...vals].sort((a, b) => a - b), 0.98) * margin));
+  }
   const thr = bg + kSigma * (sigma || 1);
-  const top = Math.min(255, Math.round(quantile([...vals].sort((a, b) => a - b), 0.98) * margin));
+  if (!top) top = 1;
 
   const width = size / columns;
   const out: ScanColumn[] = [];
