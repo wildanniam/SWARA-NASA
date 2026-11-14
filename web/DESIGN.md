@@ -164,6 +164,12 @@ Dua bagian (`web/src/components/Logo.tsx`; bentuk yang sama ada di `web/public/f
 
 Elips sebesar yang muat di layar; judul dan kontrol menempati sudut kosong elips (kiri bawah: judul, satu kalimat, petunjuk, tombol tur; kanan bawah: panjang gelombang dan look; kanan atas pelat: zoom). Tidak ada kaki halaman. Ponsel tetap bertumpuk.
 
+## Pelat: gaya semua panel
+
+Dialog dan popover memakai satu gaya, bukan kotak abu-abu polos: latar gelap yang hangat di bagian atas, garis tepi aksen tipis, dan satu garis lagi 5 px di dalamnya (garis ganda, seperti bingkai kartu). Dipakai dialog Go to dan Share, kartu bidik dan cuplikan penanda di peta, dan panel Keys and sources. Dua dialog besar membawa satu bintang empat sudut yang memutus garis atasnya, seperti garis dok. Keterangan kecil (tooltip) dan gugus tombol zoom peta memakai garis dan latar yang sama tanpa garis dalam. Kartu tarot tetap hanya di The cards dan kartu berbagi; pelat adalah wadah, bukan kartu.
+
+Semua tombol pil dan tombol di cincin lensa bergaris ganda: satu garis tipis di dalam tepinya. Saat ditunjuk, garisnya berubah ke aksen.
+
 ## Pangkat tombol
 
 Satu bentuk (bulat penuh), tiga pangkat: **utama** berisi ambar penuh, satu saja per layar (`pill-accent`); **kedua** bergaris ambar (`pill-share`, dan di dalam kartu `pill-etched`: garis ganda tipis senada bingkai kartu); **tenang** hanya teks dan ikon (`pill-quiet`). Tombol bundar berikon tetap kenop alat.
