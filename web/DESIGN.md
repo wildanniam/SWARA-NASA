@@ -8,6 +8,14 @@ Alat yang imersif untuk pemula yang penasaran. Suasananya **melayang di angkasa*
 
 Tingkat: variasi tata letak sedang, gerak sedang, kepadatan rendah.
 
+## Arah identitas
+
+Keputusan Wildan, 14 November 2026: **tarot dan rasi bintang** menjadi DNA visual SWARA ke depan. Orang sudah akrab dengan bahasa itu, jadi ia memancing orang untuk melihat dan membagikan.
+
+Cara kita memakainya: tarot memberi **formatnya** (kartu tinggi, jendela melengkung, angka Romawi, pita julukan, sinar), langit memberi **isinya**. Tiap tempat yang di kartu tarot diisi hiasan, di sini diisi data. Emasnya adalah aksen ambar yang sudah ada, dan huruf tidak berubah.
+
+Yang sudah memakai arah ini: kartu berbagi (lihat di bawah). Yang belum ada dan perlu dibuat setelah pekerjaan fitur: **logo** (sekarang hanya tanda sementara: cincin lensa dan satu titik), lalu penerapan arah ini ke halaman pembuka dan Guide. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
+
 ## Aturan paling penting
 
 **Yang data harus terlihat sebagai data, dan suasana tidak boleh menyamar sebagai data.**
@@ -42,7 +50,7 @@ Urutan `z-index`: latar 0, tirai 1, panggung 2, bilah atas dan dok 3, laci 4, di
 - **Satelit.** Tombol bundar kecil menempel di cincin lensa: look, penanda piksel yang tidak bisa dipercaya, dan Reveal faint di kanan; perbesar dan perkecil di kiri.
 - **Roda filter.** Tombol look membuka enam contoh warna yang berjajar di cincin, seperti roda filter teleskop: Ember (bawaan), Glacier, Aurora, Nebula, Mono, Paper. Semuanya dikurasi dengan satu aturan: terang selalu naik (untuk Paper selalu turun) dari nilai terendah ke tertinggi, jadi look mengubah suasana, bukan urutan terang. Tidak ada peta pelangi atau dua arah, dan tidak ada pengatur manual. Latar ikut look lensa (untuk Paper latar memakai Mono supaya teks tetap terbaca). Look tercatat di URL.
 - **Reveal faint.** Satu tombol yang mengangkat nilai redup (kurva gamma) di lensa dan latar. Urutan terang tetap.
-- **Share dan Guide.** Dua tombol di kanan atas adalah fitur, bukan catatan kaki. Share berbingkai aksen: di ponsel membuka lembar berbagi sistem, di tempat lain menyalin tautan. Guide berbingkai jelas dan diberi penanda sampai pernah dibuka; isinya dimulai dengan legenda bergambar tentang tanda-tanda di lensa.
+- **Share dan Guide.** Dua tombol di kanan atas adalah fitur, bukan catatan kaki. Share berbingkai aksen dan membuka dialog kartu berbagi. Selagi bundle tempat baru masih dibuat belum ada yang bisa digambar, jadi Share membagikan tautannya saja: lembar berbagi sistem di ponsel, salin di tempat lain. Guide berbingkai jelas dan diberi penanda sampai pernah dibuka; isinya dimulai dengan legenda bergambar tentang tanda-tanda di lensa.
 - **Tombol putar.** Blink dan Dengar adalah tombol bundar besar. Hanya Blink yang berisi warna aksen.
 - **Penggaris waktu.** Kunjungan diletakkan pada jarak tanggal yang sebenarnya, dengan pergeseran terukur di bawah tiap kunjungan.
 - **Rentang waktu.** Sakelar dua pilihan di kiri penggaris: "16 years" memutar citra WISE lalu kunjungan SPHEREx pada satu penggaris 2010 sampai sekarang, dengan lensa selebar 6 menit busur; "SPHEREx" kembali ke kunjungan SPHEREx saja, diperbesar ke 2 menit busur. Benda yang punya riwayat WISE dibuka di "16 years".
@@ -76,6 +84,22 @@ Tampilan ini hanya gelap, karena citra astronomi gelap dan bintang redup harus t
 - **IBM Plex Mono** untuk semua bacaan alat: tanggal, panjang gelombang, koordinat, pergeseran.
 
 Penekanan memakai tebal atau miring dari keluarga yang sama, bukan huruf lain. Teks antarmuka tidak memakai tanda pisah panjang.
+
+## Kartu berbagi
+
+Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang sedang tampil (`web/src/lib/card.ts`). Dialognya menampilkan kartu itu, lalu menyimpannya sebagai PNG, membagikannya lewat lembar berbagi sistem kalau sistem menerima berkas, atau menyalin tautan.
+
+**Satu aturan: sinar adalah data.**
+
+- **Kartu I, geraknya.** Jendela melengkung berisi semua citra WISE yang ditumpuk (tiap piksel mengambil nilai paling terang), jadi yang bergerak meninggalkan garis. Busur di atasnya adalah garis waktu: satu sinar per pengamatan pada tanggalnya, sinar WISE pendek dan sinar SPHEREx panjang. Tanpa riwayat WISE, jendelanya berisi frame SPHEREx dan busurnya hanya kunjungan SPHEREx.
+- **Kartu II, cahayanya.** Spektrum sebagai 72 sinar mengelilingi frame SPHEREx, 0,75 sampai 5 mikron searah jarum jam; panjang sinar adalah terang. Hanya titik bersih yang dipakai; irisan tanpa titik bersih digambar sebagai titik kosong. Kartu ini hanya ada kalau sedikitnya sepertiga irisannya terisi.
+- **Julukan mengikuti yang terukur SPHEREx**, sama dengan blok temuan: bergeser jadi THE WANDERER, tidak bergeser jadi THE STILL ONE, tidak terlacak jadi THE RIDDLE. Julukan adalah nama panggilan, bukan klasifikasi. Benda contoh yang tidak terpisah dari bintang latar (`BLENDED` di `content.ts`) selalu THE RIDDLE dan tidak punya kartu cahaya.
+- **Warna kartu mengikuti look** yang dipakai di viewer: enam look, enam warna kartu. Garisnya memakai keluarga warna aksen look itu.
+- **Yang murni hiasan** hanya bingkai, pita, dan bintang empat sudut, dan bintang empat sudut tidak pernah digambar di dalam jendela data.
+- **Langit di belakang kartu** adalah citra medan lebar yang asli, redup. Dari tiga potongan yang mungkin dipakai yang paling sedikit piksel terangnya, supaya satu bintang terang tidak mendominasi.
+- **Kode QR** gelap di atas ubin terang dengan modul berukuran bilangan bulat piksel, dan mengarah ke tautan pendek tempat itu.
+
+Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai yang dilarang di viewer: gradien latar, satu pendar lembut, dan garis hias di bingkai. Aturan viewer di atas tidak berubah.
 
 ## Ikon
 
