@@ -17,7 +17,7 @@ const KEYS: [string, string][] = [
   ["Space", "blink"],
   ["← →", "step through visits"],
   ["1 to 6", "image band"],
-  ["+ −", "zoom the lens"],
+  ["+ −", "zoom the lens, out to the wide view"],
   ["L", "listen to the spectrum"],
   ["M", "motion sound"],
   ["/", "go to a place"],
@@ -94,7 +94,7 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame }: Props)
             {ctx
               ? `The sky behind is real too: a SPHEREx view ${ctx.fov_arcsec / 60}′ across of the same place${
                   ctxBand ? `, at ${microns(ctxBand.lambda_min, ctxBand.lambda_max)}` : ""
-                }, from ${ctx.n_exposures} exposures. It is dimmed and only there to show the surroundings. Nothing is measured from it.`
+                }, from ${ctx.n_exposures} exposures. It is centred exactly under the lens, so the lens is a magnified part of it: zoom all the way out and the lens closes onto the same stars. The wide view is one band and has no dates, and nothing is measured from it.`
               : "This place has no wide view yet, so the lens floats in empty space."}
           </p>
         </section>
