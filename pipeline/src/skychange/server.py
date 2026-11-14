@@ -42,7 +42,10 @@ from .resolve import resolve
 
 log = logging.getLogger("skychange.server")
 
-MAX_BUILDS = 2  # tiap build memakai 32 koneksi ke S3
+# Berapa bundle dibuat bersamaan; sisanya menunggu giliran. Tiap bundle memakai
+# sekitar seratus sambungan ke S3 dan beberapa ratus MB memori. Bisa diatur lewat
+# variabel lingkungan untuk server yang lebih besar atau lebih kecil.
+MAX_BUILDS = max(1, int(os.environ.get("SWARA_MAX_BUILDS", "2")))
 MAX_WAITING = 20
 _NUMBER = r"[+-]?(?:\d+\.?\d*|\.\d+)"
 _PLAIN_PAIR = re.compile(rf"({_NUMBER})[\s,]+({_NUMBER})")
