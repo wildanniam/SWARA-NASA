@@ -38,7 +38,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Permintaan wajib | Status |
 |---|---|
 | Web tool yang terbuka untuk publik | Ada: https://swara-nasa.vercel.app |
-| Pengguna memasukkan koordinat (RA dan Dec) | Ada: satu kotak untuk nama benda atau RA dan Dec, dengan pratinjau "dibaca sebagai" di peta; atau klik titik mana pun di peta seluruh langit |
+| Pengguna memasukkan koordinat (RA dan Dec) | Ada: dua isian berlabel RA dan Dec (derajat atau jam/derajat-menit-detik), satu kotak untuk nama benda atau koordinat, pratinjau "dibaca sebagai" di peta, atau klik titik mana pun di peta seluruh langit |
 | Deretan citra patch itu "seperti video kecil" | Ada: 13-18 citra WISE lalu 3-4 kunjungan SPHEREx diputar berurutan; blink antar kunjungan SPHEREx |
 | Diuji pada Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | Sudah; lihat hasil per target |
 
@@ -49,15 +49,14 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Penanda kontaminasi | Ada: piksel jenuh dan rusak |
 | Menjumlahkan data per detektor | Ada: satu frame = median per detektor per kunjungan |
 | Pengguna memilih lebar medan | Ada: peta seluruh langit yang bisa diperbesar sampai medan 1,8 derajat, pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
-| Menimpa data WISE atau Gaia | Ada untuk WISE (W2, 2010-2024, untuk dilihat); Gaia belum |
-| Menjumlah atau mengurangkan citra antar waktu | Belum |
-| Mudah diperbarui saat rilis data baru | Sebagian: nama koleksi masih tertulis di kode |
+| Menimpa data WISE atau Gaia | Ada: WISE (W2, 2010-2024, untuk dilihat) dan bintang Gaia DR3 di lensa, ditaruh di posisinya pada tanggal citra yang tampil |
+| Menjumlah atau mengurangkan citra antar waktu | Ada: citra selisih di lensa (yang tampil dikurangi pengamatan pertama), untuk SPHEREx dan WISE |
+| Mudah diperbarui saat rilis data baru | Ada: koleksi diatur lewat `SWARA_COLLECTIONS`, alamat peta seluruh langit dibaca dari manifest |
 
 ## Rencana kerja
 
 Urutan platform berikutnya:
 
-1. Input RA dan Dec: pratinjau "dibaca sebagai" dan klik di peta sudah ada; dua kotak berlabel belum.
 2. Halaman proyek dan video demo berbahasa Inggris.
 3. Identitas visual: logo sudah ada; sisanya penerapan ke cuplikan penanda dan hasil Go to. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
@@ -75,7 +74,7 @@ Situs publik: https://swara-nasa.vercel.app
   vercel build --prod
   vercel deploy --prebuilt --prod
   ```
-- **API** di server tim sebagai layanan systemd `swara-api` ([deploy/swara-api.service](deploy/swara-api.service)), kode di `/opt/swara/app`, data di `/opt/swara/data`. Memperbarui: `git pull` di sana, lalu `systemctl restart swara-api`. Kalau dependensi berubah, pasang ulang dari `pipeline/requirements.txt` (dibuat dengan `uv export`). Jumlah bundle yang dibuat bersamaan diatur dengan `SWARA_MAX_BUILDS` di `/etc/swara-api.env` (bawaan 2). Menyalakan ulang layanan membatalkan bundle yang sedang dibuat, jadi lakukan saat tidak ada yang berjalan.
+- **API** di server tim sebagai layanan systemd `swara-api` ([deploy/swara-api.service](deploy/swara-api.service)), kode di `/opt/swara/app`, data di `/opt/swara/data`. Memperbarui: `git pull` di sana, lalu `systemctl restart swara-api`. Kalau dependensi berubah, pasang ulang dari `pipeline/requirements.txt` (dibuat dengan `uv export`). Jumlah bundle yang dibuat bersamaan diatur dengan `SWARA_MAX_BUILDS` di `/etc/swara-api.env` (bawaan 2). Koleksi SPHEREx yang dicari diatur dengan `SWARA_COLLECTIONS` di berkas yang sama (bawaan `spherex_dr1,spherex_qr3`); rilis baru cukup ditambahkan di situ. Menyalakan ulang layanan membatalkan bundle yang sedang dibuat, jadi lakukan saat tidak ada yang berjalan.
 - **Sambungan.** `/api/...` di situs diteruskan ke API oleh `web/api/proxy.js`. Alamat API dan kunci bersamanya adalah pengaturan proyek Vercel (`SWARA_API_ORIGIN`, `SWARA_API_KEY`); kunci yang sama ada di `/etc/swara-api.env` di server. Jangan menulis alamat server atau kunci di repo.
 - Lima contoh adalah berkas statis di Vercel, jadi tetap terbuka kalau API mati. Yang butuh API hanya cari nama dan koordinat bebas.
 
@@ -138,6 +137,14 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: citra selisih, bintang Gaia, dua isian koordinat, dan koleksi data sebagai pengaturan sudah jalan.** Keempat baris tabel challenge yang masih kosong atau sebagian sekarang terisi. Cara kerjanya di [pipeline/README.md](pipeline/README.md) dan [web/DESIGN.md](web/DESIGN.md).
+  - **Citra selisih** dihitung di viewer dari dua frame, setelah tingkat abu dikembalikan ke satuan aslinya dengan `knee` dan `vmax` yang tercatat di bundle. Diperiksa pada Barnard's Star di data WISE: jarak inti "sekarang" ke inti "dulu" cocok dengan gerak diri katalog dalam 0,5 detik busur di empat epoch (2024 dikurangi 2010: terukur 142,7 detik busur ke utara, katalog 142,5).
+  - **Gaia DR3** diambil pipeline dari arsip Gaia ESA (sekitar 3 detik per tempat) dan disimpan sebagai `gaia.json`. Arsip ESA tidak mengizinkan panggilan dari browser, dan layanan VizieR tidak terjangkau dari jaringan saat diuji, jadi pengambilannya tidak dilakukan di viewer. Selisih cincin Gaia terhadap puncak terang bintangnya: median 0,3 sampai 0,8 detik busur di tiga medan, sampai sekitar 3 detik busur (satu piksel WISE) di medan Epsilon Indi B dan R Draconis.
+  - Barnard's Star dan Epsilon Indi B: bintang Gaia yang digeser dengan gerak dirinya ke 2026 jatuh di posisi bundle (selisih 0,0 detik busur).
+  - **WISE 0855 tidak ada di Gaia.** Bintang Gaia terdekat berjarak 6,8 detik busur dari posisi yang diharapkan (G 16,3, gerak hampir nol), dan cincinnya jatuh tepat di sumber yang diukur SPHEREx. Jadi yang terukur di sana memang bintang latar; ini menguatkan catatan "tidak terpisah", bukan mengubahnya.
+  - **Isian RA dan Dec** diuji dengan 8 cara penulisan yang benar dan 7 yang salah; semuanya terbaca atau ditolak seperti seharusnya.
+  - **`SWARA_COLLECTIONS`**: bawaan menemukan 362 eksposur Barnard's Star, sama dengan yang tercatat di bundle.
+  - Belum diuji: ponsel asli, Safari, Firefox. Bundle koordinat bebas yang dibuat sebelum ini belum punya `gaia.json` sampai `skychange gaia` dijalankan di server.
 - **KEPUTUSAN (Wildan): logo SWARA, dok bergaya skala instrumen, dan peta seluruh langit memenuhi layar.** Logo: tanda cakram ambar dengan bintang empat sudut berlubang, dan nama SWARA digambar satu garis; dipilih dari enam jenis dan lima variasi tanda. Dok: kotak panel diganti skala yang terukir, baris diberi label II Path dan III Light. Peta: elips sebesar layar, kontrol di sudut kosongnya. Usulan bingkai dan dek kartu di sisi peta ditolak karena terlalu ramai; ruang kosong tidak dijawab dengan menambah panel atau kartu. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
 - **KEPUTUSAN (Wildan): bilah atas diberi karakter ukiran kartu, Guide berganti nama jadi "The cards", dan ada mode fokus layar penuh (F).** Alasannya: bilah lama terasa seperti aplikasi biasa dan "Guide" menjanjikan petunjuk padahal isinya cerita benda. Dok bawah belum diubah. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
 - **TEMUAN: menyelam dari seluruh langit tersendat karena bug penjadwalan, sudah diperbaiki.** Tiap bingkai gerak otomatis menjadwalkan lukisan dua kali, jadi jumlahnya berlipat dua tiap bingkai. Di situs live sebelum: 108 bingkai dalam 6 detik, bingkai terpanjang 1,7 detik; sesudah: 390 bingkai, terpanjang 17,7 ms. Uji kecepatan berikutnya perlu mengukur tiap gerak otomatis, bukan hanya geser.

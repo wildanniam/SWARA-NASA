@@ -60,3 +60,73 @@ export function paint(
   }
   canvas.getContext("2d")!.putImageData(out, 0, 0);
 }
+
+/** Skala terang satu citra: dengan ini tingkat abu 0-255 dikembalikan ke satuan aslinya
+ *  (pipeline meregangkan dengan asinh(v/knee)/asinh(vmax/knee), lihat frames.stretch). */
+export type Linear = { knee: number; vmax: number };
+
+type RGB = [number, number, number];
+const BASE: RGB = [5, 6, 11];
+// Lebih terang sekarang: bara. Lebih terang dulu: bayangan pucat. Dua warna sistem
+// (aksen dan garis), bukan peta warna dua arah yang lain.
+const NOW: RGB[] = [BASE, [150, 66, 22], [255, 180, 84], [255, 240, 210]];
+const THEN: RGB[] = [BASE, [52, 66, 112], [150, 168, 226], [228, 234, 255]];
+
+function ramp(stops: RGB[], t: number, out: Uint8ClampedArray, at: number) {
+  const x = t * (stops.length - 1);
+  const k = Math.min(stops.length - 2, Math.floor(x));
+  const f = x - k;
+  out[at] = stops[k][0] + (stops[k + 1][0] - stops[k][0]) * f;
+  out[at + 1] = stops[k][1] + (stops[k + 1][1] - stops[k][1]) * f;
+  out[at + 2] = stops[k][2] + (stops[k + 1][2] - stops[k][2]) * f;
+  out[at + 3] = 255;
+}
+
+/** Citra selisih: `img` dikurangi `ref`, keduanya bagian langit yang sama. Yang tidak
+ *  berubah jadi gelap; yang lebih terang di `img` berwarna bara, yang lebih terang di
+ *  `ref` berwarna pucat. Dengan `scale`, pengurangan dilakukan di satuan terang aslinya;
+ *  tanpa itu (citra lama) di tingkat tampilan. Ambang gelapnya 2,5 kali derau selisih
+ *  itu sendiri, diukur dari median simpangan mutlak. */
+export function paintDifference(
+  canvas: HTMLCanvasElement,
+  img: HTMLImageElement,
+  ref: HTMLImageElement,
+  size: number,
+  view?: Rect,
+  scale?: Linear,
+  tone?: Uint8ClampedArray,
+  soften = 0,
+) {
+  if (canvas.width !== size) canvas.width = canvas.height = size;
+  const lin = new Float32Array(256);
+  const k = scale ? Math.asinh(scale.vmax / scale.knee) : 0;
+  for (let v = 0; v < 256; v++) {
+    const level = tone ? tone[v] : v;
+    lin[v] = scale ? scale.knee * Math.sinh((level / 255) * k) : level;
+  }
+  // `pixels` memakai satu kanvas kerja, jadi hasil pertama disalin dulu.
+  const a = pixels(img, size, view, soften).slice();
+  const b = pixels(ref, size, view, soften);
+  const n = size * size;
+  const d = new Float32Array(n);
+  for (let i = 0; i < n; i++) d[i] = lin[a[i * 4]] - lin[b[i * 4]];
+
+  const sample: number[] = [];
+  for (let i = 0; i < n; i += 7) sample.push(d[i]);
+  sample.sort((x, y) => x - y);
+  const med = sample[sample.length >> 1];
+  const dev = sample.map((x) => Math.abs(x - med)).sort((x, y) => x - y);
+  const sigma = Math.max(1.4826 * dev[dev.length >> 1], scale ? scale.knee / 30 : 0.5);
+  const floor = 2.5 * sigma;
+  const top = Math.max(dev[Math.floor(dev.length * 0.998)], 12 * sigma);
+  const span = Math.asinh((top - floor) / (3 * sigma));
+
+  const out = new ImageData(size, size);
+  for (let i = 0; i < n; i++) {
+    const x = d[i] - med;
+    const m = Math.abs(x);
+    const t = m <= floor ? 0 : Math.min(1, Math.asinh((m - floor) / (3 * sigma)) / span);
+    ramp(x > 0 ? NOW : THEN, t, out.data, i * 4);
+  }
+  canvas.getContext("2d")!.putImageData(out, 0, 0);
+}

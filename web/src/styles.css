@@ -4451,3 +4451,217 @@ kbd {
     width: 312px;
   }
 }
+
+/* ---------- dua isian koordinat di Go to ---------- */
+
+/* RA dan Dec ditulis sendiri-sendiri, seperti menyetel dua sumbu teleskop: label mono
+   berwarna aksen, angka besar di atas satu garis tipis, bukan kotak isian biasa. */
+.coords {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px 18px;
+  padding: 2px 8px 4px;
+}
+
+.coords-or {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 2px 0 4px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.coords-or::before,
+.coords-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+}
+
+.coord {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  cursor: text;
+}
+
+.coord-name {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.coord-name b {
+  margin-right: 6px;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.1em;
+}
+
+.coord input {
+  width: 100%;
+  height: 40px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--hair-strong);
+  border-radius: 0;
+  outline: 0;
+  background: none;
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  transition: border-color 150ms;
+}
+
+.coord input::placeholder {
+  color: var(--faint);
+  opacity: 0.7;
+}
+
+.coord input:focus {
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 var(--accent);
+}
+
+.coord input[aria-invalid="true"] {
+  border-bottom-color: #ff9d8a;
+}
+
+.coord-hint {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.coords .pill {
+  height: 40px;
+  padding: 0 16px;
+  margin-bottom: 19px;
+}
+
+@media (max-width: 560px) {
+  .coords {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .coords .pill {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+}
+
+/* ---------- citra selisih ---------- */
+
+.diff-minus {
+  margin: 0 0.35em;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+/* Kunci warna di keterangan lensa: bara = lebih terang sekarang, pucat = lebih terang dulu. */
+.diff-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.diff-key i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.diff-key i[data-k="now"] {
+  background: #ffb454;
+  box-shadow: 0 0 6px rgb(255 180 84 / 0.7);
+}
+
+.diff-key i[data-k="then"] {
+  margin-left: 10px;
+  background: #96a8e2;
+  box-shadow: 0 0 6px rgb(150 168 226 / 0.6);
+}
+
+.satellite:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---------- overlay Gaia ---------- */
+
+/* Cincin katalog: tipis dan dingin (warna garis sistem), dengan lingkar gelap di bawahnya
+   supaya terbaca di atas bintang terang. Tanda ambar tetap milik pengukuran kita. */
+.gaia-star,
+.gaia-halo,
+.gaia-tail {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.gaia-halo {
+  stroke: rgb(5 6 11 / 0.6);
+  stroke-width: 3;
+}
+
+.gaia-star {
+  stroke: rgb(205 214 255 / 0.85);
+  stroke-width: 1;
+}
+
+/* Jalur menurut katalog untuk bintang yang bergerak cepat. */
+.gaia-tail {
+  stroke: rgb(205 214 255 / 0.7);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.lens[data-look="paper"] .gaia-star,
+.lens[data-look="paper"] .gaia-tail {
+  stroke: rgb(24 30 70 / 0.85);
+}
+
+.lens[data-look="paper"] .gaia-halo {
+  stroke: rgb(244 241 234 / 0.6);
+}
+
+.lens[data-look="paper"][data-difference="true"] .gaia-star,
+.lens[data-look="paper"][data-difference="true"] .gaia-tail {
+  stroke: rgb(205 214 255 / 0.85);
+}
+
+.caption-note {
+  color: rgb(205 214 255 / 0.8);
+}
+
+/* Di layar sempit keterangan lensa boleh turun baris: kunci warna citra selisih dan
+   catatan Gaia mengambil barisnya sendiri, tidak menimpa teks di bawahnya. */
+.lens-caption b,
+.lens-caption span {
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .lens-caption {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0;
+    height: auto;
+    min-height: 22px;
+  }
+}

@@ -7,6 +7,7 @@
   skychange serve              # API koordinat bebas untuk viewer (lihat server.py)
   skychange context            # tambah citra medan lebar ke bundle yang sudah ada
   skychange allsky             # peta seluruh langit untuk pembuka viewer (butuh extra "sky")
+  skychange gaia               # tambah bintang Gaia ke bundle yang sudah ada
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from pathlib import Path
 from .bundle import FOV_ARCSEC, build, cutout_px
 from .context import build_context
 from .fetch import fetch_all
+from .gaia import build_gaia
 from .search import search
 from .wise import build_wise
 
@@ -72,6 +74,17 @@ def add_wise(bundle: Path) -> None:
     path.write_text(json.dumps(m, indent=1, allow_nan=False))
 
 
+def add_gaia(bundle: Path) -> None:
+    """Tambah `gaia.json` ke bundle yang sudah ada."""
+    path = bundle / "manifest.json"
+    m = json.loads(path.read_text())
+    if "ra" not in m:  # bukan bundle satu tempat (misalnya peta seluruh langit)
+        return
+    m["gaia"] = build_gaia(m["ra"], m["dec"], bundle, m["fov_arcsec"])
+    path.write_text(json.dumps(m, indent=1, allow_nan=False))
+    print(f"[{bundle.name}] Gaia: {m['gaia']}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="skychange")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -99,6 +112,9 @@ def main() -> None:
     x = sub.add_parser("wise", help="ambil ulang riwayat WISE untuk bundle yang sudah ada")
     x.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
     x.add_argument("--out", type=Path, default=ROOT / "bundles")
+    g = sub.add_parser("gaia", help="tambah bintang Gaia ke bundle yang sudah ada")
+    g.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
+    g.add_argument("--out", type=Path, default=ROOT / "bundles")
     for s in (b, p):
         s.add_argument("--fov", type=float, default=FOV_ARCSEC, help="lebar medan, detik busur")
         s.add_argument("--out", type=Path, default=ROOT / "bundles")
@@ -119,6 +135,15 @@ def main() -> None:
                 continue
             try:
                 add_context(bundle, a.cache)
+            except Exception as err:
+                print(f"[{bundle.name}] GAGAL: {type(err).__name__}: {err}")
+        return
+    if a.cmd == "gaia":
+        for bundle in sorted(d for d in a.out.iterdir() if (d / "manifest.json").exists()):
+            if a.ids and bundle.name not in a.ids:
+                continue
+            try:
+                add_gaia(bundle)
             except Exception as err:
                 print(f"[{bundle.name}] GAGAL: {type(err).__name__}: {err}")
         return

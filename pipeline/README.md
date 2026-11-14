@@ -20,6 +20,16 @@ uv run skychange build --id barnard --name "Barnard's Star" --ra 269.44627 --dec
 
 Hasil ditulis ke `bundles/<id>/`. Cutout disimpan di `data/cache/` (tidak ikut git), jadi menjalankan ulang tidak mengunduh lagi. Target preset ada di `presets.json`.
 
+## Saat rilis data baru
+
+Koleksi SPHEREx yang dicari diatur lewat `SWARA_COLLECTIONS` (dipisah koma, urutan = prioritas bila eksposur yang sama ada di dua koleksi). Bawaannya `spherex_dr1,spherex_qr3`. Saat IRSA merilis koleksi baru, cukup tambahkan namanya, tanpa mengubah kode:
+
+```
+SWARA_COLLECTIONS=spherex_dr2,spherex_dr1,spherex_qr3 uv run skychange presets
+```
+
+Di server, baris yang sama ditaruh di `/etc/swara-api.env`. Koleksi yang dipakai tercatat di `manifest.json` (`source.collections`). Peta seluruh langit dibuat ulang dengan `skychange allsky`; alamat HiPS-nya tercatat di `bundles/allsky/manifest.json` dan dibaca viewer dari sana.
+
 ## API koordinat bebas
 
 Viewer memakai API ini untuk koordinat di luar preset. Dari folder `pipeline/`:
@@ -55,6 +65,7 @@ Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordi
 | `frames/<jendela>_<band>_mask.png` | 0 = baik, 128 = rusak/hilang, 255 = jenuh |
 | `context.png` | citra medan lebar 40 menit busur di sekitar posisi, 720x720, utara di atas, timur di kiri |
 | `wise/NN.png` | citra WISE W2 (4,6 mikron) per epoch, 2010-2024, medan yang sama dengan frame; untuk dilihat, bukan diukur |
+| `gaia.json` | bintang Gaia DR3 di medan itu, untuk ditimpakan di lensa |
 
 **Jendela waktu** (`w1`, `w2`, ...): SPHEREx melewati satu lokasi kira-kira tiap 6 bulan; eksposur yang terpisah lebih dari 30 hari masuk jendela berbeda.
 
@@ -73,6 +84,14 @@ Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordi
 ```bash
 uv run skychange context
 ```
+
+**Bintang Gaia** (`gaia.json`, isian `gaia` di manifest): bintang Gaia DR3 dalam radius setengah diagonal medan ditambah 120 detik busur (cadangan untuk bintang cepat), diambil dari arsip Gaia ESA lewat TAP (sekitar 3 detik). Paling banyak 400 bintang, dari yang paling terang; `truncated: true` berarti medan itu lebih padat dari itu dan `faintest_g_mag` adalah batasnya. Tiap baris `stars`: `[ra, dec, pmra, pmdec, G, source_id]`, posisi dalam derajat pada epoch 2016,0, gerak diri dalam milidetik busur per tahun (`pmra` sudah dikali cos dec; `null` kalau Gaia tidak mengukurnya), `source_id` sebagai teks. Viewer menaruh tiap bintang di posisinya pada tanggal citra yang tampil. Arsip itu tidak mengizinkan panggilan dari browser, jadi berkas ini dibuat pipeline. Isian `gaia` bisa `null` atau tidak ada (bundle lama); bundle tetap sah. Menambahkannya ke bundle yang sudah ada:
+
+```bash
+uv run skychange gaia
+```
+
+**Citra selisih** tidak disimpan di bundle: viewer menghitungnya sendiri dari dua frame. `knee_mjy_sr` dan `vmax_mjy_sr` di tiap frame (dan `wise.display` untuk WISE) adalah yang membuat tingkat abu bisa dikembalikan ke satuan aslinya sebelum dikurangkan, jadi keduanya jangan dihapus.
 
 ## Peta seluruh langit (`bundles/allsky/`)
 

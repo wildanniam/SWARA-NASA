@@ -2,6 +2,7 @@ import {
   CaretLeft,
   CaretRight,
   Cards,
+  CircleDashed,
   CornersIn,
   CornersOut,
   Flag,
@@ -14,6 +15,7 @@ import {
   ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
+  Subtract,
   StarFour,
   SunDim,
 } from "@phosphor-icons/react";
@@ -36,6 +38,8 @@ import {
   defaultBand,
   findFrame,
   finding,
+  gaiaAt,
+  loadGaia,
   loadIndex,
   loadManifest,
   loadPreview,
@@ -43,6 +47,7 @@ import {
   referenceMotion,
   shiftAt,
   trail,
+  type GaiaField,
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
@@ -148,6 +153,11 @@ export function App() {
     }
   });
   const [showFlags, setShowFlags] = useState(false);
+  // Citra selisih: yang tampil dikurangi pengamatan pertama teleskop yang sama.
+  const [diff, setDiff] = useState(false);
+  // Bintang katalog Gaia ditimpakan di lensa.
+  const [gaiaOn, setGaiaOn] = useState(false);
+  const [gaia, setGaia] = useState<{ id: string; field: GaiaField }>();
   const [motionSound, setMotionSound] = useState(false);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
@@ -734,6 +744,14 @@ export function App() {
         setReveal((v) => !v);
         return;
       }
+      if (e.key.toLowerCase() === "a" && !atlas) {
+        setGaiaOn((v) => !v);
+        return;
+      }
+      if (e.key.toLowerCase() === "d" && !atlas) {
+        setDiff((v) => !v);
+        return;
+      }
       if (e.key.toLowerCase() === "f" && !atlas) {
         toggleFocus();
         return;
@@ -906,12 +924,69 @@ export function App() {
     for (let v = 0; v < 256; v++) both[v] = REVEAL_LUT[tone[v]];
     return both;
   }, [reveal, tone]);
+  // Citra selisih. Acuannya pengamatan pertama dari teleskop yang sama dan band yang sama,
+  // jadi yang dikurangkan selalu dua citra yang dibuat dengan cara yang sama.
+  const firstWindow = available[0];
+  const refFrame =
+    !shownWise && manifest && firstWindow && shownBandId ? findFrame(manifest, firstWindow.id, shownBandId) : undefined;
+  const refImage = shownWise
+    ? firstWiseImage
+    : images.get(refFrame && targetId ? assetUrl(targetId, custom, refFrame.image) : undefined);
+  const refDate = shownWise ? (firstWise ? monthYear(firstWise.mjd_mid) : "") : firstWindow ? monthYear(firstWindow.mjd_mid) : "";
+  const atReference = shownWise ? shownWise.id === firstWise?.id : !!win && win.id === firstWindow?.id;
+  const difference = useMemo(() => {
+    if (!diff || !refImage) return undefined;
+    const scale = shownWise
+      ? wise?.matched && wise.display
+        ? { knee: wise.display.knee, vmax: wise.display.vmax }
+        : undefined
+      : frame?.knee_mjy_sr && frame.vmax_mjy_sr
+        ? { knee: frame.knee_mjy_sr, vmax: frame.vmax_mjy_sr }
+        : undefined;
+    return { reference: refImage, scale, tone };
+  }, [diff, refImage, shownWise, wise, frame, tone]);
+
+  // Overlay Gaia: berkasnya dimuat saat pertama dinyalakan untuk tempat ini.
+  const gaiaFile = manifest?.gaia?.file;
+  useEffect(() => {
+    if (!gaiaOn || !gaiaFile || !targetId || gaia?.id === targetId) return;
+    const ac = new AbortController();
+    loadGaia(targetId, custom, gaiaFile, ac.signal)
+      .then((field) => setGaia({ id: targetId, field }))
+      .catch((err) => {
+        if (!ac.signal.aborted) console.error(err);
+      });
+    return () => ac.abort();
+  }, [gaiaOn, gaiaFile, targetId, custom, gaia?.id]);
+  const shownMjd = shownWise ? shownWise.mjd_mid : win?.mjd_mid;
+  const firstMjd = shownWise ? firstWise?.mjd_mid : firstWindow?.mjd_mid;
+  const gaiaStars = useMemo(() => {
+    if (!gaiaOn || !manifest || !gaia || gaia.id !== targetId || shownMjd === undefined) return undefined;
+    const year = (mjd: number) => 2000 + (mjd - 51544.5) / 365.25;
+    const px = manifest.frame_px;
+    const edge = px * 0.04;
+    return gaia.field.stars
+      .map((star) => {
+        const at = gaiaAt(manifest, gaia.field, star, year(shownMjd));
+        // Bintang yang geraknya lebih dari 0,3 detik busur per tahun diberi ekor dari
+        // posisinya pada pengamatan pertama: jalur menurut katalog, di samping jejak terukur kita.
+        const fast = Math.hypot(star.pmRa ?? 0, star.pmDec ?? 0) > 300;
+        const tail = fast && firstMjd !== undefined ? gaiaAt(manifest, gaia.field, star, year(firstMjd)) : undefined;
+        return { ...at, g: star.g, tail };
+      })
+      .filter((p) => p.x > -edge && p.x < px + edge && p.y > -edge && p.y < px + edge);
+  }, [gaiaOn, manifest, gaia, targetId, shownMjd, firstMjd]);
+
   const description = !target
     ? "Infrared image"
     : shownWise
-      ? `WISE infrared image of the sky around ${target.name}, ${dateLabel}. For viewing only; positions are measured on SPHEREx.`
+      ? difference
+        ? `Difference image: WISE ${dateLabel} minus ${refDate}, around ${target.name}. Brighter now is amber, brighter then is pale.`
+        : `WISE infrared image of the sky around ${target.name}, ${dateLabel}. For viewing only; positions are measured on SPHEREx.`
       : win && band
-        ? `SPHEREx infrared image of ${target.name}, ${bandLabel}, ${dateLabel}. ${shift}`
+        ? difference
+          ? `Difference image: SPHEREx ${dateLabel} minus ${refDate}, ${bandLabel}, of ${target.name}. Brighter now is amber, brighter then is pale. ${shift}`
+          : `SPHEREx infrared image of ${target.name}, ${bandLabel}, ${dateLabel}. ${shift}`
         : "SPHEREx infrared image";
 
   // Bagian langit yang tampil di lensa, berpusat di posisi bundle: sekali dalam
@@ -952,6 +1027,14 @@ export function App() {
     const w = viewArcsec / wise.pixel_arcsec;
     return { x: wise.target_px[0] + 0.5 - w / 2, y: wise.target_px[1] + 0.5 - w / 2, w, h: w };
   }, [shownWise, wise, viewArcsec, markView]);
+  const gaiaShown = useMemo(() => {
+    if (!gaiaStars) return undefined;
+    // Yang digambar hanya yang ada di bagian langit yang tampil, paling banyak 140 yang paling terang.
+    const inView = gaiaStars.filter(
+      (p) => p.x >= markView.x && p.x <= markView.x + markView.w && p.y >= markView.y && p.y <= markView.y + markView.h,
+    );
+    return inView.slice(0, 140);
+  }, [gaiaStars, markView]);
 
   const found = useMemo(() => (manifest ? finding(manifest) : undefined), [manifest]);
   const path = useMemo(() => (manifest ? trail(manifest) : []), [manifest]);
@@ -1181,6 +1264,9 @@ export function App() {
           view={imageView}
           tone={shownTone}
           soften={soften}
+          difference={difference}
+          stars={gaiaShown}
+          note={gaiaShown ? `${gaiaShown.length} Gaia star${gaiaShown.length === 1 ? "" : "s"}, placed for ${dateLabel}` : undefined}
           source={`${targetId ?? ""}:${shownWise ? "wise" : "spherex"}`}
           markView={markView}
           viewArcsec={viewArcsec}
@@ -1214,6 +1300,25 @@ export function App() {
                 <span>SPHEREx {ctxBand ? microns(ctxBand.lambda_min, ctxBand.lambda_max) : ""}</span>
                 <span>{Math.round(ctx.fov_arcsec / 60)}′ field</span>
               </>
+            ) : difference && !collapsed && image ? (
+              atReference ? (
+                <>
+                  <b>{dateLabel}</b>
+                  <span>the first look: step forward to see what changed</span>
+                </>
+              ) : (
+                <>
+                  <b>
+                    {dateLabel} <i className="diff-minus">minus</i> {refDate}
+                  </b>
+                  <span className="diff-key">
+                    <i data-k="now" />
+                    brighter now
+                    <i data-k="then" />
+                    brighter then
+                  </span>
+                </>
+              )
             ) : undefined
           }
         >
@@ -1245,7 +1350,7 @@ export function App() {
           <button
             type="button"
             className="satellite"
-            style={{ "--a": "166deg" } as React.CSSProperties}
+            style={{ "--a": "162deg" } as React.CSSProperties}
             aria-pressed={reveal}
             aria-label="Reveal faint things"
             data-tip="Reveal faint"
@@ -1256,7 +1361,7 @@ export function App() {
           <button
             type="button"
             className="satellite"
-            style={{ "--a": "146deg" } as React.CSSProperties}
+            style={{ "--a": "144deg" } as React.CSSProperties}
             aria-pressed={showFlags}
             aria-label="Mark unreliable pixels"
             data-tip="Unreliable pixels"
@@ -1264,12 +1369,36 @@ export function App() {
           >
             <Flag aria-hidden="true" />
           </button>
+          <button
+            type="button"
+            className="satellite satellite-left"
+            style={{ "--a": "198deg" } as React.CSSProperties}
+            aria-pressed={diff}
+            aria-label="Show what changed since the first look"
+            data-tip={diff ? "Difference: on" : "Difference"}
+            disabled={!refImage}
+            onClick={() => setDiff((v) => !v)}
+          >
+            <Subtract aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="satellite"
+            style={{ "--a": "180deg" } as React.CSSProperties}
+            aria-pressed={gaiaOn && !!gaiaFile}
+            aria-label="Mark the stars of the Gaia catalogue"
+            data-tip={gaiaFile ? (gaiaOn ? "Gaia stars: on" : "Gaia stars") : "No Gaia stars stored for this place"}
+            disabled={!gaiaFile}
+            onClick={() => setGaiaOn((v) => !v)}
+          >
+            <CircleDashed aria-hidden="true" />
+          </button>
           {zoomLevels.length > 0 && (
             <>
               <button
                 type="button"
                 className="satellite satellite-left"
-                style={{ "--a": "214deg" } as React.CSSProperties}
+                style={{ "--a": "216deg" } as React.CSSProperties}
                 aria-label={zoomIndex > 0 ? "Zoom out" : canSky ? "Step back to the wide view" : "Step back to the whole sky"}
                 data-tip={zoomIndex > 0 ? "Zoom out" : canSky ? "Wide view" : "Whole sky"}
 

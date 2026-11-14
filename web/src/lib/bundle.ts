@@ -28,6 +28,9 @@ export type Frame = {
   image: string;
   mask: string;
   n_exposures: number;
+  /** Skala regangan citra ini, MJy/sr; sama untuk semua kunjungan satu band. */
+  knee_mjy_sr?: number;
+  vmax_mjy_sr?: number;
   saturated_fraction: number;
   bad_fraction: number;
 };
@@ -57,6 +60,8 @@ export type Wise = {
   /** Citra sudah ditulis pipeline dengan aturan tampilan frame SPHEREx. Bundle lama
    *  belum; untuk itu viewer menyamakan nadanya sendiri saat melukis (tone.ts). */
   matched?: boolean;
+  /** Skala regangan citra WISE yang sudah disamakan, satuan unWISE. */
+  display?: { sky: number; knee: number; vmax: number; soften_arcsec: number };
 };
 
 export type Manifest = {
@@ -72,6 +77,8 @@ export type Manifest = {
   motion: Motion[];
   context?: Context | null;
   wise?: Wise | null;
+  /** Bintang Gaia DR3 di medan ini (`gaia.json`); tidak ada di bundle lama. */
+  gaia?: { file: string; n: number; truncated: boolean; faintest_g_mag: number | null } | null;
   /** Pratinjau selagi bundle dibuat: hanya riwayat WISE dan citra medan lebar. */
   preview?: boolean;
   source: { n_exposures_used: number; collections: string[] };
@@ -178,4 +185,30 @@ export function referenceMotion(m: Manifest): Motion | undefined {
   const first = m.motion[0];
   const stable = m.motion.length > 0 && m.motion.every((x) => x.scatter_arcsec < 3);
   return stable ? first : undefined;
+}
+
+/** Satu bintang Gaia DR3: posisi pada epoch katalog, gerak diri (milidetik busur per
+ *  tahun, null kalau tidak terukur), dan magnitudo G. */
+export type GaiaStar = { ra: number; dec: number; pmRa: number | null; pmDec: number | null; g: number };
+export type GaiaField = { epoch: number; stars: GaiaStar[] };
+
+export const loadGaia = (id: string, custom: boolean, file: string, signal?: AbortSignal) =>
+  getJson<{ epoch: number; stars: [number, number, number | null, number | null, number, string][] }>(
+    assetUrl(id, custom, file),
+    signal,
+  ).then((d): GaiaField => ({
+    epoch: d.epoch,
+    stars: d.stars.map(([ra, dec, pmRa, pmDec, g]) => ({ ra, dec, pmRa, pmDec, g })),
+  }));
+
+/** Di mana bintang itu pada tahun `year`, dalam piksel frame bundle. Rumusnya sama
+ *  dengan `trail`: bidang datar di sekitar posisi bundle, utara di atas, timur di kiri. */
+export function gaiaAt(m: Manifest, field: GaiaField, star: GaiaStar, year: number): { x: number; y: number } {
+  const dt = year - field.epoch;
+  const cos = Math.cos((m.dec * Math.PI) / 180);
+  const east = (star.ra - m.ra) * 3600 * cos + ((star.pmRa ?? 0) * dt) / 1000;
+  const north = (star.dec - m.dec) * 3600 + ((star.pmDec ?? 0) * dt) / 1000;
+  const scale = m.frame_px / m.fov_arcsec;
+  const c = m.frame_px / 2;
+  return { x: c - east * scale, y: c - north * scale };
 }

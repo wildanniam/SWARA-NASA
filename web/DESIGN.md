@@ -134,6 +134,18 @@ Tombol **The cards** (dulu Guide) membuka dialog di tengah layar berisi kartu, b
 - **Bahasa.** Tarot hanya formatnya. Tidak ada kata ramalan, zodiak, atau nasib; rasi yang dipakai adalah rasi IAU.
 - **Layar kecil.** Tiga kartu digeser satu per satu. Tanpa gerak, kartu berganti sisi tanpa berputar.
 
+## Citra selisih dan bintang Gaia di lensa
+
+Dua lapis di lensa yang menjawab "apa yang berubah?" dan "katalog bilang apa?". Keduanya tombol di busur bawah cincin lensa (tujuh tombol berjajar tiap 18 derajat) dan bisa dinyalakan bersamaan.
+
+- **Citra selisih** (tombol atau D): citra yang tampil dikurangi pengamatan pertama dari teleskop dan band yang sama. Yang tidak berubah jadi gelap. Yang lebih terang sekarang berwarna **bara** (aksen ambar menuju putih hangat); yang lebih terang dulu berwarna **bayangan pucat** (warna garis sistem). Ini dua warna sistem, bukan peta warna dua arah baru, dan tidak mengikuti look. Keterangan lensa menyebut dua tanggalnya ("Mar 2026 minus Aug 2025") dan membawa kunci warnanya; di pengamatan pertama ia bilang belum ada yang dikurangkan.
+- **Bintang Gaia** (tombol atau A): tiap bintang katalog Gaia DR3 digambar sebagai cincin tipis berwarna dingin di posisinya **pada tanggal citra yang tampil**, jadi cincin bintang yang bergerak ikut bergerak. Cincin lebih besar untuk bintang lebih terang. Bintang yang geraknya lebih dari 0,3 detik busur per tahun diberi garis putus-putus dari posisinya pada pengamatan pertama: jalur menurut katalog, di samping jejak ambar yang kita ukur. Ambar tetap hanya untuk pengukuran kita.
+- Paling banyak 140 cincin digambar (yang paling terang di bagian langit yang tampil), dan keterangan lensa menyebut jumlahnya. Tempat tanpa data Gaia: tombolnya mati dan mengatakan itu.
+
+## Dua isian koordinat
+
+Di Go to, di bawah kotak cari, ada dua isian RA dan Dec yang ditata seperti dua sumbu teleskop: label mono berwarna aksen, angka besar di atas satu garis tipis (bukan kotak isian), dan satu baris petunjuk. Masing-masing membaca derajat atau jam/derajat-menit-detik, mengatakan alasannya kalau tidak terbaca, dan memakai pratinjau "Read as" yang sama dengan kotak cari.
+
 ## Bilah atas dan mode fokus
 
 - **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (mengekliknya kembali ke seluruh langit), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.

@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -17,8 +18,19 @@ import httpx
 SIA_URL = "https://irsa.ipac.caltech.edu/SIA"
 S3_HTTP = "https://{bucket}.s3.amazonaws.com/{key}"
 IBE_PREFIX = "https://irsa.ipac.caltech.edu/ibe/data/spherex/"
-# Urutan = prioritas bila eksposur yang sama muncul di dua koleksi.
-COLLECTIONS = ("spherex_dr1", "spherex_qr3")
+DEFAULT_COLLECTIONS = ("spherex_dr1", "spherex_qr3")
+
+
+def _collections() -> tuple[str, ...]:
+    """Koleksi SIA yang dicari. Bawaannya rilis yang ada saat ini; rilis baru cukup
+    ditambahkan lewat SWARA_COLLECTIONS (dipisah koma), tanpa mengubah kode.
+    Urutan = prioritas bila eksposur yang sama muncul di dua koleksi."""
+    raw = os.environ.get("SWARA_COLLECTIONS", "")
+    names = tuple(n.strip() for n in raw.split(",") if n.strip())
+    return names or DEFAULT_COLLECTIONS
+
+
+COLLECTIONS = _collections()
 
 
 @dataclass(frozen=True)
