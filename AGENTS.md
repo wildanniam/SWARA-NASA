@@ -51,7 +51,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Pengguna memilih lebar medan | Ada: peta seluruh langit yang bisa diperbesar sampai medan 1,8 derajat, pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
 | Menimpa data WISE atau Gaia | Ada untuk WISE (W2, 2010-2024, untuk dilihat); Gaia belum |
 | Menjumlah atau mengurangkan citra antar waktu | Belum |
-| Mudah diperbarui saat rilis data baru | Sebagian: nama koleksi masih tertulis di kode |
+| Mudah diperbarui saat rilis data baru | Ada: koleksi diatur lewat `SWARA_COLLECTIONS`, alamat peta seluruh langit dibaca dari manifest |
 
 ## Rencana kerja
 
@@ -75,7 +75,7 @@ Situs publik: https://swara-nasa.vercel.app
   vercel build --prod
   vercel deploy --prebuilt --prod
   ```
-- **API** di server tim sebagai layanan systemd `swara-api` ([deploy/swara-api.service](deploy/swara-api.service)), kode di `/opt/swara/app`, data di `/opt/swara/data`. Memperbarui: `git pull` di sana, lalu `systemctl restart swara-api`. Kalau dependensi berubah, pasang ulang dari `pipeline/requirements.txt` (dibuat dengan `uv export`). Jumlah bundle yang dibuat bersamaan diatur dengan `SWARA_MAX_BUILDS` di `/etc/swara-api.env` (bawaan 2). Menyalakan ulang layanan membatalkan bundle yang sedang dibuat, jadi lakukan saat tidak ada yang berjalan.
+- **API** di server tim sebagai layanan systemd `swara-api` ([deploy/swara-api.service](deploy/swara-api.service)), kode di `/opt/swara/app`, data di `/opt/swara/data`. Memperbarui: `git pull` di sana, lalu `systemctl restart swara-api`. Kalau dependensi berubah, pasang ulang dari `pipeline/requirements.txt` (dibuat dengan `uv export`). Jumlah bundle yang dibuat bersamaan diatur dengan `SWARA_MAX_BUILDS` di `/etc/swara-api.env` (bawaan 2). Koleksi SPHEREx yang dicari diatur dengan `SWARA_COLLECTIONS` di berkas yang sama (bawaan `spherex_dr1,spherex_qr3`); rilis baru cukup ditambahkan di situ. Menyalakan ulang layanan membatalkan bundle yang sedang dibuat, jadi lakukan saat tidak ada yang berjalan.
 - **Sambungan.** `/api/...` di situs diteruskan ke API oleh `web/api/proxy.js`. Alamat API dan kunci bersamanya adalah pengaturan proyek Vercel (`SWARA_API_ORIGIN`, `SWARA_API_KEY`); kunci yang sama ada di `/etc/swara-api.env` di server. Jangan menulis alamat server atau kunci di repo.
 - Lima contoh adalah berkas statis di Vercel, jadi tetap terbuka kalau API mati. Yang butuh API hanya cari nama dan koordinat bebas.
 

@@ -20,6 +20,16 @@ uv run skychange build --id barnard --name "Barnard's Star" --ra 269.44627 --dec
 
 Hasil ditulis ke `bundles/<id>/`. Cutout disimpan di `data/cache/` (tidak ikut git), jadi menjalankan ulang tidak mengunduh lagi. Target preset ada di `presets.json`.
 
+## Saat rilis data baru
+
+Koleksi SPHEREx yang dicari diatur lewat `SWARA_COLLECTIONS` (dipisah koma, urutan = prioritas bila eksposur yang sama ada di dua koleksi). Bawaannya `spherex_dr1,spherex_qr3`. Saat IRSA merilis koleksi baru, cukup tambahkan namanya, tanpa mengubah kode:
+
+```
+SWARA_COLLECTIONS=spherex_dr2,spherex_dr1,spherex_qr3 uv run skychange presets
+```
+
+Di server, baris yang sama ditaruh di `/etc/swara-api.env`. Koleksi yang dipakai tercatat di `manifest.json` (`source.collections`). Peta seluruh langit dibuat ulang dengan `skychange allsky`; alamat HiPS-nya tercatat di `bundles/allsky/manifest.json` dan dibaca viewer dari sana.
+
 ## API koordinat bebas
 
 Viewer memakai API ini untuk koordinat di luar preset. Dari folder `pipeline/`:
