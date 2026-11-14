@@ -38,7 +38,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Permintaan wajib | Status |
 |---|---|
 | Web tool yang terbuka untuk publik | Ada: https://swara-nasa.vercel.app |
-| Pengguna memasukkan koordinat (RA dan Dec) | Ada: satu kotak untuk nama benda atau RA dan Dec |
+| Pengguna memasukkan koordinat (RA dan Dec) | Ada: satu kotak untuk nama benda atau RA dan Dec, dengan pratinjau "dibaca sebagai" di peta; atau klik titik mana pun di peta seluruh langit |
 | Deretan citra patch itu "seperti video kecil" | Ada: 13-18 citra WISE lalu 3-4 kunjungan SPHEREx diputar berurutan; blink antar kunjungan SPHEREx |
 | Diuji pada Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | Sudah; lihat hasil per target |
 
@@ -48,7 +48,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 | Koordinat di URL | Ada |
 | Penanda kontaminasi | Ada: piksel jenuh dan rusak |
 | Menjumlahkan data per detektor | Ada: satu frame = median per detektor per kunjungan |
-| Pengguna memilih lebar medan | Ada: pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
+| Pengguna memilih lebar medan | Ada: seluruh langit, pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
 | Menimpa data WISE atau Gaia | Ada untuk WISE (W2, 2010-2024, untuk dilihat); Gaia belum |
 | Menjumlah atau mengurangkan citra antar waktu | Belum |
 | Mudah diperbarui saat rilis data baru | Sebagian: nama koleksi masih tertulis di kode |
@@ -57,11 +57,11 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 Urutan platform berikutnya:
 
-1. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
+1. Input RA dan Dec: pratinjau "dibaca sebagai" dan klik di peta sudah ada; dua kotak berlabel belum.
 2. Halaman proyek dan video demo berbahasa Inggris.
 3. Identitas visual, setelah pekerjaan fitur: logo (belum ada; yang dipakai sekarang tanda sementara) dan penerapan arah tarot dan rasi bintang ke halaman pembuka dan Guide. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide, dan kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery").
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide, kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), dan pembuka seluruh langit.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -84,7 +84,7 @@ Situs publik: https://swara-nasa.vercel.app
 ```
 pipeline/     paket Python `skychange` (pencarian, cutout, frame, spektrum, bundle, API)
 deploy/       unit layanan untuk API
-bundles/      hasil pipeline untuk 5 contoh (frame, spektrum, citra medan lebar, riwayat WISE), dipakai langsung oleh viewer
+bundles/      hasil pipeline untuk 5 contoh (frame, spektrum, citra medan lebar, riwayat WISE) dan peta seluruh langit (`allsky/`), dipakai langsung oleh viewer
 web/          viewer: blink, spektrum, suara (`web/src/sound/`)
 data/         cache unduhan dan bundle koordinat bebas; tidak ikut git
 ```
@@ -138,6 +138,10 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: pembuka seluruh langit jalan.** Situs tanpa tautan ke satu tempat dibuka di peta seluruh langit SPHEREx DR1: tingkat terluar teleskop (seluruh langit, pandangan lebar 40′, lensa). Menjauh dari pandangan lebar atau tombol Whole sky membukanya; memilih penanda, tombol "Show me a moving star", atau titik yang dibidik membuat peta membesar ke titik itu lalu larut ke tempatnya. Cara kerja dan kontraknya di [pipeline/README.md](pipeline/README.md) dan [web/DESIGN.md](web/DESIGN.md).
+  - Sumber: HiPS kubus SPHEREx DR1 di IRSA (rilis 1 November 2026), 102 panjang gelombang, data 30 April 2025 sampai 20 Mei 2026; enam peta dipakai, satu per band. Resolusinya sekitar 6,9 menit busur per piksel.
+  - Diuji di browser: lima contoh dan enam look, bacaan koordinat di bawah penunjuk cocok dengan posisi (Orion terbaca 5h 35m 17s, −5° 23′ 24″), bidikan dan Esc, enam panjang gelombang, penanda menyelam tanpa gerak berpindah, kembali ke tempat terakhir, rantai zoom dua langkah dari pandangan lebar, tautan langsung, gerak dikurangi, layar 390 px, dan pesan saat API tidak terjangkau (permintaan sengaja digagalkan). Bidikan sampai ke tempat diuji dengan respons API yang dimock ke bundle yang sudah ada.
+  - Pratinjau "dibaca sebagai" di "Go to" membaca bentuk yang sama dengan server (dua angka sebagai derajat, enam angka sebagai jam dan derajat); hasilnya sama dengan server pada sebelas contoh.
 - **KEPUTUSAN (Wildan): tarot dan rasi bintang jadi DNA desain SWARA ke depan.** Alasannya: orang sudah akrab dengan bahasa itu, jadi ia memancing orang untuk melihat dan membagikan. Logo belum ada dan perlu dibuat. Urutannya: fitur dulu, identitas visual sesudahnya. Cara memakainya ditulis di [web/DESIGN.md](web/DESIGN.md): tarot memberi formatnya, langit memberi isinya.
 - **TEMUAN: kartu berbagi jalan.** Share sekarang membuka dialog kartu 1080 x 1920 yang dilukis dari bundle di layar: kartu gerak (citra WISE ditumpuk, satu sinar per pengamatan pada tanggalnya) dan kartu cahaya (spektrum sebagai sinar). Julukannya mengikuti yang terukur SPHEREx.
   - Diuji di browser pada lima contoh dengan enam look, satu nama yang dicari, dan satu koordinat bebas. Kartu cahaya muncul untuk Epsilon Indi B; untuk Barnard's Star, RW Aurigae, dan R Draconis tidak, karena titik bersihnya terlalu sedikit, dan dialognya mengatakan itu.
