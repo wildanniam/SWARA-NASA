@@ -726,6 +726,13 @@ kbd {
   animation: trail-pulse 0.7s ease-out infinite;
 }
 
+.scan-line {
+  stroke: var(--accent);
+  stroke-width: 1.5px;
+  stroke-dasharray: 5 4;
+  opacity: 0.9;
+}
+
 @keyframes trail-pulse {
   0% {
     opacity: 1;

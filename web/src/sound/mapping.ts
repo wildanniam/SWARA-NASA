@@ -94,6 +94,32 @@ export const BRIGHTNESS = {
 
 export type BrightnessSettings = typeof BRIGHTNESS;
 
+// Rasa Mode Pindai: sapuan kolom citra display dari timur ke barat. Posisi
+// utara-selatan menjadi pitch, terang kolom menjadi volume. Karena sumbernya
+// piksel display 8-bit hasil stretch (bukan fluks kalibrasi), volume selalu
+// relatif terhadap frame itu dan wajib didokumentasikan sebagai taksiran.
+export const SCAN = {
+  /** Nada terendah (selatan); utara naik sejauh `octaves`. */
+  baseHz: 110,
+  octaves: 3,
+  /** Puncak per kolom, paling banyak. */
+  topN: 5,
+  /** Lebar rata-rata penghalus kolom, piksel. */
+  smooth: 3,
+  /** Jarak minimum dua puncak, piksel. */
+  minDist: 4,
+  /** Ambang bisu: pecahan dari persentil-99 frame. Di bawah ini sunyi. */
+  floorFrac: 0.5,
+  /** Kolom yang disapu: tiap `colStep` piksel. */
+  colStep: 2,
+  /** Lama satu kolom, detik. Sapuan jalan terus tanpa jeda. */
+  noteSeconds: 0.08,
+  /** Keras, 0-1. */
+  gain: 0.3,
+};
+
+export type ScanSettings = typeof SCAN;
+
 // Pengumuman ganti mode: tiap mode punya motif pendek khas (earcon), lalu dua
 // nada kalibrasi terendah-tertinggi dari rentang mode itu. Bentuk motif dan
 // rentang kalibrasi adalah rasa dan milik berkas ini; arti tiap mode dikunci

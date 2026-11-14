@@ -131,6 +131,8 @@ export function Notes({ open, onClose, manifest, win, frame }: Props) {
             Switching modes plays that mode&apos;s earcon and its lowest-to-highest tones, and the meaning is also
             announced as text. Brightness compares visits in one shared band; a change smaller than the precision
             limit sounds exactly the reference note, and A/B alternates the reference visit with the one shown.
+            Scan reads the 8-bit display picture column by column, so loudness is only an estimate of brightness,
+            not calibrated flux: silent columns have nothing above the threshold.
           </p>
         </section>
 

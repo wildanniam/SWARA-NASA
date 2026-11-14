@@ -42,7 +42,9 @@ import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import type { Spectrum } from "./lib/spectrum";
 import { modeById, modeForKey, type ModeId } from "./sound/modes";
-import { announceMode, brightnessAnalysis, brightnessPhrase, motionNote, motionPhrase, sonifier } from "./sound/sonify";
+import { SCAN, SOUND } from "./sound/mapping";
+import { extractScanColumns, imagePixels, type ScanData } from "./lib/scan";
+import { announceMode, brightnessAnalysis, brightnessPhrase, motionNote, motionPhrase, scanPhrase, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
 const POLL_MS = 1000;
@@ -335,6 +337,7 @@ export function App() {
     if (!m) return;
     setMode(id);
     setAbOn(false);
+    stopScan();
     announceMode(id);
     setModeMsg(m.announcement);
   }, []);
@@ -500,6 +503,66 @@ export function App() {
     }, BLINK_MS);
     return () => window.clearInterval(timer);
   }, [abOn, mode, manifest, windowId, aWin, brightNotes]);
+
+  // Mode Pindai: sapuan kolom citra display dari timur ke barat.
+  const maskImg = images.get(maskUrl);
+  const scanCols: ScanData | undefined = useMemo(() => {
+    if (!image) return undefined;
+    const px = imagePixels(image);
+    if (!px.width) return undefined;
+    const mk = maskImg ? imagePixels(maskImg) : null;
+    const same = mk && mk.width === px.width && mk.height === px.height;
+    return extractScanColumns(px.data, px.width, px.height, same ? mk.data : null);
+  }, [image, maskImg]);
+  const [scanning, setScanning] = useState(false);
+  const [scanX, setScanX] = useState<number | null>(null);
+  const scanStart = useRef(0);
+  const scanTotal = useRef(0);
+  const scanCount = useRef(0);
+
+  const stopScan = useCallback(() => {
+    sonifier.stop();
+    setScanning(false);
+    setScanX(null);
+  }, []);
+
+  const startScan = useCallback(() => {
+    if (!scanCols || !scanCols.cols.some((c) => c.length)) return;
+    const [t0] = sonifier.play([scanPhrase(scanCols.cols, scanCols.height)], SOUND, SCAN.gain);
+    scanStart.current = t0;
+    scanCount.current = scanCols.cols.length;
+    scanTotal.current = scanCount.current * SCAN.noteSeconds;
+    setModeMsg("Scanning from east to west.");
+    setScanX(0);
+    setScanning(true);
+  }, [scanCols]);
+
+  // Garis pindai mengikuti jam audio, diperbarui tiap ganti kolom.
+  useEffect(() => {
+    if (!scanning) return;
+    let raf = 0;
+    let last = -1;
+    const tick = () => {
+      const el = scanTotal.current > 0 ? (sonifier.now() - scanStart.current) / scanTotal.current : 1;
+      if (el >= 1) {
+        stopScan();
+        return;
+      }
+      const col = Math.min(scanCount.current - 1, Math.floor(el * scanCount.current));
+      if (col !== last) {
+        last = col;
+        setScanX(col * SCAN.colStep);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [scanning, stopScan]);
+
+  // Pindah tempat menghentikan sapuan yang masih berjalan.
+  useEffect(() => {
+    stopScan();
+  }, [targetId, stopScan]);
   useEffect(() => {
     if (!motionSound || !manifest || !windowId || sonifier.busy) return;
     const s = shiftAt(manifest, windowId);
@@ -623,6 +686,7 @@ export function App() {
           trail={path}
           currentId={windowId}
           pulseId={mode === "gerak" ? windowId : undefined}
+          scanX={mode === "pindai" ? scanX : undefined}
           dateLabel={dateLabel}
           bandLabel={bandLabel}
           description={description}
@@ -715,6 +779,27 @@ export function App() {
                 canAB={canAB}
                 onToggleAB={toggleAB}
               />
+            )}
+            {mode === "pindai" && (
+              <div className="bright">
+                <span className="meter-cap" aria-hidden="true">
+                  {scanCols && scanCols.cols.some((c) => c.length)
+                    ? "estimate from the 8-bit display picture, not calibrated flux"
+                    : image
+                      ? "nothing above the threshold"
+                      : "loading picture"}
+                </span>
+                <button
+                  type="button"
+                  className="pill"
+                  aria-pressed={scanning}
+                  aria-label={scanning ? "Stop the scan" : "Scan the picture from east to west"}
+                  disabled={!scanCols?.cols.some((c) => c.length)}
+                  onClick={scanning ? stopScan : startScan}
+                >
+                  {scanning ? "Stop" : "Scan"}
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -4,15 +4,18 @@
 import type { Bin, SpectrumPoint } from "../lib/spectrum";
 import { isUsable } from "../lib/spectrum";
 import { shiftAt, type Band, type Manifest } from "../lib/bundle";
+import type { ScanPeak } from "../lib/scan";
 import {
   BRIGHTNESS,
   CALIBRATION_HZ,
   EARCONS,
   MODE_ANNOUNCE,
   MOTION,
+  SCAN,
   SOUND,
   type BrightnessSettings,
   type MotionSettings,
+  type ScanSettings,
   type SoundSettings,
 } from "./mapping";
 import { modeById, type ModeId } from "./modes";
@@ -256,6 +259,27 @@ export function brightnessPhrase(
     const f = Math.max(-1, Math.min(1, (v.median - a.ref) / maxDev));
     return at(b.baseHz * Math.pow(2, f * b.octaves));
   });
+}
+
+/** Satu frasa Pindai: tiap kolom tersapu dari timur ke barat; tiap puncak
+ *  berbunyi serentak. Utara = tinggi, terang = keras. */
+export function scanPhrase(peaks: ScanPeak[][], height: number, s: ScanSettings = SCAN): Note[] {
+  const notes: Note[] = [];
+  peaks.forEach((col, x) => {
+    for (const p of col) {
+      notes.push({
+        t: x * s.noteSeconds,
+        dur: s.noteSeconds,
+        hz: s.baseHz * Math.pow(2, ((1 - p.y / (height - 1)) * s.octaves)),
+        unverified: p.flagged,
+        vol: Math.min(1, Math.max(0, p.v)),
+        lowConf: false,
+        pan: 0,
+        lambda: 0,
+      });
+    }
+  });
+  return notes;
 }
 
 /** Frasa pengumuman ganti mode: earcon khas lalu kalibrasi rendah-tinggi. */

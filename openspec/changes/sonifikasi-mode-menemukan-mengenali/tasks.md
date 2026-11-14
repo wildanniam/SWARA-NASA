@@ -25,8 +25,8 @@
 
 ## 5. Mode Pindai
 
-- [ ] 5.1 Implementasikan ekstraksi top-N puncak per kolom dari PNG display (cache per frame) + `scanPhrase()` (X = waktu timur-ke-barat, Y = pitch utara-naik, kecerahan = volume); verifikasi: sumber tunggal tengah terdengar satu nada pitch-tengah volume-keras selaras garis pindai.
-- [ ] 5.2 Implementasikan garis pindai sinkron di Lens + teks kejujuran ("taksiran dari citra display, bukan fluks kalibrasi"); verifikasi: garis dan kolom yang berbunyi cocok; teks penjelasan memuat peringatan itu.
+- [x] 5.1 Implementasikan ekstraksi top-N puncak per kolom dari PNG display (cache per frame) + `scanPhrase()` (X = waktu timur-ke-barat, Y = pitch utara-naik, kecerahan = volume); verifikasi: sumber tunggal tengah terdengar satu nada pitch-tengah volume-keras selaras garis pindai.
+- [x] 5.2 Implementasikan garis pindai sinkron di Lens + teks kejujuran ("taksiran dari citra display, bukan fluks kalibrasi"); verifikasi: garis dan kolom yang berbunyi cocok; teks penjelasan memuat peringatan itu.
 
 ## 6. Mode Spektrum
 

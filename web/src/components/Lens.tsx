@@ -16,6 +16,8 @@ type Props = {
   currentId?: string;
   /** Kunjungan yang nadanya sedang berbunyi di Mode Gerak; titiknya berdenyut. */
   pulseId?: string;
+  /** Kolom yang sedang berbunyi di Mode Pindai, piksel dari kiri (timur). */
+  scanX?: number | null;
   dateLabel: string;
   bandLabel: string;
   description: string;
@@ -75,7 +77,11 @@ export function Lens(p: Props) {
                 ))}
               </>
             )}
-            {/* Digambar dua kali: garis gelap di bawah supaya tanda ambar tetap terbaca di atas inti bintang yang terang. */}
+            {/* Garis pindai Mode Pindai: kolom yang sedang berbunyi. */}
+          {p.scanX !== undefined && p.scanX !== null && (
+            <line className="scan-line" x1={p.scanX} y1={0} x2={p.scanX} y2={s} />
+          )}
+          {/* Digambar dua kali: garis gelap di bawah supaya tanda ambar tetap terbaca di atas inti bintang yang terang. */}
             {p.mark &&
               ["mark mark-halo", "mark"].map((cls) => (
                 <g key={cls} className={cls} transform={`translate(${p.mark!.x} ${p.mark!.y})`}>
