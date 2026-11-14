@@ -49,7 +49,10 @@ function Thumb({ target, enabled }: { target: TargetRef; enabled: boolean }) {
         const img = new Image();
         img.onload = () => {
           if (!alive || !ref.current) return;
-          paint(ref.current, img, LUTS.heat, 96);
+          // Cuplikan menampilkan 2 menit busur di tengah, sebesar apa pun medan bundle-nya.
+          const w = (Math.min(120, m.fov_arcsec) / m.fov_arcsec) * m.frame_px;
+          const view = { x: (m.frame_px - w) / 2, y: (m.frame_px - w) / 2, w, h: w };
+          paint(ref.current, img, LUTS.heat, 96, undefined, view);
           setShown(true);
         };
         img.src = assetUrl(target.id, custom, frame.image);

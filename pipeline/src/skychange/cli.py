@@ -14,10 +14,11 @@ import argparse
 import json
 from pathlib import Path
 
-from .bundle import build, cutout_px
+from .bundle import FOV_ARCSEC, build, cutout_px
 from .context import build_context
 from .fetch import fetch_all
 from .search import search
+from .wise import build_wise
 
 ROOT = Path(__file__).resolve().parents[3]  # folder repo
 PRESETS = ROOT / "pipeline" / "presets.json"
@@ -62,6 +63,14 @@ def add_context(bundle: Path, cache: Path) -> None:
     print(f"[{bundle.name}] konteks: {m['context']}")
 
 
+def add_wise(bundle: Path) -> None:
+    """Ambil ulang riwayat WISE untuk bundle yang sudah ada."""
+    path = bundle / "manifest.json"
+    m = json.loads(path.read_text())
+    m["wise"] = build_wise(m["ra"], m["dec"], bundle, m["fov_arcsec"])
+    path.write_text(json.dumps(m, indent=1, allow_nan=False))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="skychange")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -83,8 +92,11 @@ def main() -> None:
     c.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
     c.add_argument("--out", type=Path, default=ROOT / "bundles")
     c.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
+    x = sub.add_parser("wise", help="ambil ulang riwayat WISE untuk bundle yang sudah ada")
+    x.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
+    x.add_argument("--out", type=Path, default=ROOT / "bundles")
     for s in (b, p):
-        s.add_argument("--fov", type=float, default=120.0, help="lebar medan, detik busur")
+        s.add_argument("--fov", type=float, default=FOV_ARCSEC, help="lebar medan, detik busur")
         s.add_argument("--out", type=Path, default=ROOT / "bundles")
         s.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
     a = ap.parse_args()
@@ -98,6 +110,15 @@ def main() -> None:
                 continue
             try:
                 add_context(bundle, a.cache)
+            except Exception as err:
+                print(f"[{bundle.name}] GAGAL: {type(err).__name__}: {err}")
+        return
+    if a.cmd == "wise":
+        for bundle in sorted(d for d in a.out.iterdir() if (d / "manifest.json").exists()):
+            if a.ids and bundle.name not in a.ids:
+                continue
+            try:
+                add_wise(bundle)
             except Exception as err:
                 print(f"[{bundle.name}] GAGAL: {type(err).__name__}: {err}")
         return

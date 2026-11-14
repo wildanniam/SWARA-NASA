@@ -45,6 +45,17 @@ export type Motion = {
 /** Citra medan lebar di sekitar posisi; latar langit di viewer. */
 export type Context = { image: string; fov_arcsec: number; size_px: number; band: string; n_exposures: number };
 
+/** Riwayat WISE 2010-2024 di medan yang sama. Untuk dilihat, bukan diukur. */
+export type WiseFrame = { id: string; image: string; mjd_mid: number; date_start: string; date_end: string };
+export type Wise = {
+  band: { id: string; label: string; lambda_um: number };
+  pixel_arcsec: number;
+  size_px: [number, number];
+  /** Letak posisi bundle di citra WISE, piksel dari kiri atas (bilangan bulat = pusat piksel). */
+  target_px: [number, number];
+  frames: WiseFrame[];
+};
+
 export type Manifest = {
   id: string;
   name: string;
@@ -57,6 +68,7 @@ export type Manifest = {
   frames: Frame[];
   motion: Motion[];
   context?: Context | null;
+  wise?: Wise | null;
   source: { n_exposures_used: number; collections: string[] };
 };
 

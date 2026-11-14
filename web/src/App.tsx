@@ -5,6 +5,8 @@ import {
   Flag,
   LinkSimple,
   MagnifyingGlass,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
   Notebook,
   Pause,
   Play,
@@ -15,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
 import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
+import { LongTimeline } from "./components/LongTimeline";
 import { Notes } from "./components/Notes";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
@@ -42,6 +45,10 @@ import type { Spectrum } from "./lib/spectrum";
 import { motionNote, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
+// Deretan 16 tahun punya belasan citra, jadi diputar lebih cepat.
+const LONG_MS = 420;
+// Lebar langit yang tampil di lensa saat hanya SPHEREx: gerak sekitar satu piksel perlu didekati.
+const CLOSE_ARCSEC = 120;
 const POLL_MS = 1000;
 const POLL_MAX_FAILURES = 3;
 
@@ -61,6 +68,9 @@ const LINK_NAME = LINK.get("name")?.trim().slice(0, 80) || undefined;
 const LINK_RA = Number(LINK.get("ra") ?? NaN);
 const LINK_DEC = Number(LINK.get("dec") ?? NaN);
 const LINK_HAS_POSITION = Number.isFinite(LINK_RA) && Number.isFinite(LINK_DEC);
+const LINK_VIEW = LINK.get("view");
+
+type Era = "long" | "spherex";
 
 export function App() {
   const [targets, setTargets] = useState<TargetRef[]>();
@@ -71,6 +81,11 @@ export function App() {
   const [attempt, setAttempt] = useState(0);
   const [bandId, setBandId] = useState<string>();
   const [windowId, setWindowId] = useState<string>();
+  // Rentang waktu yang diputar: 16 tahun (WISE lalu SPHEREx) atau hanya kunjungan SPHEREx.
+  const [era, setEra] = useState<Era>("spherex");
+  // Citra WISE yang sedang tampil; kosong berarti lensa menampilkan kunjungan SPHEREx.
+  const [wiseId, setWiseId] = useState<string>();
+  const [zoomArcsec, setZoomArcsec] = useState(CLOSE_ARCSEC);
   const [playing, setPlaying] = useState(false);
   const [palette, setPalette] = useState<PaletteId>("heat");
   const [showFlags, setShowFlags] = useState(false);
@@ -89,6 +104,7 @@ export function App() {
   const images = useImageStore();
 
   const bandFromLink = useRef(LINK.get("band"));
+  const viewFromLink = useRef(LINK_VIEW);
 
   // Memilih tempat lain mengosongkan kotak cari, supaya isinya tidak tertinggal
   // di samping gambar benda yang berbeda.
@@ -196,12 +212,21 @@ export function App() {
         bandFromLink.current = null;
         const band = wanted && manifest.frames.some((f) => f.band === wanted) ? wanted : defaultBand(manifest);
         const first = manifest.windows.find((w) => findFrame(manifest, w.id, band));
-        preload(
-          manifest.frames.flatMap((f) => [assetUrl(targetId, custom, f.image), assetUrl(targetId, custom, f.mask)]),
-        );
+        const wise = manifest.wise?.frames ?? [];
+        preload([
+          ...manifest.frames.flatMap((f) => [assetUrl(targetId, custom, f.image), assetUrl(targetId, custom, f.mask)]),
+          ...wise.map((f) => assetUrl(targetId, custom, f.image)),
+        ]);
+        // Kalau ada riwayat WISE, cerita dimulai dari sana, kecuali tautan meminta SPHEREx saja.
+        const wantedView = viewFromLink.current;
+        viewFromLink.current = null;
+        const long = wise.length > 0 && wantedView !== "spherex";
         setLoaded({ id: targetId, manifest });
         setBandId(band);
         setWindowId(first?.id);
+        setEra(long ? "long" : "spherex");
+        setWiseId(long ? wise[0].id : undefined);
+        setZoomArcsec(long ? manifest.fov_arcsec : Math.min(CLOSE_ARCSEC, manifest.fov_arcsec));
         setPlaying(!prefersReducedMotion());
       })
       .catch((err) => {
@@ -225,8 +250,9 @@ export function App() {
       if (job.label) p.set("name", job.label);
     } else p.set("target", targetId);
     p.set("band", bandId);
+    if (manifest.wise?.frames.length && era === "spherex") p.set("view", "spherex");
     window.history.replaceState(null, "", `${window.location.pathname}?${p}`);
-  }, [targetId, bandId, manifest, job]);
+  }, [targetId, bandId, manifest, job, era]);
 
   // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
   useEffect(() => {
@@ -281,29 +307,74 @@ export function App() {
   );
   const availableIds = useMemo(() => new Set(available.map((w) => w.id)), [available]);
 
+  const wise = manifest?.wise?.frames.length ? manifest.wise : undefined;
+  const long = era === "long" && !!wise;
+  // Urutan yang diputar: citra WISE lalu kunjungan SPHEREx, atau kunjungan SPHEREx saja.
+  const sequence = useMemo(
+    () => [
+      ...(long && wise ? wise.frames.map((f) => ({ wise: true, id: f.id })) : []),
+      ...available.map((w) => ({ wise: false, id: w.id })),
+    ],
+    [long, wise, available],
+  );
+  const shownWise = long ? wise?.frames.find((f) => f.id === wiseId) : undefined;
+  const cursor = sequence.findIndex((f) => (shownWise ? f.wise && f.id === shownWise.id : !f.wise && f.id === windowId));
+
+  const show = useCallback((f: { wise: boolean; id: string }) => {
+    if (f.wise) setWiseId(f.id);
+    else {
+      setWiseId(undefined);
+      setWindowId(f.id);
+    }
+  }, []);
+
   const step = useCallback(
     (dir: 1 | -1) => {
-      if (available.length < 2) return;
-      setWindowId((cur) => {
-        const i = available.findIndex((w) => w.id === cur);
-        return available[(i + dir + available.length) % available.length].id;
-      });
+      if (sequence.length < 2) return;
+      show(sequence[(Math.max(cursor, 0) + dir + sequence.length) % sequence.length]);
     },
-    [available],
+    [sequence, cursor, show],
   );
 
   // Blink.
   useEffect(() => {
-    if (!playing || available.length < 2) return;
-    const timer = window.setInterval(() => step(1), BLINK_MS);
+    if (!playing || sequence.length < 2) return;
+    const timer = window.setInterval(() => step(1), long ? LONG_MS : BLINK_MS);
     return () => window.clearInterval(timer);
-  }, [playing, step, available.length]);
+  }, [playing, step, sequence.length, long]);
+
+  const chooseEra = useCallback(
+    (next: Era) => {
+      if (!manifest || !wise) return;
+      setEra(next);
+      setWiseId(next === "long" ? wise.frames[0].id : undefined);
+      setZoomArcsec(next === "long" ? manifest.fov_arcsec : Math.min(CLOSE_ARCSEC, manifest.fov_arcsec));
+    },
+    [manifest, wise],
+  );
+
+  // Tingkat pembesaran: seluruh medan bundle, lalu makin dekat.
+  const zoomLevels = useMemo(
+    () => (manifest ? [...new Set([manifest.fov_arcsec, 180, CLOSE_ARCSEC].filter((z) => z <= manifest.fov_arcsec))] : []),
+    [manifest],
+  );
+  const zoomIndex = Math.max(0, zoomLevels.indexOf(zoomArcsec));
+  const zoom = useCallback(
+    (dir: 1 | -1) => {
+      const next = zoomLevels[zoomIndex + dir];
+      if (next) setZoomArcsec(next);
+    },
+    [zoomLevels, zoomIndex],
+  );
 
   // Suara mulai memutar satu kunjungan: blink berhenti dan panggung ikut ke kunjungan itu.
   const listen = useCallback(
     (id: string) => {
       setPlaying(false);
-      if (availableIds.has(id)) setWindowId(id);
+      if (availableIds.has(id)) {
+        setWiseId(undefined);
+        setWindowId(id);
+      }
     },
     [availableIds],
   );
@@ -312,6 +383,7 @@ export function App() {
     (id: string) => {
       if (!manifest || !manifest.frames.some((f) => f.band === id)) return;
       setBandId(id);
+      setWiseId(undefined);
       setWindowId((cur) =>
         cur && findFrame(manifest, cur, id) ? cur : manifest.windows.find((w) => findFrame(manifest, w.id, id))?.id,
       );
@@ -344,13 +416,15 @@ export function App() {
         step(e.key === "ArrowRight" ? 1 : -1);
       } else if (e.key.toLowerCase() === "m" && manifest && referenceMotion(manifest)) {
         setMotionSound((v) => !v);
-      } else if (manifest && /^[1-6]$/.test(e.key)) {
+      } else if (e.key === "+" || e.key === "=") zoom(1);
+      else if (e.key === "-") zoom(-1);
+      else if (manifest && /^[1-6]$/.test(e.key)) {
         chooseBand(manifest.bands[Number(e.key) - 1]?.id);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, chooseBand, manifest]);
+  }, [step, chooseBand, manifest, zoom]);
 
   // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
   const shownBandId =
@@ -358,8 +432,12 @@ export function App() {
   const frame = manifest && windowId && shownBandId ? findFrame(manifest, windowId, shownBandId) : undefined;
   const band = manifest?.bands.find((b) => b.id === shownBandId);
   const win = manifest?.windows.find((w) => w.id === windowId);
-  const imageUrl = frame && targetId ? assetUrl(targetId, custom, frame.image) : undefined;
-  const maskUrl = frame && targetId ? assetUrl(targetId, custom, frame.mask) : undefined;
+  const imageUrl = !targetId
+    ? undefined
+    : shownWise
+      ? assetUrl(targetId, custom, shownWise.image)
+      : frame && assetUrl(targetId, custom, frame.image);
+  const maskUrl = frame && targetId && !shownWise ? assetUrl(targetId, custom, frame.mask) : undefined;
   const image = images.get(imageUrl);
 
   const jobFailed = job?.status === "error";
@@ -382,6 +460,7 @@ export function App() {
       progress = { done: job.done, total: job.total };
     } else if (job.stage === "frames") statusText = "Aligning the images…";
     else if (job.stage === "context") statusText = "Mapping the sky around it…";
+    else if (job.stage === "wise") statusText = "Fetching its WISE history…";
     else statusText = "Looking for SPHEREx exposures of this spot…";
   }
   const retry = jobFailed
@@ -426,12 +505,33 @@ export function App() {
     sonifier.blip(s.kind === "unmeasured" ? null : s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0));
   }, [motionSound, manifest, windowId]);
 
-  const dateLabel = win ? monthYear(win.mjd_mid) : "";
-  const bandLabel = band ? microns(band.lambda_min, band.lambda_max) : "";
-  const description =
-    target && win && band
-      ? `SPHEREx infrared image of ${target.name}, ${bandLabel}, ${dateLabel}. ${shift}`
-      : "SPHEREx infrared image";
+  const dateLabel = shownWise ? monthYear(shownWise.mjd_mid) : win ? monthYear(win.mjd_mid) : "";
+  const bandLabel = shownWise
+    ? `WISE ${wise!.band.lambda_um} µm`
+    : band
+      ? microns(band.lambda_min, band.lambda_max)
+      : "";
+  const description = !target
+    ? "Infrared image"
+    : shownWise
+      ? `WISE infrared image of the sky around ${target.name}, ${dateLabel}. For viewing only; positions are measured on SPHEREx.`
+      : win && band
+        ? `SPHEREx infrared image of ${target.name}, ${bandLabel}, ${dateLabel}. ${shift}`
+        : "SPHEREx infrared image";
+
+  // Bagian langit yang tampil di lensa, berpusat di posisi bundle: sekali dalam
+  // piksel frame SPHEREx (untuk tanda dan jejak), sekali dalam piksel citra yang tampil.
+  const viewArcsec = manifest ? Math.min(zoomArcsec, manifest.fov_arcsec) : CLOSE_ARCSEC;
+  const markView = useMemo(() => {
+    const px = manifest?.frame_px ?? 240;
+    const w = (viewArcsec / (manifest?.fov_arcsec ?? CLOSE_ARCSEC)) * px;
+    return { x: (px - w) / 2, y: (px - w) / 2, w, h: w };
+  }, [manifest, viewArcsec]);
+  const imageView = useMemo(() => {
+    if (!shownWise || !wise) return markView;
+    const w = viewArcsec / wise.pixel_arcsec;
+    return { x: wise.target_px[0] + 0.5 - w / 2, y: wise.target_px[1] + 0.5 - w / 2, w, h: w };
+  }, [shownWise, wise, viewArcsec, markView]);
 
   const found = useMemo(() => (manifest ? finding(manifest) : undefined), [manifest]);
   const path = useMemo(() => (manifest ? trail(manifest) : []), [manifest]);
@@ -525,11 +625,12 @@ export function App() {
           mask={images.get(maskUrl)}
           palette={palette}
           showFlags={showFlags}
-          sizePx={manifest?.frame_px ?? 240}
-          fovArcsec={manifest?.fov_arcsec ?? 120}
+          view={imageView}
+          markView={markView}
+          viewArcsec={viewArcsec}
           mark={mark}
           trail={path}
-          currentId={windowId}
+          currentId={shownWise ? undefined : windowId}
           dateLabel={dateLabel}
           bandLabel={bandLabel}
           description={description}
@@ -562,6 +663,32 @@ export function App() {
           >
             <Flag aria-hidden="true" />
           </button>
+          {zoomLevels.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="satellite satellite-left"
+                style={{ "--a": "214deg" } as React.CSSProperties}
+                aria-label="Zoom out"
+                data-tip="Zoom out"
+                disabled={zoomIndex === 0}
+                onClick={() => zoom(-1)}
+              >
+                <MagnifyingGlassMinus aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="satellite satellite-left"
+                style={{ "--a": "234deg" } as React.CSSProperties}
+                aria-label="Zoom in"
+                data-tip="Zoom in"
+                disabled={zoomIndex === zoomLevels.length - 1}
+                onClick={() => zoom(1)}
+              >
+                <MagnifyingGlassPlus aria-hidden="true" />
+              </button>
+            </>
+          )}
         </Lens>
 
         <section className="finding" aria-label="What was measured">
@@ -613,20 +740,30 @@ export function App() {
               type="button"
               className="dial dial-accent"
               onClick={() => setPlaying((v) => !v)}
-              disabled={available.length < 2}
+              disabled={sequence.length < 2}
               aria-pressed={playing}
-              aria-label={playing ? "Pause the blink" : "Blink between visits"}
+              aria-label={playing ? "Pause" : long ? "Play 16 years of images" : "Blink between visits"}
             >
-              {playing && available.length > 1 ? <Pause weight="fill" /> : <Play weight="fill" />}
+              {playing && sequence.length > 1 ? <Pause weight="fill" /> : <Play weight="fill" />}
             </button>
-            <span className="dial-caption">{playing && available.length > 1 ? "Pause" : "Blink"}</span>
+            <span className="dial-caption">{playing && sequence.length > 1 ? "Pause" : long ? "Play" : "Blink"}</span>
           </div>
           <div className="timebar">
+            {wise && (
+              <div className="era" role="group" aria-label="Time span">
+                <button type="button" aria-pressed={long} onClick={() => chooseEra("long")}>
+                  16 years
+                </button>
+                <button type="button" aria-pressed={!long} onClick={() => chooseEra("spherex")}>
+                  SPHEREx
+                </button>
+              </div>
+            )}
             <button
               type="button"
               className="round"
-              aria-label="Previous visit"
-              disabled={available.length < 2}
+              aria-label={long ? "Previous image" : "Previous visit"}
+              disabled={sequence.length < 2}
               onClick={() => {
                 setPlaying(false);
                 step(-1);
@@ -634,7 +771,17 @@ export function App() {
             >
               <CaretLeft aria-hidden="true" />
             </button>
-            {manifest && windowId ? (
+            {manifest && long && wise ? (
+              <LongTimeline
+                wise={wise.frames}
+                visits={available}
+                current={cursor >= 0 ? sequence[cursor] : undefined}
+                onSelect={(f) => {
+                  setPlaying(false);
+                  show(f);
+                }}
+              />
+            ) : manifest && windowId ? (
               <Timeline
                 windows={manifest.windows}
                 available={availableIds}
@@ -651,8 +798,8 @@ export function App() {
             <button
               type="button"
               className="round"
-              aria-label="Next visit"
-              disabled={available.length < 2}
+              aria-label={long ? "Next image" : "Next visit"}
+              disabled={sequence.length < 2}
               onClick={() => {
                 setPlaying(false);
                 step(1);
@@ -718,10 +865,17 @@ export function App() {
           setGotoOpen(false);
         }}
       />
-      <Notes open={notesOpen} onClose={() => setNotesOpen(false)} manifest={manifest} win={win} frame={frame} />
+      <Notes
+        open={notesOpen}
+        onClose={() => setNotesOpen(false)}
+        manifest={manifest}
+        win={win}
+        frame={frame}
+        wiseFrame={shownWise}
+      />
 
       <p className="sr-only" role="status" aria-live="polite">
-        {!playing && win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
+        {playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
       </p>
     </div>
   );

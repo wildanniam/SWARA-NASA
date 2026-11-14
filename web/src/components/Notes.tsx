@@ -1,5 +1,5 @@
 import { X } from "@phosphor-icons/react";
-import type { Frame, Manifest, TimeWindow } from "../lib/bundle";
+import type { Frame, Manifest, TimeWindow, WiseFrame } from "../lib/bundle";
 import { coord, dayMonthYear, microns } from "../lib/format";
 import { useDialog } from "../lib/hooks";
 
@@ -9,12 +9,15 @@ type Props = {
   manifest?: Manifest;
   win?: TimeWindow;
   frame?: Frame;
+  /** Citra WISE yang sedang tampil di lensa, kalau ada. */
+  wiseFrame?: WiseFrame;
 };
 
 const KEYS: [string, string][] = [
   ["Space", "blink"],
   ["← →", "step through visits"],
   ["1 to 6", "image band"],
+  ["+ −", "zoom the lens"],
   ["L", "listen to the spectrum"],
   ["M", "motion sound"],
   ["/", "go to a place"],
@@ -22,7 +25,7 @@ const KEYS: [string, string][] = [
 ];
 
 /** Laci catatan: semua yang benar tapi tidak perlu tampil terus. */
-export function Notes({ open, onClose, manifest, win, frame }: Props) {
+export function Notes({ open, onClose, manifest, win, frame, wiseFrame }: Props) {
   const ref = useDialog<HTMLElement>(open, onClose);
   if (!open) return null;
   const ctx = manifest?.context;
@@ -43,7 +46,25 @@ export function Notes({ open, onClose, manifest, win, frame }: Props) {
           </button>
         </header>
 
-        {manifest && win && frame && (
+        {manifest && wiseFrame && (
+          <section>
+            <h3>In the lens</h3>
+            <dl className="facts">
+              <dt>Epoch</dt>
+              <dd>
+                {dayMonthYear(wiseFrame.date_start)} to {dayMonthYear(wiseFrame.date_end)}
+              </dd>
+              <dt>Image</dt>
+              <dd>WISE W2 (4.6 µm), unWISE coadd, 2.75″ pixels</dd>
+              <dt>Use</dt>
+              <dd>For viewing. Positions and brightness are measured on SPHEREx only.</dd>
+              <dt>Centre</dt>
+              <dd>{coord(manifest.ra, manifest.dec)}</dd>
+            </dl>
+          </section>
+        )}
+
+        {manifest && win && frame && !wiseFrame && (
           <section>
             <h3>In the lens</h3>
             <dl className="facts">
@@ -145,6 +166,10 @@ export function Notes({ open, onClose, manifest, win, frame }: Props) {
           <p>
             SPHEREx all-sky infrared survey, level 2 images from the NASA/IPAC Infrared Science Archive. Names and
             catalogue motions come from SIMBAD.
+          </p>
+          <p>
+            Images from 2010 to 2024 are from NASA's WISE and NEOWISE missions: unWISE time-resolved coadds, served
+            by WiseView from the Backyard Worlds: Planet 9 project.
           </p>
         </section>
       </aside>

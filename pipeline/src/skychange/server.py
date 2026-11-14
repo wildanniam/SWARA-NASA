@@ -70,7 +70,7 @@ class Job:
     ra: float
     dec: float
     status: str = "queued"  # queued | running | ready | error
-    stage: str = ""  # search | fetch | frames
+    stage: str = ""  # search | fetch | frames | context | wise
     done: int = 0
     total: int = 0
     error: str = ""  # no_data | failed

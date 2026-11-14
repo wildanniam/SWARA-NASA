@@ -24,9 +24,15 @@ from .context import build_context
 from .fetch import fetch_all
 from .search import search
 from .spectrum import measure
+from .wise import build_wise
 
 PIXEL_ARCSEC = 6.15
 MAIN_WINDOW_MIN = 30  # jendela dengan eksposur lebih sedikit dianggap kunjungan kecil
+
+# Medan 6 menit busur: cukup lebar untuk gerak 14 tahun di data WISE (Barnard's Star
+# sekitar 2,4 menit busur), dan viewer memperbesar bagian tengahnya untuk SPHEREx.
+FOV_ARCSEC = 360.0
+FRAME_PX = 480
 
 
 class NoData(RuntimeError):
@@ -54,14 +60,14 @@ def build(
     dec: float,
     out_root: Path,
     cache_root: Path,
-    fov_arcsec: float = 120.0,
-    frame_px: int = 240,
+    fov_arcsec: float = FOV_ARCSEC,
+    frame_px: int = FRAME_PX,
     workers: int = 32,
     log=print,
     progress=None,
 ) -> dict:
     """`progress(stage, done, total)` dipanggil saat tahap berganti dan tiap cutout
-    selesai; tahap: "search", "fetch", "frames", "context"."""
+    selesai; tahap: "search", "fetch", "frames", "context", "wise"."""
     report = progress or (lambda stage, done, total: None)
     t0 = time.time()
     report("search", 0, 0)
@@ -228,6 +234,14 @@ def build(
         log(f"[{target_id}] konteks gagal: {type(err).__name__}: {err}")
         context = None
 
+    # Riwayat WISE 2010-2024 di medan yang sama. Juga tambahan saja.
+    report("wise", 0, 0)
+    try:
+        wise = build_wise(ra, dec, out, fov_arcsec, log=log)
+    except Exception as err:
+        log(f"[{target_id}] WISE gagal: {type(err).__name__}: {err}")
+        wise = None
+
     manifest = {
         "id": target_id,
         "name": name,
@@ -245,6 +259,7 @@ def build(
         "frames": frame_list,
         "motion": motion,
         "context": context,
+        "wise": wise,
         "spectrum": "spectrum.json",
         "source": {
             "mission": "SPHEREx",
