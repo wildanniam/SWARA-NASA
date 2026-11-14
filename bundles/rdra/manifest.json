@@ -504,5 +504,11 @@
   "n_exposures_used": 545,
   "n_failed": 0,
   "generated_at": "2026-11-14T04:31:20+00:00"
+ },
+ "gaia": {
+  "file": "gaia.json",
+  "n": 192,
+  "truncated": false,
+  "faintest_g_mag": 22.0
  }
 }

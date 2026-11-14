@@ -897,6 +897,7 @@ const PLACE_KEYS: [string, string][] = [
   ["C", "next look"],
   ["R", "reveal faint things"],
   ["D", "difference from the first look"],
+  ["A", "stars of the Gaia catalogue"],
   ["L", "listen to the spectrum"],
   ["M", "motion sound"],
   ["/", "go to a place"],

@@ -16,6 +16,9 @@ type Props = {
   soften?: number;
   /** Citra selisih: `image` dikurangi citra acuan ini (pengamatan pertama teleskop yang sama). */
   difference?: { reference: HTMLImageElement; scale?: Linear; tone?: Uint8ClampedArray };
+  /** Bintang katalog Gaia di posisinya pada tanggal citra yang tampil, piksel frame.
+   *  `tail` = dari mana bintang cepat itu datang sejak pengamatan pertama. */
+  stars?: { x: number; y: number; g: number; tail?: { x: number; y: number } }[];
   /** Tempat dan teleskop citra yang tampil, "tempat:teleskop". Saat teleskopnya
    *  berganti di tempat yang sama, citra lama larut ke citra baru. */
   source: string;
@@ -57,6 +60,8 @@ type Props = {
   onWheelZoom: (dir: 1 | -1) => void;
   /** Pengganti baris keterangan, misalnya pembacaan koordinat saat berpindah. */
   caption?: ReactNode;
+  /** Catatan tambahan di ujung baris keterangan. */
+  note?: string;
   /** Tombol kecil yang menempel di cincin. */
   children?: ReactNode;
 };
@@ -166,6 +171,22 @@ export function Lens(p: Props) {
                 viewBox={`${p.markView.x} ${p.markView.y} ${p.markView.w} ${p.markView.h}`}
                 aria-hidden="true"
               >
+                {/* Cincin Gaia: tipis dan dingin, supaya tidak tertukar dengan tanda ambar kita. */}
+                {p.stars && (
+                  <g className="gaia">
+                    {p.stars.map((st, i) => {
+                      // Makin terang bintangnya, makin besar cincinnya.
+                      const r = s * (0.0085 + 0.017 * Math.min(1, Math.max(0, (15 - st.g) / 8)));
+                      return (
+                        <g key={i}>
+                          {st.tail && <line className="gaia-tail" x1={st.tail.x} y1={st.tail.y} x2={st.x} y2={st.y} />}
+                          <circle className="gaia-halo" cx={st.x} cy={st.y} r={r} />
+                          <circle className="gaia-star" cx={st.x} cy={st.y} r={r} />
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
                 {moved && (
                   <>
                     <polyline className="trail-line" points={p.trail.map((t) => `${t.x},${t.y}`).join(" ")} />
@@ -291,6 +312,7 @@ export function Lens(p: Props) {
                 {p.bandLabel}
               </span>
               <span>{Math.round(p.viewArcsec / 60)}′ wide</span>
+              {p.note && <span className="caption-note">{p.note}</span>}
             </>
           ))}
       </p>

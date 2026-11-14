@@ -4602,3 +4602,66 @@ kbd {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ---------- overlay Gaia ---------- */
+
+/* Cincin katalog: tipis dan dingin (warna garis sistem), dengan lingkar gelap di bawahnya
+   supaya terbaca di atas bintang terang. Tanda ambar tetap milik pengukuran kita. */
+.gaia-star,
+.gaia-halo,
+.gaia-tail {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.gaia-halo {
+  stroke: rgb(5 6 11 / 0.6);
+  stroke-width: 3;
+}
+
+.gaia-star {
+  stroke: rgb(205 214 255 / 0.85);
+  stroke-width: 1;
+}
+
+/* Jalur menurut katalog untuk bintang yang bergerak cepat. */
+.gaia-tail {
+  stroke: rgb(205 214 255 / 0.7);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.lens[data-look="paper"] .gaia-star,
+.lens[data-look="paper"] .gaia-tail {
+  stroke: rgb(24 30 70 / 0.85);
+}
+
+.lens[data-look="paper"] .gaia-halo {
+  stroke: rgb(244 241 234 / 0.6);
+}
+
+.lens[data-look="paper"][data-difference="true"] .gaia-star,
+.lens[data-look="paper"][data-difference="true"] .gaia-tail {
+  stroke: rgb(205 214 255 / 0.85);
+}
+
+.caption-note {
+  color: rgb(205 214 255 / 0.8);
+}
+
+/* Di layar sempit keterangan lensa boleh turun baris: kunci warna citra selisih dan
+   catatan Gaia mengambil barisnya sendiri, tidak menimpa teks di bawahnya. */
+.lens-caption b,
+.lens-caption span {
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .lens-caption {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0;
+    height: auto;
+    min-height: 22px;
+  }
+}
