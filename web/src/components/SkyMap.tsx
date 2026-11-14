@@ -204,6 +204,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
   const mapRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glowRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fieldRef = useRef<HTMLSpanElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
@@ -786,6 +787,41 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frame, small, atlas, gl]);
 
+  // Cahaya di luar elips: peta yang sama, diperbesar dan dikaburkan di belakang pelat,
+  // supaya halaman ini juga berlatar langit seperti halaman tempat. Bukan lapis baru:
+  // hanya rembesan cahaya dari data yang sedang tampil.
+  useEffect(() => {
+    if (!frame) return;
+    let alive = true;
+    loadGray(atlasUrl(frame.small))
+      .then((gray) => {
+        if (alive && glowRef.current) paintSky(glowRef.current, gray, LUTS[look], reveal ? REVEAL_LUT : undefined);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [frame, look, reveal]);
+  useEffect(() => {
+    const place = () => {
+      const map = mapRef.current;
+      const glow = glowRef.current;
+      if (!map || !glow) return;
+      const r = map.getBoundingClientRect();
+      glow.style.left = `${r.left + r.width / 2}px`;
+      glow.style.top = `${r.top + r.height / 2}px`;
+      glow.style.width = `${r.width}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    if (mapRef.current) observer.observe(mapRef.current);
+    window.addEventListener("resize", place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", place);
+    };
+  }, [atlas, ready]);
+
   // Garis rasi dan sorotan digambar ulang saat berubah; letak elemen disusul setelah render.
   useEffect(schedule, [lines, hot, schedule]);
   useLayoutEffect(() => {
@@ -1010,6 +1046,9 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
         </p>
       </div>
 
+      <div className="atlas-glow" aria-hidden="true">
+        <canvas ref={glowRef} />
+      </div>
       <div className="atlas-stage">
         <div className="atlas-plot" ref={plotRef}>
           <div
@@ -1164,13 +1203,9 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
       <footer className="atlas-foot">
         <div className="atlas-intro">
           <h1>The whole sky</h1>
-          <p>
-            Our galaxy runs across the middle. Every point of light is SPHEREx data, here at {lambda || "one wavelength"}.{" "}
-            {!gl
-              ? "Choose a spot to look closer."
-              : touch
-                ? "Pinch to zoom in, drag to move, and tap to aim the telescope."
-                : "Scroll to zoom in, drag to move, and click to aim the telescope."}
+          <p>Every point of light is SPHEREx data, here at {lambda || "one wavelength"}. Our galaxy runs across the middle.</p>
+          <p className="atlas-hint">
+            {!gl ? "Choose a spot to look closer" : touch ? "Pinch to zoom · drag to move · tap to aim" : "Scroll to zoom · drag to move · click to aim"}
           </p>
         </div>
 

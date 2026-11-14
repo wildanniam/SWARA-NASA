@@ -23,6 +23,7 @@ import { CollectingStrip } from "./components/CollectingStrip";
 import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
+import { LogoMark, Wordmark } from "./components/Logo";
 import { Reading, type ReadingPlace } from "./components/Reading";
 import { ShareCard } from "./components/ShareCard";
 import { SkyMap, type Handoff, type SkyMapHandle, type SkyMarker } from "./components/SkyMap";
@@ -1109,11 +1110,8 @@ export function App() {
           aria-label={atlas ? "SWARA: the whole sky" : "SWARA: see the whole sky"}
           onClick={() => (atlas ? skyRef.current?.reset() : enterAtlas())}
         >
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <circle cx="9" cy="11" r="6.5" />
-            <circle className="brand-dot" cx="15.5" cy="4.5" r="2" />
-          </svg>
-          <span>SWARA</span>
+          <LogoMark size={22} />
+          <Wordmark height={15} />
         </button>
         <button type="button" className="goto-trigger" onClick={openGoTo}>
           <MagnifyingGlass aria-hidden="true" />
@@ -1361,7 +1359,12 @@ export function App() {
             >
               {playing && sequence.length > 1 ? <Pause weight="fill" /> : <Play weight="fill" />}
             </button>
-            <span className="dial-caption">{playing && sequence.length > 1 ? "Pause" : long ? "Play" : "Blink"}</span>
+            <span className="dial-text">
+              <span className="dial-kicker" aria-hidden="true">
+                <b>II</b> Path
+              </span>
+              <span className="dial-caption">{playing && sequence.length > 1 ? "Pause" : long ? "Play" : "Blink"}</span>
+            </span>
           </div>
           <div className="timebar">
             {wise && !manifest?.preview && (

@@ -5,6 +5,7 @@
 // Yang murni hiasan hanya bingkai, pita, dan bintang empat sudut (lihat web/DESIGN.md).
 
 import qrcode from "qrcode-generator";
+import { MARK_STAR, WORD_PATHS, WORD_STAR } from "../components/Logo";
 import { finding, type Manifest } from "./bundle";
 import { microns, monthYear, shiftWords, span } from "./format";
 import { LUTS, type PaletteId } from "./palette";
@@ -418,16 +419,50 @@ function lower(ctx: Ctx, sk: Skin, input: CardInput, title: string, lines: Line[
   text(ctx, input.site, tx, y0 + 156, mono(17, 500), rgb(sk.ink));
   sparkle(ctx, x1 - 44, y0 + 46, 11, rgb(edge));
 
-  // Tanda SWARA: cincin lensa dan satu titik.
-  const bx = CX - 62;
-  const by = 1700;
-  disc(ctx, bx + 10, by + 15, 10, undefined, rgb(sk.text), 1.6);
-  disc(ctx, bx + 19, by + 4, 4, rgb(sk.dot));
-  text(ctx, "SWARA", bx + 34, by + 19, wide(16, 650), rgb(sk.text), { tracking: 2.4 });
+  // Logo SWARA (components/Logo.tsx): tanda dan nama satu garis.
+  brand(ctx, sk, CX, 1714);
   text(ctx, "Data: NASA SPHEREx and WISE, via IRSA and WiseView", CX, 1765, mono(12.5), rgb(sk.faint), { align: "center" });
   const d = input.today;
   const drawn = `DRAWN ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   text(ctx, `${index}  ·  ${drawn}`, CX, 1793, mono(12.5, 500), rgb(sk.faint), { align: "center", tracking: 2 });
+}
+
+/** Logo di tengah (cx, cy): cakram ambar dengan bintang berlubang, lalu nama satu garis. */
+function brand(ctx: Ctx, sk: Skin, cx: number, cy: number) {
+  const mark = 30;
+  const wordH = 21;
+  const wordW = (212 / 48) * wordH;
+  const gap = 14;
+  const x0 = cx - (mark + gap + wordW) / 2;
+  ctx.save();
+  ctx.translate(x0, cy - mark / 2);
+  ctx.scale(mark / 64, mark / 64);
+  ctx.fillStyle = rgb(sk.dot);
+  ctx.beginPath();
+  ctx.arc(32, 32, 30, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fill(new Path2D(MARK_STAR));
+  ctx.restore();
+  // Lubang bintang menembus kartu; isi lagi dengan warna latar di titik itu.
+  ctx.save();
+  ctx.translate(x0, cy - mark / 2);
+  ctx.scale(mark / 64, mark / 64);
+  ctx.globalCompositeOperation = "destination-over";
+  ctx.fillStyle = rgb(mix(sk.top, sk.bottom, 0.9));
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(x0 + mark + gap + 4 * (wordH / 48), cy - wordH / 2);
+  ctx.scale(wordH / 48, wordH / 48);
+  ctx.strokeStyle = rgb(sk.text);
+  ctx.lineWidth = 5.8;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const d of WORD_PATHS) ctx.stroke(new Path2D(d));
+  ctx.fillStyle = rgb(sk.dot);
+  ctx.fill(new Path2D(WORD_STAR));
+  ctx.restore();
 }
 
 function archPath(ctx: Ctx, x: number, y: number, w: number, h: number) {
