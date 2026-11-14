@@ -14,7 +14,9 @@ Keputusan Wildan, 14 November 2026: **tarot dan rasi bintang** menjadi DNA visua
 
 Cara kita memakainya: tarot memberi **formatnya** (kartu tinggi, jendela melengkung, angka Romawi, pita julukan, sinar), langit memberi **isinya**. Tiap tempat yang di kartu tarot diisi hiasan, di sini diisi data. Emasnya adalah aksen ambar yang sudah ada, dan huruf tidak berubah.
 
-Yang sudah memakai arah ini: kartu berbagi dan peta seluruh langit (lihat di bawah). Yang belum ada dan perlu dibuat setelah pekerjaan fitur: **logo** (sekarang hanya tanda sementara: cincin lensa dan satu titik), lalu penerapan arah ini ke halaman pembuka dan Guide. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
+Yang sudah memakai arah ini: kartu berbagi, peta seluruh langit, dan bacaan tiga kartu yang menggantikan Guide (lihat di bawah). Yang belum ada dan perlu dibuat: **logo** (sekarang hanya tanda sementara: cincin lensa dan satu titik), lalu penerapan arah ini ke cuplikan penanda, hasil Go to, dan halaman pembuka.
+
+Dua watak, satu aturan: **alat ukur saat orang mengukur** (lensa, garis waktu, tombol putar, bacaan koordinat), **kartu saat SWARA bercerita** (bacaan, kartu berbagi). Tarot tidak ditempel di semua tempat. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
 
 ## Aturan paling penting
 
@@ -117,6 +119,24 @@ Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang 
 - **Kode QR** gelap di atas ubin terang dengan modul berukuran bilangan bulat piksel, dan mengarah ke tautan pendek tempat itu.
 
 Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai yang dilarang di viewer: gradien latar, satu pendar lembut, dan garis hias di bingkai. Aturan viewer di atas tidak berubah.
+
+## Bacaan (pengganti Guide)
+
+Tombol Guide membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartunya diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog. Semua yang digambar dan ditulis dihitung dari bundle dan peta seluruh langit (`web/src/lib/reading.ts`); tidak ada angka yang ditulis tangan.
+
+- **Anatomi kartu** (sama dengan kartu berbagi, sepertiga ukurannya, 360 x 640 satuan): bingkai garis ganda bersudut cekung, angka Romawi, satu baris pertanyaan, gambar, keterangan gambar, pita julukan, satu kalimat, dua fakta bertanda kecil, tombol. Warna kartu mengikuti look.
+- **I, tempatnya.** Jendela melengkung berisi 44 derajat langit dari peta SPHEREx yang asli, utara di atas, dengan garis rasi di atasnya; rasi yang ditempati benda itu digambar terang dan namanya jadi isi pita. Faktanya: jarak dari pita Bima Sakti (dengan peta seluruh langit mini) dan dari lintang mana ia tidak pernah terbit.
+- **II, jalannya.** Tumpukan semua citra WISE; busur di atasnya memuat satu sinar per pengamatan pada tanggalnya. Menunjuk satu sinar (atau panah kiri dan kanan) menampilkan citra pengamatan itu. Pitanya julukan dari yang terukur (THE WANDERER, THE STILL ONE, THE RIDDLE). Faktanya: pergeseran terukur dengan diagram tanda dan titik, dan berapa lama ia melintasi lebar Bulan purnama dengan laju itu.
+- **III, cahayanya.** Lensa dengan spektrum sebagai 72 sinar; menunjuk satu sinar membaca panjang gelombang dan terangnya.
+- **0, seluruh langit.** Di peta seluruh langit dialognya berisi satu kartu: peta itu sendiri dan legendanya.
+- **Sisi belakang.** Tiap kartu dibalik untuk rincian datanya (sumber, tanggal, jumlah eksposur, penanda piksel). Depan untuk orang umum, belakang untuk yang ingin memeriksa.
+- **Tertelungkup.** Kartu yang datanya tidak terbaca (spektrum terlalu sedikit titik bersih, terlalu terang, tidak terpisah dari bintang latar, atau masih dimuat) tampil tertelungkup dengan pita UNREAD dan satu kalimat alasannya. Tidak ada kartu yang diisi gambar kosong.
+- **Bahasa.** Tarot hanya formatnya. Tidak ada kata ramalan, zodiak, atau nasib; rasi yang dipakai adalah rasi IAU.
+- **Layar kecil.** Tiga kartu digeser satu per satu. Tanpa gerak, kartu berganti sisi tanpa berputar.
+
+## Pangkat tombol
+
+Satu bentuk (bulat penuh), tiga pangkat: **utama** berisi ambar penuh, satu saja per layar (`pill-accent`); **kedua** bergaris ambar (`pill-share`, dan di dalam kartu `pill-etched`: garis ganda tipis senada bingkai kartu); **tenang** hanya teks dan ikon (`pill-quiet`). Tombol bundar berikon tetap kenop alat.
 
 ## Ikon
 

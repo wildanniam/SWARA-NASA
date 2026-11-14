@@ -21,7 +21,7 @@ import { CollectingStrip } from "./components/CollectingStrip";
 import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
-import { Notes } from "./components/Notes";
+import { Reading, type ReadingPlace } from "./components/Reading";
 import { ShareCard } from "./components/ShareCard";
 import { SkyMap, type Handoff, type SkyMapHandle, type SkyMarker } from "./components/SkyMap";
 import { SlewReadout, type Slew } from "./components/SlewReadout";
@@ -488,7 +488,7 @@ export function App() {
 
   // Manifest peta seluruh langit dimuat begitu dibutuhkan: pembuka, atau pratinjau di "Go to".
   useEffect(() => {
-    if (atlasData || (!atlas && !gotoOpen)) return;
+    if (atlasData || (!atlas && !gotoOpen && !notesOpen)) return;
     let alive = true;
     loadAtlas()
       .then((data) => alive && setAtlasData(data))
@@ -499,7 +499,7 @@ export function App() {
     return () => {
       alive = false;
     };
-  }, [atlas, gotoOpen, atlasData]);
+  }, [atlas, gotoOpen, notesOpen, atlasData]);
 
   // Menjauh dari pandangan lebar: peta mulai dari tempat ini lalu menjauh sampai seluruh langit.
   const enterAtlas = useCallback(() => {
@@ -976,15 +976,17 @@ export function App() {
 
   // Bahan kartu: citra yang sudah termuat untuk tempat ini, spektrumnya, dan tautan
   // pendek ke tempat yang sama. Hanya disusun selagi dialognya terbuka.
+  // Bacaan (pengganti Guide) memakai bahan yang sama dengan kartu berbagi.
+  const deckOpen = cardOpen || (notesOpen && !atlas);
   useEffect(() => {
-    if (cardOpen && contextUrl) preload([contextUrl]);
-  }, [cardOpen, contextUrl]);
-  const cardContext = images.get(cardOpen ? contextUrl : undefined);
+    if (deckOpen && contextUrl) preload([contextUrl]);
+  }, [deckOpen, contextUrl]);
+  const cardContext = images.get(deckOpen ? contextUrl : undefined);
   const cardWindow = available[available.length - 1];
   const cardFrame = manifest && cardWindow && bandId ? findFrame(manifest, cardWindow.id, bandId) : undefined;
-  const cardFrameImage = images.get(cardOpen && cardFrame && targetId ? assetUrl(targetId, custom, cardFrame.image) : undefined);
+  const cardFrameImage = images.get(deckOpen && cardFrame && targetId ? assetUrl(targetId, custom, cardFrame.image) : undefined);
   const cardWise =
-    cardOpen && wise && targetId
+    deckOpen && wise && targetId
       ? wise.frames.flatMap((f) => images.get(assetUrl(targetId, custom, f.image)) ?? [])
       : [];
   const cardWiseCount = cardWise.length;
@@ -994,7 +996,7 @@ export function App() {
   const jobDec = job?.dec;
   const jobLabel = job?.label;
   const cardInput = useMemo<CardInput | undefined>(() => {
-    if (!cardOpen || !manifest || manifest.preview || !target || !targetId) return undefined;
+    if (!deckOpen || !manifest || !target || !targetId) return undefined;
     if (!cardWiseCount && !cardFrameImage) return undefined;
     const link = new URLSearchParams();
     if (jobRa !== undefined && jobDec !== undefined) {
@@ -1025,7 +1027,7 @@ export function App() {
     };
     // `cardWise` berganti tiap render; jumlahnya yang menandai citra baru termuat.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardOpen, manifest, target, targetId, custom, palette, cardContext, cardWiseCount, cardFrameImage, cardPoints, cataloguePm, jobRa, jobDec, jobLabel]);
+  }, [deckOpen, manifest, target, targetId, custom, palette, cardContext, cardWiseCount, cardFrameImage, cardPoints, cataloguePm, jobRa, jobDec, jobLabel]);
 
   const openGoTo = () => {
     setFormError(undefined);
@@ -1040,6 +1042,23 @@ export function App() {
       : target.kind === "custom"
         ? CUSTOM_NOTE
         : TARGET_NOTES[target.id];
+
+  const readingPlace = useMemo<ReadingPlace | undefined>(() => {
+    if (atlas || !target || !targetId) return undefined;
+    return {
+      name: target.name,
+      kind,
+      note,
+      ra: manifest?.ra ?? target.ra,
+      dec: manifest?.dec ?? target.dec,
+      manifest,
+      input: cardInput,
+      asset: (path: string) => assetUrl(targetId, custom, path),
+      blended: custom ? undefined : BLENDED[targetId],
+      cataloguePm,
+      spectrumPending: !spectrum?.data && !spectrum?.error,
+    };
+  }, [atlas, target, targetId, kind, note, manifest, cardInput, custom, cataloguePm, spectrum]);
 
   return (
     <div className="app" ref={appRef}>
@@ -1096,7 +1115,7 @@ export function App() {
           <button
             type="button"
             className="pill pill-guide"
-            aria-label="Guide to this view"
+            aria-label={atlas ? "The whole sky in one card" : "This place in three cards"}
             aria-expanded={notesOpen}
             data-new={!guideSeen}
             onClick={openGuide}
@@ -1484,16 +1503,22 @@ export function App() {
         copied={copied}
         onCopyLink={copyLink}
       />
-      <Notes
+      <Reading
         open={notesOpen}
         onClose={() => setNotesOpen(false)}
-        manifest={manifest}
-        win={win}
-        frame={frame}
-        wiseFrame={shownWise}
         look={palette}
-        atlas={atlas ? atlasData : undefined}
-        skyBand={skyBand}
+        atlas={atlasData}
+        sky={atlas ? { band: skyBand, places: skyMarkers } : undefined}
+        place={readingPlace}
+        canShare={canDrawCard}
+        onShare={() => {
+          setNotesOpen(false);
+          setCardOpen(true);
+        }}
+        onWholeSky={() => {
+          setNotesOpen(false);
+          enterAtlas();
+        }}
       />
 
       <p className="sr-only" role="status" aria-live="polite">

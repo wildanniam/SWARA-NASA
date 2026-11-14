@@ -41,8 +41,8 @@ export type CardInput = {
   today: Date;
 };
 
-type RGB = [number, number, number];
-type Skin = {
+export type RGB = [number, number, number];
+export type Skin = {
   top: RGB;
   bottom: RGB;
   glow?: RGB;
@@ -61,7 +61,7 @@ type Skin = {
 const ACCENT: RGB = [255, 180, 84];
 
 // Satu dek, enam warna: kartu mengikuti look yang sedang dipakai di viewer.
-const SKINS: Record<PaletteId, Skin> = {
+export const SKINS: Record<PaletteId, Skin> = {
   heat: {
     top: [30, 15, 10], bottom: [6, 5, 6], glow: [150, 62, 20], gold: [255, 180, 84], hi: [255, 224, 164], lo: [142, 92, 44],
     text: [242, 239, 232], muted: [194, 180, 164], faint: [156, 142, 128], banner: [20, 11, 8], label: [250, 242, 226], ink: [24, 13, 8], dot: ACCENT,
@@ -180,7 +180,7 @@ function sparkle(ctx: Ctx, x: number, y: number, r: number, color: string, k = 0
 
 /** Bagian citra abu-abu `src` diperbesar ke kanvas baru dan diwarnai lewat peta warna.
  *  `view` dalam piksel sumber dan boleh melewati tepinya; yang di luar jadi nilai 0. */
-function colorize(
+export function colorize(
   src: CanvasImageSource,
   srcW: number,
   srcH: number,
@@ -214,7 +214,7 @@ function colorize(
 
 /** Semua epoch WISE jadi satu gambar: tiap piksel mengambil nilai paling terang di
  *  semua epoch. Bintang yang diam tetap titik; yang bergerak meninggalkan garis. */
-function stackBrightest(images: HTMLImageElement[]): HTMLCanvasElement {
+export function stackBrightest(images: HTMLImageElement[]): HTMLCanvasElement {
   const w = images[0].naturalWidth;
   const h = images[0].naturalHeight;
   const canvas = document.createElement("canvas");
@@ -439,7 +439,7 @@ function archPath(ctx: Ctx, x: number, y: number, w: number, h: number) {
 }
 
 /** Kalimat tentang apa yang diukur SPHEREx, sama isinya dengan panel temuan di viewer. */
-function measured(input: CardInput): { title: string; line: string } {
+export function measured(input: Pick<CardInput, "manifest" | "blended" | "cataloguePm">): { title: string; line: string } {
   if (input.blended) return { title: "THE RIDDLE", line: input.blended };
   const f = finding(input.manifest);
   const pm = input.cataloguePm;
@@ -572,14 +572,14 @@ function wanderer(ctx: Ctx, sk: Skin, input: CardInput, index: string) {
 }
 
 // ---------- II. Cahayanya ----------
-const STEPS = 72;
+export const STEPS = 72;
 
-type Slice = { lambda: number; flux: number | null };
+export type Slice = { lambda: number; flux: number | null };
 
 /** Semua kunjungan digabung, dibagi rata menjadi irisan panjang gelombang; tiap irisan
  *  adalah median titik bersihnya. Titik yang ditandai SPHEREx (jenuh, piksel rusak)
  *  tidak dipakai di kartu: irisan tanpa titik bersih digambar kosong. */
-function slices(points: SpectrumPoint[]): Slice[] {
+export function slices(points: SpectrumPoint[]): Slice[] {
   const width = (LAMBDA_MAX - LAMBDA_MIN) / STEPS;
   const cells: number[][] = Array.from({ length: STEPS }, () => []);
   for (const p of points) {
