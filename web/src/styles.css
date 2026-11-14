@@ -217,9 +217,10 @@ kbd {
   transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Bintangnya berputar seperdelapan putaran saat ditunjuk: berkelip, bukan berputar penuh. */
+/* Saat ditunjuk tandanya berkelip: sedikit membesar. Tidak diputar, karena bintang
+   empat sudut yang diputar 45 derajat terbaca sebagai tanda tutup. */
 .brand:hover .logo-mark {
-  transform: rotate(45deg);
+  transform: scale(1.12);
 }
 
 .brand .logo-word {

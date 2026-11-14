@@ -145,7 +145,7 @@ Dua bagian (`web/src/components/Logo.tsx`; bentuk yang sama ada di `web/public/f
 
 - **Tanda:** cakram ambar dengan bintang empat sudut yang dilubangi, sehingga langit di belakangnya terlihat lewat bintang itu. Dipakai sendirian di tempat sempit: ikon tab, ponsel, avatar.
 - **Nama:** SWARA digambar satu garis berujung bulat, A tanpa palang, dan bintang ambar kecil sebagai palang A pertama.
-- Saat ditunjuk, bintang di tanda berputar seperdelapan putaran: berkelip, bukan berputar penuh.
+- Saat ditunjuk, tandanya sedikit membesar. Jangan diputar: bintang empat sudut yang diputar 45 derajat terbaca sebagai tanda tutup (✕).
 - Dipilih Wildan (14 November 2026) dari enam jenis (wordmark garis, monogram, tanda abstrak, ruang negatif, emblem, wordmark huruf) dan lima variasi tanda.
 
 ## Halaman seluruh langit di layar lebar
