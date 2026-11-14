@@ -1,5 +1,7 @@
 // Bentuk bundle hasil pipeline. Kontraknya dijelaskan di pipeline/README.md.
 
+import type { Spectrum } from "./spectrum";
+
 export type TargetRef = {
   id: string;
   name: string;
@@ -70,6 +72,9 @@ export const assetUrl = (targetId: string, custom: boolean, path: string) => `${
 
 export const loadManifest = (id: string, custom: boolean, signal?: AbortSignal) =>
   getJson<Manifest>(assetUrl(id, custom, "manifest.json"), signal);
+
+export const loadSpectrum = (id: string, custom: boolean, signal?: AbortSignal) =>
+  getJson<Spectrum>(assetUrl(id, custom, "spectrum.json"), signal);
 
 export const findFrame = (m: Manifest, windowId: string, bandId: string) =>
   m.frames.find((f) => f.window === windowId && f.band === bandId);

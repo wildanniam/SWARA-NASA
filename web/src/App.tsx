@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoordinateForm } from "./components/CoordinateForm";
 import { SkyStage } from "./components/SkyStage";
+import { SpectrumPanel } from "./components/SpectrumPanel";
 import { Timeline } from "./components/Timeline";
 import { CUSTOM_NOTE, KIND_LABEL, TARGET_NOTES } from "./content";
 import {
@@ -9,6 +10,7 @@ import {
   findFrame,
   loadIndex,
   loadManifest,
+  loadSpectrum,
   referenceMotion,
   type Manifest,
   type TargetRef,
@@ -17,6 +19,7 @@ import { coord, coordShort, dayMonthYear, microns, monthYear, shiftWords } from 
 import { preload, useImageStore } from "./lib/images";
 import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
+import type { Spectrum } from "./lib/spectrum";
 
 const BLINK_MS = 700;
 const POLL_MS = 1000;
@@ -30,6 +33,7 @@ export function App() {
   const [indexError, setIndexError] = useState(false);
   const [targetId, setTargetId] = useState<string>();
   const [loaded, setLoaded] = useState<Loaded>();
+  const [spec, setSpec] = useState<{ id: string; data?: Spectrum; error?: boolean }>();
   const [attempt, setAttempt] = useState(0);
   const [bandId, setBandId] = useState<string>();
   const [windowId, setWindowId] = useState<string>();
@@ -135,6 +139,23 @@ export function App() {
   }, [targetId, custom, ready, attempt]);
 
   const manifest = loaded?.id === targetId ? loaded?.manifest : undefined;
+
+  // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
+  useEffect(() => {
+    if (!targetId || !manifest) return;
+    const ac = new AbortController();
+    setSpec({ id: targetId });
+    loadSpectrum(targetId, custom, ac.signal)
+      .then((data) => setSpec({ id: targetId, data }))
+      .catch((err) => {
+        if (!ac.signal.aborted) {
+          console.error(err);
+          setSpec({ id: targetId, error: true });
+        }
+      });
+    return () => ac.abort();
+  }, [targetId, custom, manifest]);
+  const spectrum = spec?.id === targetId ? spec : undefined;
   const allTargets = useMemo<TargetRef[]>(
     () => [
       ...(targets ?? []),
@@ -179,6 +200,15 @@ export function App() {
     const timer = window.setInterval(() => step(1), BLINK_MS);
     return () => window.clearInterval(timer);
   }, [playing, step, available.length]);
+
+  // Suara mulai memutar satu kunjungan: blink berhenti dan panggung ikut ke kunjungan itu.
+  const listen = useCallback(
+    (id: string) => {
+      setPlaying(false);
+      if (availableIds.has(id)) setWindowId(id);
+    },
+    [availableIds],
+  );
 
   const chooseBand = useCallback(
     (id: string) => {
@@ -388,7 +418,8 @@ export function App() {
             )}
           </div>
           <p className="keys">
-            <kbd>Space</kbd> blink · <kbd>←</kbd> <kbd>→</kbd> step through visits · <kbd>1</kbd>–<kbd>6</kbd> band
+            <kbd>Space</kbd> blink · <kbd>←</kbd> <kbd>→</kbd> step through visits · <kbd>1</kbd>–<kbd>6</kbd> band ·{" "}
+            <kbd>L</kbd> listen
           </p>
         </section>
 
@@ -407,6 +438,15 @@ export function App() {
 
           {manifest && (
             <>
+              <SpectrumPanel
+                spectrum={spectrum?.data}
+                failed={!!spectrum?.error}
+                windows={manifest.windows}
+                windowId={windowId}
+                band={band}
+                onListen={listen}
+              />
+
               <section>
                 <h2>Infrared band</h2>
                 <div className="bands" role="group" aria-label="Infrared band, in microns">

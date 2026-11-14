@@ -579,6 +579,158 @@ kbd {
   line-height: 1.45;
 }
 
+/* ---------- spektrum ---------- */
+
+.spec-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+
+.spec-band {
+  fill: var(--surface);
+}
+
+.spec-axis,
+.spec-grid {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.spec-grid {
+  stroke: var(--line);
+  stroke-dasharray: 2 4;
+}
+
+.spec-label {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.spec-other {
+  fill: none;
+  stroke: #5d606b;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.spec-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+
+.spec-dot {
+  fill: var(--text);
+}
+
+.spec-ring {
+  fill: var(--bg);
+  stroke: var(--flag-sat);
+  stroke-width: 1.2;
+}
+
+.spec-tick {
+  stroke-width: 1.2;
+}
+
+.spec-sat {
+  stroke: var(--flag-sat);
+}
+
+.spec-bad {
+  stroke: var(--flag-bad);
+}
+
+.spec-hover {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.spec-head {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  visibility: hidden;
+}
+
+.spec-readout {
+  margin: 0;
+  min-height: 2.9em;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.spec-none {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.spec-legend {
+  gap: 3px;
+}
+
+.key {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  margin-right: 8px;
+  vertical-align: -1px;
+}
+
+.key-dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 11px 0 3px;
+  border-radius: 50%;
+  background: var(--text);
+  vertical-align: 1px;
+}
+
+.key-line {
+  height: 0;
+  border-top: 1.5px solid #5d606b;
+  vertical-align: 3px;
+}
+
+.key-ring {
+  width: 7px;
+  height: 7px;
+  margin: 0 10px 0 3px;
+  border: 1.2px solid var(--flag-sat);
+  border-radius: 50%;
+  vertical-align: 0;
+}
+
+.key-tick {
+  width: 0;
+  margin: 0 14px 0 6px;
+  border-left: 1.5px solid var(--flag-bad);
+}
+
+.key-band {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+
+.spec-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.spec-actions .btn svg {
+  fill: currentColor;
+}
+
 .bands {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
