@@ -212,12 +212,19 @@ kbd {
   cursor: pointer;
 }
 
-.brand svg {
-  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+.brand .logo-mark {
+  flex: none;
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.brand:hover svg {
-  transform: rotate(-90deg);
+/* Bintangnya berputar seperdelapan putaran saat ditunjuk: berkelip, bukan berputar penuh. */
+.brand:hover .logo-mark {
+  transform: rotate(45deg);
+}
+
+.brand .logo-word {
+  flex: none;
+  color: var(--text);
 }
 
 /* Garis ukir di bawah bilah atas: memudar di kedua ujung, terputus di tengah oleh pelat cari. */
@@ -232,19 +239,7 @@ kbd {
   pointer-events: none;
 }
 
-.brand svg {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.4;
-}
 
-.brand .brand-dot {
-  fill: var(--accent);
-  stroke: none;
-}
 
 .goto-trigger {
   display: flex;
@@ -2995,7 +2990,7 @@ kbd {
     padding: 10px 14px;
   }
 
-  .brand span,
+  .brand .logo-word,
   .goto-trigger kbd,
   .top-actions .pill span {
     display: none;
