@@ -1,9 +1,20 @@
 // Mesin sonifikasi: aturan tetap dari data ke nada, lalu Web Audio yang membunyikannya.
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
-import type { Bin } from "../lib/spectrum";
-import { shiftAt, type Manifest } from "../lib/bundle";
-import { CALIBRATION_HZ, EARCONS, MODE_ANNOUNCE, MOTION, SOUND, type MotionSettings, type SoundSettings } from "./mapping";
+import type { Bin, SpectrumPoint } from "../lib/spectrum";
+import { isUsable } from "../lib/spectrum";
+import { shiftAt, type Band, type Manifest } from "../lib/bundle";
+import {
+  BRIGHTNESS,
+  CALIBRATION_HZ,
+  EARCONS,
+  MODE_ANNOUNCE,
+  MOTION,
+  SOUND,
+  type BrightnessSettings,
+  type MotionSettings,
+  type SoundSettings,
+} from "./mapping";
 import { modeById, type ModeId } from "./modes";
 
 export type Note = {
@@ -130,9 +141,125 @@ export function motionPhrase(m: Manifest, mo: MotionSettings = MOTION): Note[] {
   });
 }
 
+/** Band pembanding Kecerahan: cakupan kunjungan terbanyak; dahulukan D5/D6
+ *  yang paling jarang jenuh bila seri. undefined = tidak ada band yang bisa
+ *  dibandingkan. Kunjungan yang tidak punya band ini menjadi ketukan. */
+export function commonBand(m: Manifest, points: SpectrumPoint[]): Band | undefined {
+  const order = ["D5", "D6", "D4", "D3", "D2", "D1"];
+  const usable = points.filter(isUsable);
+  let best: Band | undefined;
+  let bestN = 0;
+  for (const id of order) {
+    const b = m.bands.find((x) => x.id === id);
+    if (!b) continue;
+    const n = m.windows.filter((w) =>
+      usable.some((p) => p.window === w.id && p.lambda_um >= b.lambda_min && p.lambda_um <= b.lambda_max),
+    ).length;
+    if (n > bestN) {
+      best = b;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
+const medianOf = (v: number[]) => {
+  const s = [...v].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+export type BrightnessVisit = {
+  window: string;
+  /** Median fluks band pembanding; null = band tidak ada di kunjungan ini. */
+  median: number | null;
+  /** true = di bawah toleransi: berbunyi sama persis dengan acuan. */
+  still: boolean;
+  /** (median − acuan) / acuan; null bila tak terdefinisi. */
+  rel: number | null;
+  unverified: boolean;
+};
+
+export type BrightnessAnalysis = {
+  band: Band | undefined;
+  /** Acuan: median dari median tiap kunjungan. */
+  ref: number;
+  visits: BrightnessVisit[];
+};
+
+/** Tingkat terang tiap kunjungan + siapa yang diam menurut toleransi. */
+export function brightnessAnalysis(
+  m: Manifest,
+  points: SpectrumPoint[],
+  b: BrightnessSettings = BRIGHTNESS,
+): BrightnessAnalysis {
+  const band = commonBand(m, points);
+  const raws = m.windows.map((w) => {
+    const none = { window: w.id, median: null as number | null, still: false, rel: null as number | null, unverified: false };
+    if (!band) return none;
+    const cell = points.filter(
+      (p) => p.window === w.id && p.lambda_um >= band.lambda_min && p.lambda_um <= band.lambda_max && isUsable(p),
+    );
+    const clean = cell.filter((p) => p.flag === "ok");
+    const used = clean.length ? clean : cell;
+    if (!used.length) return none;
+    return {
+      window: w.id,
+      median: medianOf(used.map((p) => p.flux_jy)),
+      scatter: medianOf(used.map((p) => p.flux_err_jy)),
+      unverified: !clean.length,
+    };
+  });
+  const meds = raws.flatMap((r) => ("median" in r && r.median !== null ? [r.median] : []));
+  const ref = meds.length ? medianOf(meds) : 1;
+  const visits: BrightnessVisit[] = raws.map((r) => {
+    if (!("scatter" in r) || r.median === null) {
+      return { window: r.window, median: null, still: false, rel: null, unverified: false };
+    }
+    const tol = Math.max(b.floorFrac * Math.abs(ref), b.sigmaMult * r.scatter);
+    const still = Math.abs(r.median - ref) < tol;
+    return {
+      window: r.window,
+      median: r.median,
+      still,
+      rel: ref > 0 ? (r.median - ref) / ref : null,
+      unverified: r.unverified,
+    };
+  });
+  return { band, ref, visits };
+}
+
+/** Satu frasa Kecerahan: satu nada per kunjungan, naik = menerang.
+ *  Kunjungan diam berbunyi sama persis dengan acuan; tanpa band jadi ketukan. */
+export function brightnessPhrase(
+  m: Manifest,
+  points: SpectrumPoint[],
+  b: BrightnessSettings = BRIGHTNESS,
+): Note[] {
+  const a = brightnessAnalysis(m, points, b);
+  const devs = a.visits.map((v) => (v.median === null ? 0 : Math.abs(v.median - a.ref)));
+  const maxDev = Math.max(0, ...devs);
+  const step = b.noteSeconds + b.phraseGapSeconds;
+  return a.visits.map((v, i) => {
+    const at = (hz: number | null): Note => ({
+      t: i * step,
+      dur: b.noteSeconds,
+      hz,
+      unverified: v.unverified,
+      vol: 1,
+      lowConf: false,
+      pan: 0,
+      lambda: 0,
+    });
+    if (v.median === null) return at(null);
+    if (v.still || maxDev <= 0) return at(b.baseHz);
+    const f = Math.max(-1, Math.min(1, (v.median - a.ref) / maxDev));
+    return at(b.baseHz * Math.pow(2, f * b.octaves));
+  });
+}
+
 /** Frasa pengumuman ganti mode: earcon khas lalu kalibrasi rendah-tinggi. */
-export function modePhrase(id: ModeId): Note[] {
-  const ear = EARCONS[id];
+export function modePhrase(id: ModeId): Note[] {  const ear = EARCONS[id];
   const [lo, hi] = CALIBRATION_HZ[id];
   const step = MODE_ANNOUNCE.noteSeconds + MODE_ANNOUNCE.gapSeconds;
   const at = (i: number, hz: number): Note => ({

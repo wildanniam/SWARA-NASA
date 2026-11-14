@@ -5,8 +5,19 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { Manifest } from "../lib/bundle";
-import { SOUND } from "./mapping";
-import { motionNote, phrase, schedule, sonifier, motionPhrase, type Note } from "./sonify";
+import type { SpectrumPoint } from "../lib/spectrum";
+import { BRIGHTNESS, SOUND } from "./mapping";
+import {
+  brightnessAnalysis,
+  brightnessPhrase,
+  commonBand,
+  motionNote,
+  phrase,
+  schedule,
+  sonifier,
+  motionPhrase,
+  type Note,
+} from "./sonify";
 
 type Call = { method: string; value: number; at: number };
 
@@ -232,5 +243,87 @@ describe("motionPhrase", () => {
     } as unknown as Manifest;
     const notes = motionPhrase(m);
     expect(notes.every((n) => n.hz === null)).toBe(true);
+  });
+});
+
+const D5 = { id: "D5", detector: 5, lambda_min: 3.82, lambda_max: 4.42 };
+
+function bman(windows: string[]) {
+  return { windows: windows.map((id) => ({ id })), bands: [D5], motion: [] } as unknown as Manifest;
+}
+
+function bpts(rows: [string, number, number, SpectrumPoint["flag"]][]): SpectrumPoint[] {
+  return rows.map(([window, flux, err, flag], i) => ({
+    window,
+    lambda_um: 4.0 + i * 0.001,
+    flux_jy: flux,
+    flux_err_jy: err,
+    snr: flux / err,
+    flag,
+  }));
+}
+
+function loadSpectrum(id: string): SpectrumPoint[] {
+  const url = new URL(`../../../bundles/${id}/spectrum.json`, import.meta.url);
+  return (JSON.parse(readFileSync(url, "utf-8")) as { points: SpectrumPoint[] }).points;
+}
+
+describe("brightnessPhrase", () => {
+  it("selisih di bawah toleransi berbunyi sama dengan acuan", () => {
+    const m = bman(["w1", "w2"]);
+    const notes = brightnessPhrase(m, bpts([["w1", 1.0, 0.001, "ok"], ["w2", 1.005, 0.001, "ok"]]));
+    expect(notes).toHaveLength(2);
+    expect(notes[0].hz).toBeCloseTo(BRIGHTNESS.baseHz, 9);
+    expect(notes[1].hz).toBeCloseTo(BRIGHTNESS.baseHz, 9);
+    expect(notes.every((n) => n.vol === 1 && n.pan === 0)).toBe(true);
+  });
+
+  it("selisih di atas toleransi berbunyi beda, jeda seragam", () => {
+    const m = bman(["w1", "w2", "w3"]);
+    const notes = brightnessPhrase(
+      m,
+      bpts([["w1", 1.0, 0.001, "ok"], ["w2", 1.0, 0.001, "ok"], ["w3", 1.5, 0.001, "ok"]]),
+    );
+    expect(notes[0].hz).toBeCloseTo(BRIGHTNESS.baseHz, 9);
+    expect(notes[2].hz!).toBeGreaterThan(BRIGHTNESS.baseHz);
+    const gaps = [notes[1].t - notes[0].t, notes[2].t - notes[1].t];
+    expect(gaps[0]).toBeCloseTo(gaps[1], 9);
+  });
+
+  it("kunjungan tanpa band menjadi ketukan; tanpa band pembanding semua ketukan", () => {
+    const m = bman(["w1", "w2", "w3"]);
+    const notes = brightnessPhrase(m, bpts([["w1", 1.0, 0.001, "ok"], ["w2", 1.2, 0.001, "ok"]]));
+    expect(notes[0].hz).not.toBeNull();
+    expect(notes[2].hz).toBeNull();
+    const empty = brightnessPhrase(m, []);
+    expect(empty.every((n) => n.hz === null)).toBe(true);
+  });
+
+  it("RW Aurigae: penurunan 4-5 mikron melewati toleransi lalu terdengar turun", () => {
+    const m = loadManifest("rwaur");
+    const a = brightnessAnalysis(m, loadSpectrum("rwaur"));
+    expect(a.band?.id).toBe("D5");
+    // w1 +20% dan w3 -40% dari acuan: jauh di atas batas 1%.
+    const w3 = a.visits.find((v) => v.window === "w3")!;
+    expect(w3.still).toBe(false);
+    expect(w3.rel!).toBeLessThan(-0.3);
+    const notes = brightnessPhrase(m, loadSpectrum("rwaur"));
+    expect(notes[0].hz!).toBeGreaterThan(BRIGHTNESS.baseHz);
+    expect(notes[2].hz!).toBeLessThan(BRIGHTNESS.baseHz);
+    expect(notes.every((n) => n.unverified)).toBe(true);
+  });
+
+  it("Barnard yang stabil: semua kunjungan diam", () => {
+    const m = loadManifest("barnard");
+    const a = brightnessAnalysis(m, loadSpectrum("barnard"));
+    expect(a.band?.id).toBe("D5");
+    expect(a.visits.every((v) => v.still)).toBe(true);
+    const notes = brightnessPhrase(m, loadSpectrum("barnard"));
+    for (const n of notes) expect(n.hz).toBeCloseTo(BRIGHTNESS.baseHz, 9);
+  });
+
+  it("commonBand mendahulukan D5/D6 bila seri cakupan", () => {
+    const m = loadManifest("barnard");
+    expect(commonBand(m, loadSpectrum("barnard"))?.id).toBe("D5");
   });
 });

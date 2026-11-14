@@ -129,7 +129,8 @@ export function Notes({ open, onClose, manifest, win, frame }: Props) {
             Four sound modes answer four questions by ear: Motion (where did it move), Brightness (dimmer or
             brighter), Scan (which part of the picture is bright), and Spectrum (what light does it give off).
             Switching modes plays that mode&apos;s earcon and its lowest-to-highest tones, and the meaning is also
-            announced as text.
+            announced as text. Brightness compares visits in one shared band; a change smaller than the precision
+            limit sounds exactly the reference note, and A/B alternates the reference visit with the one shown.
           </p>
         </section>
 

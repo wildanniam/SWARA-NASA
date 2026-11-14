@@ -61,8 +61,7 @@ export const MOTION = {
   /** Pergeseran timur-barat yang memberi geser stereo penuh, detik busur. Timur di kiri, seperti di gambar. */
   panArcsec: 10,
   /** Jeda antar nada saat frasa Gerak diputar berurutan, detik. Seragam untuk semua objek. */
-  phraseGapSeconds: 0.25,
-  /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */
+  phraseGapSeconds: 0.25,  /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */
   seconds: 0.4,
   /** Keras nada, 0-1. */
   gain: 0.3,
@@ -72,6 +71,28 @@ export const MOTION = {
 };
 
 export type MotionSettings = typeof MOTION;
+
+// Rasa Mode Kecerahan: nada acuan, rentang, dan toleransi diam. Selisih di
+// bawah max(floorFrac × acuan, sigmaMult × galat) dianggap sistematika antar
+// kunjungan, bukan perubahan (Barnard yang stabil tetap diam; penurunan
+// RW Aurigae yang puluhan persen tetap terdengar).
+export const BRIGHTNESS = {
+  /** Nada acuan (C4). */
+  baseHz: 261.63,
+  /** Rentang dari acuan ke perubahan terbesar objek itu, oktaf. */
+  octaves: 1,
+  /** Batas bawah toleransi diam: pecahan dari acuan. */
+  floorFrac: 0.01,
+  /** Pengali sebaran galat dalam toleransi, cermin toleransi Gerak. */
+  sigmaMult: 2,
+  /** Lama satu nada dan jeda antar nada frasa, detik. Seragam. */
+  noteSeconds: 0.4,
+  phraseGapSeconds: 0.25,
+  /** Keras, 0-1. */
+  gain: 0.3,
+};
+
+export type BrightnessSettings = typeof BRIGHTNESS;
 
 // Pengumuman ganti mode: tiap mode punya motif pendek khas (earcon), lalu dua
 // nada kalibrasi terendah-tertinggi dari rentang mode itu. Bentuk motif dan

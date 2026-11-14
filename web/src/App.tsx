@@ -13,6 +13,7 @@ import {
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
+import { BrightnessTools } from "./components/BrightnessTools";
 import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { ModeSwitch } from "./components/ModeSwitch";
@@ -41,7 +42,7 @@ import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import type { Spectrum } from "./lib/spectrum";
 import { modeById, modeForKey, type ModeId } from "./sound/modes";
-import { announceMode, motionNote, motionPhrase, sonifier } from "./sound/sonify";
+import { announceMode, brightnessAnalysis, brightnessPhrase, motionNote, motionPhrase, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
 const POLL_MS = 1000;
@@ -80,6 +81,10 @@ export function App() {
   // Mode suara aktif; pengumuman dibacakan screen reader tiap ganti mode.
   const [mode, setMode] = useState<ModeId>("gerak");
   const [modeMsg, setModeMsg] = useState("");
+  // Banding A/B di Mode Kecerahan: A = kunjungan terdekat acuan, B = kunjungan tampil.
+  const [abOn, setAbOn] = useState(false);
+  const [abSide, setAbSide] = useState<"A" | "B">("A");
+  const abCount = useRef(0);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
   const [query, setQuery] = useState("");
@@ -329,6 +334,7 @@ export function App() {
     const m = modeById(id);
     if (!m) return;
     setMode(id);
+    setAbOn(false);
     announceMode(id);
     setModeMsg(m.announcement);
   }, []);
@@ -443,6 +449,57 @@ export function App() {
 
   // Motif gerak: tiap kunjungan yang tampil membunyikan satu nada dari posisinya.
   const canHearMotion = !!ref;
+  // Mode Kecerahan: band pembanding + frasa ternormalisasi dari spektrum.
+  const points = spectrum?.data?.points ?? [];
+  const bright = useMemo(() => (manifest ? brightnessAnalysis(manifest, points) : undefined), [manifest, points]);
+  const brightNotes = useMemo(() => (manifest ? brightnessPhrase(manifest, points) : []), [manifest, points]);
+  useEffect(() => {
+    if (mode !== "kecerahan" || !manifest || !windowId || sonifier.busy || abOn) return;
+    const i = manifest.windows.findIndex((w) => w.id === windowId);
+    const n = brightNotes[i];
+    if (!n) return;
+    sonifier.blip(n.hz === null ? null : { hz: n.hz, pan: n.pan });
+  }, [mode, manifest, windowId, brightNotes, abOn]);
+
+  // Sisi A = kunjungan terdekat acuan; B = kunjungan yang sedang tampil.
+  const aWin = useMemo(() => {
+    if (!bright) return undefined;
+    const scored = bright.visits.filter((v) => v.median !== null);
+    if (!scored.length) return undefined;
+    return scored.reduce((a, b) =>
+      Math.abs(b.median! - bright.ref) < Math.abs(a.median! - bright.ref) ? b : a,
+    ).window;
+  }, [bright]);
+  const canAB = !!bright?.band && !!aWin && !!windowId && aWin !== windowId;
+
+  const toggleAB = useCallback(() => {
+    if (abOn) {
+      setAbOn(false);
+      setModeMsg("");
+    } else {
+      abCount.current = 0;
+      setAbSide("A");
+      setPlaying(false);
+      setAbOn(true);
+    }
+  }, [abOn]);
+
+  // A/B bergantian tiap 0,7 detik; sisi yang berbunyi diumumkan "A"/"B".
+  useEffect(() => {
+    if (!abOn || mode !== "kecerahan" || !manifest) return;
+    const timer = window.setInterval(() => {
+      if (sonifier.busy) return;
+      abCount.current += 1;
+      const next = abCount.current % 2 === 1 ? "B" : "A";
+      setAbSide(next);
+      const wid = next === "A" ? aWin : windowId;
+      const i = manifest.windows.findIndex((w) => w.id === wid);
+      const n = brightNotes[i];
+      if (n) sonifier.blip(n.hz === null ? null : { hz: n.hz, pan: n.pan });
+      setModeMsg(next);
+    }, BLINK_MS);
+    return () => window.clearInterval(timer);
+  }, [abOn, mode, manifest, windowId, aWin, brightNotes]);
   useEffect(() => {
     if (!motionSound || !manifest || !windowId || sonifier.busy) return;
     const s = shiftAt(manifest, windowId);
@@ -648,7 +705,18 @@ export function App() {
             <span className="dial-caption">Sound</span>
           </div>
           <ModeSwitch mode={mode} onMode={selectMode} />
-          <div className="dock-tail" />
+          <div className="dock-tail">
+            {mode === "kecerahan" && bright && (
+              <BrightnessTools
+                analysis={bright}
+                soundingId={abOn ? (abSide === "A" ? aWin : windowId) : windowId}
+                abOn={abOn}
+                abSide={abSide}
+                canAB={canAB}
+                onToggleAB={toggleAB}
+              />
+            )}
+          </div>
         </div>
         <div className="dock-row">
           <div className="dock-lead">
