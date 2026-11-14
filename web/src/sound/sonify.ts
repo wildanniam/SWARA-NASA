@@ -2,7 +2,7 @@
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
 import type { Bin } from "../lib/spectrum";
-import { MOTION, SOUND, type MotionSettings, type SoundSettings } from "./mapping";
+import { INSTRUMENTS, MIX, MOTION, SOUND, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
 
 export type Note = {
   /** Detik sejak awal frasa. */
@@ -16,6 +16,8 @@ export type Note = {
   /** -1 kiri .. 1 kanan. */
   pan: number;
   lambda: number;
+  /** Lapisan yang menghasilkan nada ini; nada lama tanpa voice dianggap spektrum. */
+  voice?: InstrumentId;
 };
 
 /** Kebutuhan minimum penjadwal: dipenuhi SoundSettings maupun ScanSettings. */
@@ -52,6 +54,7 @@ export function phrase(bins: Bin[], top: number, s: SoundSettings = SOUND): Note
     unverified: b.unverified,
     pan: bins.length > 1 ? (i / (bins.length - 1)) * 2 * s.pan - s.pan : 0,
     lambda: b.lambda,
+    voice: "spectrum",
   }));
 }
 
@@ -90,6 +93,63 @@ export function schedule(
   return sources;
 }
 
+/** Jadwalkan semua nada pada satu jam dengan timbre, envelope, dan level per lapisan. */
+export function scheduleMixed(
+  ctx: BaseAudioContext,
+  out: AudioNode,
+  notes: Note[],
+  at: number,
+  activeVoices: InstrumentId[],
+): AudioScheduledSourceNode[] {
+  const sources: AudioScheduledSourceNode[] = [];
+  const mix = 1 / Math.sqrt(Math.max(1, activeVoices.length));
+  for (const note of notes) {
+    const profile = INSTRUMENTS[note.voice ?? "spectrum"];
+    const tick = note.hz === null;
+    if (tick && !profile.gapTick) continue;
+    const start = at + note.t;
+    const dur = tick ? 0.012 : note.dur;
+    const peak =
+      (tick ? profile.gapTickGain : note.unverified ? profile.unverifiedGain : 1) *
+      (note.vol ?? 1) *
+      profile.gain *
+      mix;
+    const tones = tick
+      ? [{ hz: profile.gapTickHz, gain: 1, waveform: profile.gapTickWaveform }]
+      : [
+          { hz: note.hz!, gain: 1, waveform: note.unverified ? profile.unverifiedWaveform : profile.waveform },
+          ...profile.partials.map((partial) => ({
+            hz: note.hz! * partial.ratio,
+            gain: partial.gain,
+            waveform: note.unverified ? profile.unverifiedWaveform : profile.waveform,
+          })),
+        ];
+    for (const tone of tones) {
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      const pan = ctx.createStereoPanner();
+      const tonePeak = Math.max(0.0001, peak * tone.gain);
+      osc.type = tone.waveform;
+      osc.frequency.value = tone.hz;
+      pan.pan.value = note.pan;
+      env.gain.setValueAtTime(0, start);
+      env.gain.linearRampToValueAtTime(tonePeak, start + Math.min(profile.attackSeconds, dur * 0.25));
+      if (profile.envelope === "sustain" && !tick) {
+        const sustainTo = start + dur * profile.sustainFraction;
+        env.gain.setValueAtTime(tonePeak, sustainTo);
+        env.gain.linearRampToValueAtTime(0, start + dur);
+      } else {
+        env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      }
+      osc.connect(env).connect(pan).connect(out);
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+      sources.push(osc);
+    }
+  }
+  return sources;
+}
+
 /** Pergeseran sejak kunjungan acuan (detik busur) -> satu nada. Utara menaikkan
  *  nada, selatan menurunkan; timur menggeser ke kiri, barat ke kanan. */
 export function motionNote(east: number, north: number, m: MotionSettings = MOTION): { hz: number; pan: number } {
@@ -113,6 +173,7 @@ export function motionPhrase(steps: ({ hz: number; pan: number } | null)[], m: M
     pan: s?.pan ?? 0,
     // Urutan kunjungan 0..1, bukan panjang gelombang.
     lambda: steps.length > 1 ? i / (steps.length - 1) : 0,
+    voice: "motion",
   }));
 }
 
@@ -124,6 +185,7 @@ export const soundEpoch = { n: 0 };
 export class Sonifier {
   private ctx?: AudioContext;
   private master?: GainNode;
+  private compressor?: DynamicsCompressorNode;
   private sources: AudioScheduledSourceNode[] = [];
 
   /** Putar beberapa frasa berurutan. Mengembalikan waktu mulai tiap frasa (waktu konteks). */
@@ -145,6 +207,26 @@ export class Sonifier {
     return starts;
   }
 
+  /** Satu campuran berlapis dengan jam dan gain utama bersama. */
+  playMixed(notes: Note[], activeVoices: InstrumentId[]): number {
+    this.stop();
+    soundEpoch.n++;
+    const ctx = (this.ctx ??= new AudioContext());
+    void ctx.resume();
+    this.master = ctx.createGain();
+    this.master.gain.value = MIX.gain;
+    this.compressor = ctx.createDynamicsCompressor();
+    this.compressor.threshold.value = MIX.compressorThresholdDb;
+    this.compressor.knee.value = MIX.compressorKneeDb;
+    this.compressor.ratio.value = MIX.compressorRatio;
+    this.compressor.attack.value = MIX.compressorAttackSeconds;
+    this.compressor.release.value = MIX.compressorReleaseSeconds;
+    this.master.connect(this.compressor).connect(ctx.destination);
+    const start = ctx.currentTime + 0.08;
+    this.sources.push(...scheduleMixed(ctx, this.master, notes, start, activeVoices));
+    return start;
+  }
+
   stop() {
     for (const src of this.sources) {
       try {
@@ -156,6 +238,8 @@ export class Sonifier {
     this.sources = [];
     this.master?.disconnect();
     this.master = undefined;
+    this.compressor?.disconnect();
+    this.compressor = undefined;
   }
 
   /** Ada frasa suara yang sedang dijalankan. */

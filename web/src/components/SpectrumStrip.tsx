@@ -1,9 +1,10 @@
-import { ArrowRight, ArrowUpRight, Play, Scan, Stop, Waveform, X } from "@phosphor-icons/react";
+import { ArrowRight, Play, Stop, Waveform, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 import type { Band, TimeWindow } from "../lib/bundle";
 import { microns, monthYear } from "../lib/format";
 import { useDialog, useWidth } from "../lib/hooks";
 import { scanGrid, scanPhrase } from "../lib/scan";
+import { combineSoundLayers, VISIT_PAUSE_SECONDS, VISIT_SLOT_SECONDS, type CombinedVisit } from "../lib/combinedSound";
 import {
   assessVisit,
   binVisit,
@@ -18,9 +19,10 @@ import {
   type SpectrumPoint,
 } from "../lib/spectrum";
 import { MOTION, SCAN, SOUND } from "../sound/mapping";
-import { motionPhrase, phrase, sonifier, soundEpoch, type Note } from "../sound/sonify";
+import { phrase, sonifier, soundEpoch, type Note } from "../sound/sonify";
 
 type Props = {
+  targetId: string;
   spectrum?: Spectrum;
   failed: boolean;
   windows: TimeWindow[];
@@ -45,8 +47,6 @@ type Props = {
   readVisit: (windowId: string) => { gray: Uint8ClampedArray; mask: Uint8ClampedArray | null; size: number } | undefined;
   /** Citra kunjungan ini (band yang tampil) sudah dimuat. */
   hasImage: (windowId: string) => boolean;
-  /** Sedikitnya satu frame band untuk kunjungan ini sudah dimuat. */
-  hasVisitImage: (windowId: string) => boolean;
   /** Busur di cincin lensa; menyapu seiring suara. */
   soundRing: RefObject<SVGCircleElement | null>;
   /** Garis pindai di lensa; digerakkan kolom-per-kolom mengikuti jam audio. */
@@ -57,9 +57,6 @@ const H = 84;
 const M = { left: 2, right: 2, top: 12, bottom: 18 };
 const TICKS = [1, 2, 3, 4, 5];
 const HEARD_KEY = "swara.heard";
-// Jeda antar kunjungan saat All visits memutar sapuan berurutan, detik.
-const SCAN_PAUSE = 0.8;
-
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 const FLAG_TEXT: Record<SpectrumPoint["flag"], string> = {
@@ -88,10 +85,13 @@ export function SpectrumStrip(p: Props) {
   );
 
   // Selama suara berjalan: kunjungan mana saja yang diputar dan kapan tiap kunjungan mulai.
-  const [play, setPlay] = useState<{ kind: "scan" | "spectrum" | "motion"; visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
-  const [mode, setMode] = useState<"scan" | "spectrum" | "motion">("scan");
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
+  const [play, setPlay] = useState<{
+    start: number;
+    total: number;
+    visits: CombinedVisit[];
+    skipped: { id: string; layers: ("scan" | "spectrum" | "motion")[] }[];
+    activeVoices: ("scan" | "spectrum" | "motion")[];
+  }>();
   const [chooser, setChooser] = useState(false);
   const chooserRef = useDialog<HTMLDivElement>(chooser, () => setChooser(false));
   const readMotionRef = useRef(p.readMotion);
@@ -153,88 +153,80 @@ export function SpectrumStrip(p: Props) {
     abandon();
   }, [abandon]);
 
-  // Setiap pilihan Listen memakai satu suara saja: gambar, spektrum, atau gerak.
-  const start = useCallback(
-    (visits: string[], kind: "scan" | "spectrum" | "motion" = modeRef.current) => {
-      if (!visits.length) return;
-      setAnnounce("");
-      setHeardLambda(undefined);
-      if (kind === "motion") {
-        const use = visits.filter((v) => hasImageRef.current(v));
-        if (!use.length) return;
-        setMode("motion");
-        hearRef.current(undefined);
-        const notes = motionPhrase(use.map((v) => readMotionRef.current(v)));
-        const starts = sonifier.play([notes]);
-        setPlay({
-          kind: "motion",
-          visits: use,
-          starts,
-          total: notes[notes.length - 1].t + MOTION.seconds,
-          // tick() membandingkan waktu relatif sejak awal frasa pertama.
-          bounds: use.map((v, i) => ({ visit: v, start: i * MOTION.melodyStep })),
-        });
-      } else if (kind === "spectrum") {
-        const use = visits.filter((v) => (binned.get(v) ?? []).length > 0);
-        if (!use.length) return;
-        setMode("spectrum");
-        hearRef.current(undefined);
-        const starts = sonifier.play(use.map((v) => phrase(binned.get(v) ?? [], top)));
-        const slot = SOUND.visitSeconds + SOUND.pauseSeconds;
-        setPlay({
-          kind: "spectrum",
-          visits: use,
-          starts,
-          total: (use.length - 1) * slot + SOUND.visitSeconds,
-          // starts[] memakai jam absolut AudioContext; batas tick relatif terhadap starts[0].
-          bounds: use.map((v, i) => ({ visit: v, start: starts[i] - starts[0] })),
-        });
-      } else {
-        setMode("scan");
-        scanStartRef.current(visits);
-        hearRef.current(undefined);
-        let notes: Note[] = [];
-        const bounds: { visit: string; start: number }[] = [];
-        let refStats: { bg: number; sigma: number; top: number } | undefined;
-        for (const v of visits) {
-          const fr = readVisitRef.current(v);
-          if (!fr) continue;
-          const grid = scanGrid(fr.gray, fr.size, fr.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
-          if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
-          const at = notes.length ? notes[notes.length - 1].t + SCAN.colSeconds + SCAN_PAUSE : 0;
-          bounds.push({ visit: v, start: at });
-          for (const n of scanPhrase(grid, SCAN)) notes.push({ ...n, t: n.t + at });
-        }
-        if (!notes.length) return;
-        const total = notes[notes.length - 1].t + SCAN.colSeconds;
-        const starts = sonifier.play([notes]);
-        setPlay({ kind: "scan", visits: bounds.map((b) => b.visit), starts, total, bounds });
-      }
-      setFresh(false);
-      try {
-        window.localStorage.setItem(HEARD_KEY, "1");
-      } catch {
-        // penyimpanan diblokir: petunjuknya hanya muncul lagi lain kali
-      }
-    },
-    [binned, top],
-  );
+  // Ketiga lapisan masuk ke satu antrean dan satu jam per visit.
+  const startCombined = useCallback(() => {
+    if (!windows.length) return;
+    setAnnounce("");
+    setHeardLambda(undefined);
+    hearRef.current(undefined);
 
-  // Memilih dari pemilih langsung memutar gambar, riwayat spektrum, atau gerak.
-  const choose = useCallback(
-    (kind: "scan" | "spectrum" | "motion") => {
-      setChooser(false);
-      if (kind === "spectrum") start(spectrumReadyRef.current, kind);
-      else if (kind === "motion") start(motionReadyRef.current, kind);
-      else if (windowId) start([windowId], kind);
-    },
-    [windowId, start],
-  );
+    const scanLayers = new Map<string, Note[]>();
+    let refStats: { bg: number; sigma: number; top: number } | undefined;
+    for (const w of windows) {
+      if (!hasImageRef.current(w.id)) continue;
+      const frame = readVisitRef.current(w.id);
+      if (!frame) continue;
+      const grid = scanGrid(frame.gray, frame.size, frame.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
+      if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
+      scanLayers.set(w.id, scanPhrase(grid, SCAN));
+    }
+
+    const spectrumLayers = new Map<string, Note[]>();
+    const spectrumSettings = { ...SOUND, visitSeconds: VISIT_SLOT_SECONDS };
+    for (const w of playable) {
+      spectrumLayers.set(w.id, phrase(binned.get(w.id) ?? [], top, spectrumSettings));
+    }
+
+    const motionLayers = new Map<string, Note>();
+    if (p.motionReady) {
+      for (const w of windows) {
+        const delta = readMotionRef.current(w.id);
+        if (!delta) continue;
+        motionLayers.set(w.id, {
+          t: 0,
+          dur: MOTION.seconds,
+          hz: delta.hz,
+          unverified: false,
+          pan: delta.pan,
+          lambda: 0,
+          voice: "motion",
+        });
+      }
+    }
+
+    const plan = combineSoundLayers(
+      windows.map((w) => w.id),
+      scanLayers,
+      spectrumLayers,
+      motionLayers,
+      VISIT_PAUSE_SECONDS,
+    );
+    if (!plan.visits.length) {
+      setAnnounce("Tidak ada lapisan dengan data yang siap didengar.");
+      return;
+    }
+
+    const scanVisits = plan.visits.filter((visit) => visit.layers.scan).map((visit) => visit.id);
+    if (scanVisits.length) scanStartRef.current(scanVisits);
+    const start = sonifier.playMixed(plan.notes, plan.activeVoices);
+    setPlay({ start, total: plan.total, visits: plan.visits, skipped: plan.skipped, activeVoices: plan.activeVoices });
+    setFresh(false);
+    try {
+      window.localStorage.setItem(HEARD_KEY, "1");
+    } catch {
+      // penyimpanan diblokir: petunjuknya hanya muncul lagi lain kali
+    }
+  }, [binned, playable, top, windows, p.motionReady]);
+
+  const choose = useCallback(() => {
+    setChooser(false);
+    startCombined();
+  }, [startCombined]);
 
   // Benda berganti atau pita hilang: suara berhenti.
-  useEffect(() => stop, [spectrum, stop]);
+  useEffect(() => stop, [p.targetId, stop]);
 
-  // Garis pindai / garis kepala, busur cincin, dan pindah kunjungan mengikuti jam audio.
+  // Garis pindai, kursor spektrum, dan lensa mengikuti jam audio yang sama.
   // Digerakkan langsung di DOM supaya tidak dirender ulang 60 kali per detik.
   useEffect(() => {
     if (!play) return;
@@ -250,44 +242,62 @@ export function SpectrumStrip(p: Props) {
         abandon();
         return;
       }
-      const elapsed = sonifier.now() - play.starts[0];
+      const elapsed = sonifier.now() - play.start;
       if (elapsed >= play.total) {
-        setAnnounce(play.kind === "scan" ? "Scan finished." : play.kind === "spectrum" ? "Spectrum finished." : "Motion finished.");
+        setAnnounce("Pemutaran gabungan selesai.");
         stop();
         return;
       }
       let i = 0;
-      while (i < play.bounds.length - 1 && elapsed >= play.bounds[i + 1].start) i++;
+      while (i < play.visits.length - 1 && elapsed >= play.visits[i + 1].start) i++;
+      const visit = play.visits[i];
+      const local = elapsed - visit.start;
       if (elapsed >= 0 && i !== lastVisit) {
         lastVisit = i;
         centerTold = "";
         lastBand = undefined;
         lastStep = -1;
-        setPlayVisit(play.visits[i]);
-        listenRef.current(play.visits[i]);
-        const w = windows.find((q) => q.id === play.visits[i]);
+        setPlayVisit(visit.id);
+        setHeardLambda(undefined);
+        hearRef.current(undefined);
+        listenRef.current(visit.id);
+        const w = windows.find((q) => q.id === visit.id);
+        const active = [
+          visit.layers.scan ? "pindai gambar" : "",
+          visit.layers.spectrum ? "spektrum" : "",
+          visit.layers.motion ? "gerak" : "",
+        ].filter(Boolean);
+        const missing = [
+          !visit.layers.scan ? "pindai gambar" : "",
+          !visit.layers.spectrum ? "spektrum" : "",
+          !visit.layers.motion ? "gerak" : "",
+        ].filter(Boolean);
+        const skippedVisits = play.skipped.filter((entry) => !play.visits.some((q) => q.id === entry.id));
+        const skippedSummary = i === 0 && skippedVisits.length
+          ? ` ${skippedVisits.length} kunjungan tanpa data untuk semua lapisan dilewati.`
+          : "";
         setAnnounce(
-          play.kind === "scan"
-            ? `Scanning visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`
-            : `${play.kind === "spectrum" ? "Spectrum" : "Motion"}, visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`,
+          `Kunjungan ${w ? monthYear(w.mjd_mid) : visit.id}: ${active.join(", ")}.` +
+            (missing.length ? ` Lapisan ${missing.join(", ")} dilewati.` : "") +
+            skippedSummary,
         );
       }
-      if (play.kind === "scan") {
-        const col = (elapsed - play.bounds[i].start) / SCAN.colSeconds;
-        const line = p.scanLine.current;
-        if (line) {
-          if (col >= 0 && col < SCAN.columns) {
-            line.setAttribute("x1", String(col + 0.5));
-            line.setAttribute("x2", String(col + 0.5));
-            line.style.visibility = "visible";
-          } else line.style.visibility = "hidden";
-        }
-        if (col >= SCAN.columns / 2 && centerTold !== play.visits[i]) {
-          centerTold = play.visits[i];
-          setAnnounce("Target.");
-        }
-      } else if (play.kind === "spectrum") {
-        const frac = (elapsed - play.bounds[i].start) / SOUND.visitSeconds;
+      const col = local / SCAN.colSeconds;
+      const line = p.scanLine.current;
+      if (line) {
+        if (visit.layers.scan && col >= 0 && col < SCAN.columns) {
+          line.setAttribute("x1", String(col + 0.5));
+          line.setAttribute("x2", String(col + 0.5));
+          line.style.visibility = "visible";
+        } else line.style.visibility = "hidden";
+      }
+      if (visit.layers.scan && col >= SCAN.columns / 2 && centerTold !== visit.id) {
+        centerTold = visit.id;
+        setAnnounce("Target di tengah gambar.");
+      }
+
+      if (visit.layers.spectrum) {
+        const frac = local / VISIT_SLOT_SECONDS;
         const step = Math.min(SOUND.steps - 1, Math.max(0, Math.floor(clamp01(frac) * SOUND.steps)));
         const lambda = LAMBDA_MIN + ((step + 0.5) / SOUND.steps) * (LAMBDA_MAX - LAMBDA_MIN);
         const band = (bands.find((b) => lambda >= b.lambda_min && lambda < b.lambda_max) ?? bands[bands.length - 1])?.id;
@@ -316,6 +326,10 @@ export function SpectrumStrip(p: Props) {
           dot.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
         }
       } else {
+        if (lastStep !== -1) setHeardLambda(undefined);
+        lastStep = -1;
+        if (lastBand !== undefined) hearRef.current(undefined);
+        lastBand = undefined;
         if (headRef.current) headRef.current.style.visibility = "hidden";
         if (headDotRef.current) headDotRef.current.style.visibility = "hidden";
       }
@@ -328,12 +342,8 @@ export function SpectrumStrip(p: Props) {
 
   const bandsLocked = !!play;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
-  const spectrumReady = windows.filter((w) => p.hasVisitImage(w.id) && playable.includes(w)).map((w) => w.id);
-  const spectrumReadyRef = useRef(spectrumReady);
-  spectrumReadyRef.current = spectrumReady;
-  const motionReadyVisits = windows.filter((w) => p.hasVisitImage(w.id)).map((w) => w.id);
-  const motionReadyRef = useRef(motionReadyVisits);
-  motionReadyRef.current = motionReadyVisits;
+  const spectrumReady = windows.filter((w) => playable.includes(w)).map((w) => w.id);
+  const motionReadyVisits = p.motionReady ? windows.map((w) => w.id) : [];
   const canScan = !!windowId && p.hasImage(windowId);
   // Jelaskan syarat spektrum yang belum terpenuhi dengan apa adanya.
   const blockedQualities = windows.map((w) => qualityByVisit.get(w.id));
@@ -348,18 +358,20 @@ export function SpectrumStrip(p: Props) {
       : !playable.length
         ? "Terlalu sedikit pengukuran spektrum yang dapat dipakai."
         : undefined;
-  const spectrumDisabledReason = [
-    spectrumReason,
-    playable.length && !spectrumReady.length ? "Menunggu citra kunjungan selesai dimuat." : undefined,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const motionDisabledReason = !p.motionReady
-    ? "Posisi acuan yang stabil tidak dapat diukur."
-    : !motionReadyVisits.length
-      ? "Belum ada citra kunjungan yang siap diputar."
-      : undefined;
-  const allReady = mode === "scan" ? scanReady : mode === "spectrum" ? spectrumReady : motionReadyVisits;
+  const activeLayerNames = [
+    scanReady.length ? "Pindai gambar" : "",
+    spectrumReady.length ? "Spektrum" : "",
+    motionReadyVisits.length ? "Gerak" : "",
+  ].filter(Boolean);
+  const canPlayCombined = activeLayerNames.length > 0;
+  const combinedReason = !canPlayCombined
+    ? [
+        !spectrum ? (p.failed ? "Spektrum gagal dimuat." : "Spektrum masih dimuat.") : spectrumReason,
+        !p.motionReady ? "Posisi gerak tidak dapat diukur." : "",
+        canScan ? "" : "Gambar untuk band ini belum tersedia.",
+      ].filter(Boolean).join(" ")
+    : undefined;
+  const combinedVisitCount = new Set([...scanReady, ...spectrumReady, ...motionReadyVisits]).size;
 
   const toggle = useCallback(() => {
     if (play) stop();
@@ -429,7 +441,7 @@ export function SpectrumStrip(p: Props) {
           type="button"
           className="dial"
           onClick={toggle}
-          disabled={!play && !canScan && !spectrumReady.length && !(p.motionReady && motionReadyVisits.length)}
+          disabled={!play && !canPlayCombined}
           aria-pressed={!!play}
           aria-label={play ? "Stop the sound" : "Choose what to listen to"}
         >
@@ -517,7 +529,7 @@ export function SpectrumStrip(p: Props) {
                     type="button"
                     className="segment"
                     data-heard={
-                      play?.kind === "spectrum" && heardLambda !== undefined &&
+                      play && heardLambda !== undefined &&
                       heardLambda >= b.lambda_min && heardLambda < b.lambda_max
                         ? "true"
                         : undefined
@@ -547,16 +559,16 @@ export function SpectrumStrip(p: Props) {
       </div>
 
       <div className="dock-tail">
-        {play?.kind === "spectrum" && heardLambda !== undefined && (
+        {play && heardLambda !== undefined && (
           <span className="sound-lambda">λ {heardLambda.toFixed(2)} µm</span>
         )}
         <button
           type="button"
           className="pill"
-          onClick={() => start(allReady)}
-          disabled={!!play || allReady.length < 2}
+          onClick={startCombined}
+          disabled={!!play || combinedVisitCount < 2}
         >
-          All {allReady.length || windows.length} visits
+          All {combinedVisitCount || windows.length} visits
         </button>
       </div>
 
@@ -584,28 +596,12 @@ export function SpectrumStrip(p: Props) {
             {(
               [
                 {
-                  id: "scan",
-                  name: "Pindai gambar",
-                  detail: "Susuri gambar dari timur ke barat dalam 32 kolom suara.",
-                  disabled: !canScan,
-                  why: "Gambar untuk band dan kunjungan ini belum tersedia.",
-                  Icon: Scan,
-                },
-                {
-                  id: "spectrum",
-                  name: "Dengarkan spektrum",
-                  detail: "Dengarkan 48 nada spektrum untuk setiap kunjungan, dari yang pertama hingga terakhir.",
-                  disabled: !!spectrumDisabledReason,
-                  why: spectrumDisabledReason ?? "",
+                  id: "combined",
+                  name: "Dengarkan gabungan",
+                  detail: `Putar bersama gambar (${scanReady.length} visit), spektrum (${spectrumReady.length} visit), dan gerak (${motionReadyVisits.length} visit). Visit yang tidak punya data layak akan dilewati.`,
+                  disabled: !canPlayCombined,
+                  why: combinedReason ?? "",
                   Icon: Waveform,
-                },
-                {
-                  id: "motion",
-                  name: "Dengarkan suara gerak saja",
-                  detail: "Satu nada posisi untuk tiap kunjungan, dari yang pertama hingga terakhir.",
-                  disabled: !!motionDisabledReason,
-                  why: motionDisabledReason ?? "",
-                  Icon: ArrowUpRight,
                 },
               ] as const
             ).map((o) => (
@@ -613,10 +609,10 @@ export function SpectrumStrip(p: Props) {
                 key={o.id}
                 type="button"
                 className="hear-option"
-                data-autofocus={o.id === "scan" ? true : undefined}
+                data-autofocus
                 disabled={o.disabled}
                 title={o.disabled ? o.why : o.detail}
-                onClick={() => choose(o.id)}
+                onClick={choose}
               >
                 <span className="hear-icon" aria-hidden="true"><o.Icon weight="regular" /></span>
                 <span className="hear-copy">

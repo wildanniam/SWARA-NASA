@@ -126,3 +126,79 @@ export const SCAN = {
 };
 
 export type ScanSettings = typeof SCAN;
+
+export type InstrumentId = "spectrum" | "scan" | "motion";
+
+export type InstrumentProfile = {
+  waveform: OscillatorType;
+  unverifiedWaveform: OscillatorType;
+  unverifiedGain: number;
+  gapTick: boolean;
+  gapTickHz: number;
+  gapTickGain: number;
+  gapTickWaveform: OscillatorType;
+  gain: number;
+  envelope: "sustain" | "pluck" | "bell";
+  attackSeconds: number;
+  sustainFraction: number;
+  partials: { ratio: number; gain: number }[];
+};
+
+// Instrumen sintetis terpisah untuk tiap sumber data; level adalah pengali relatif.
+export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
+  spectrum: {
+    waveform: "sine",
+    unverifiedWaveform: "triangle",
+    unverifiedGain: 0.42,
+    gapTick: true,
+    gapTickHz: 1400,
+    gapTickGain: 0.1,
+    gapTickWaveform: "sine",
+    gain: 0.92,
+    envelope: "sustain",
+    attackSeconds: 0.014,
+    sustainFraction: 0.62,
+    partials: [],
+  },
+  scan: {
+    waveform: "triangle",
+    unverifiedWaveform: "square",
+    unverifiedGain: 0.38,
+    gapTick: true,
+    gapTickHz: 1760,
+    gapTickGain: 0.12,
+    gapTickWaveform: "square",
+    gain: 0.5,
+    envelope: "pluck",
+    attackSeconds: 0.003,
+    sustainFraction: 0.16,
+    partials: [{ ratio: 2, gain: 0.08 }],
+  },
+  motion: {
+    waveform: "sine",
+    unverifiedWaveform: "sine",
+    unverifiedGain: 0.7,
+    gapTick: true,
+    gapTickHz: 1150,
+    gapTickGain: 0.1,
+    gapTickWaveform: "sine",
+    gain: 0.68,
+    envelope: "bell",
+    attackSeconds: 0.006,
+    sustainFraction: 0.1,
+    partials: [
+      { ratio: 2.4, gain: 0.24 },
+      { ratio: 3.9, gain: 0.1 },
+    ],
+  },
+};
+
+export const MIX = {
+  /** Master level dipertahankan; equal-power gain membagi energi antar lapisan aktif. */
+  gain: SOUND.gain,
+  compressorThresholdDb: -16,
+  compressorKneeDb: 12,
+  compressorRatio: 6,
+  compressorAttackSeconds: 0.003,
+  compressorReleaseSeconds: 0.18,
+};

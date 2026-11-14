@@ -23,7 +23,7 @@ const KEYS: [string, string][] = [
   ["+ −", "zoom the lens, out to the wide view"],
   ["C", "next look"],
   ["R", "reveal faint things"],
-  ["L", "listen (scan, spectrum, or motion)"],
+  ["L", "listen to image, spectrum, and motion together"],
   ["/", "go to a place"],
   ["G", "this guide"],
 ];
@@ -197,16 +197,13 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: 
         <section>
           <h3>What you hear</h3>
           <p>
-            Listen has two modes. Scan plays the picture: 32 columns from east to west, one chord per column for
-            the strongest peaks. Higher is further north, louder is brighter, and a short ping marks the target
-            at the centre. An empty column is a soft tick. The scan line follows the sound.
-          </p>
-          <p>
-            Spectrum plays 48 notes from short to long wavelength for each visit, first to last, without a motion
-            sound mixed in. Higher pitch is brighter, dips are absorption, rougher notes mark saturated values,
-            and a soft tick marks a gap. Use it to follow how the object's infrared condition changes over time.
-            Scan plays the image as 32 columns from east to west. Motion is a third Listen choice: one position
-            note per visit, with a tick where the position was not measured. Each choice plays by itself.
+            Listen layers the image, spectrum, and measured motion on one visit clock. The image moves through 32
+            columns from east to west: higher is further north, louder is brighter, and a short ping marks the
+            target at the centre. The spectrum follows 48 wavelengths from short to long, with higher pitch for
+            brighter measurements and a soft tick for a data gap. Motion adds a brief bell at each measured visit.
+            The image uses percussive notes, the spectrum a smooth flute-like tone, and motion a bell-like tone.
+            Missing layers or visits are skipped and announced; the scan line, wavelength cursor, and lens follow
+            the same clock.
           </p>
         </section>
 

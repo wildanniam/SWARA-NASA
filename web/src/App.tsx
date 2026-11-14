@@ -38,7 +38,7 @@ import {
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
-import { framesForWindow, readyFrameForWindow } from "./lib/visitFrames";
+import { readyFrameForWindow } from "./lib/visitFrames";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { readFramePixels } from "./lib/framePixels";
 import { prefersReducedMotion } from "./lib/hooks";
@@ -511,11 +511,10 @@ export function App() {
     (id: string) => {
       setPlaying(false);
       setSky(false);
-      if (manifest && targetId) {
+      if (manifest && targetId && manifest.windows.some((w) => w.id === id)) {
         const frame = readyFrameForWindow(manifest.frames, id, bandId, (f) => !!images.get(assetUrl(targetId, custom, f.image)));
-        if (!frame) return;
         setWiseId(undefined);
-        if (frame.band !== bandId) setBandId(frame.band);
+        if (frame && frame.band !== bandId) setBandId(frame.band);
         setWindowId(id);
       }
     },
@@ -559,14 +558,6 @@ export function App() {
       return !!f && !!images.get(assetUrl(targetId, custom, f.image));
     },
     [manifest, targetId, custom, bandId, images],
-  );
-
-  const hasVisitImage = useCallback(
-    (id: string) =>
-      !!manifest &&
-      !!targetId &&
-      framesForWindow(manifest.frames, id).some((f) => !!images.get(assetUrl(targetId, custom, f.image))),
-    [manifest, targetId, custom, images],
   );
 
   const chooseBand = useCallback(
@@ -1183,6 +1174,7 @@ export function App() {
             />
           ) : manifest && !manifest.preview ? (
             <SpectrumStrip
+              targetId={targetId ?? ""}
               spectrum={spectrum?.data}
               failed={!!spectrum?.error}
               windows={manifest.windows}
@@ -1198,7 +1190,6 @@ export function App() {
               motionReady={canHearMotion}
               readVisit={readVisit}
               hasImage={hasImage}
-              hasVisitImage={hasVisitImage}
               soundRing={soundRing}
               scanLine={scanLine}
             />

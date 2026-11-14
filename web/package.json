@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:scan": "tsc --ignoreConfig src/lib/scan.test.ts src/lib/motion.test.ts src/lib/spectrum.test.ts src/lib/bundle.test.ts src/lib/scan.ts src/lib/spectrum.ts src/lib/visitFrames.ts src/sound/sonify.ts src/sound/mapping.ts --outDir /tmp/opencode/scanjs --module commonjs --target es2022 --lib es2022,dom --strict --skipLibCheck --types node && node /tmp/opencode/scanjs/lib/scan.test.js && node /tmp/opencode/scanjs/lib/motion.test.js && node /tmp/opencode/scanjs/lib/spectrum.test.js && node /tmp/opencode/scanjs/lib/bundle.test.js"
+    "test:scan": "tsc --ignoreConfig src/lib/scan.test.ts src/lib/motion.test.ts src/lib/spectrum.test.ts src/lib/bundle.test.ts src/lib/combinedSound.test.ts src/lib/scan.ts src/lib/spectrum.ts src/lib/visitFrames.ts src/lib/combinedSound.ts src/sound/sonify.ts src/sound/mapping.ts --outDir /tmp/opencode/scanjs --module commonjs --target es2022 --lib es2022,dom --strict --skipLibCheck --types node && node /tmp/opencode/scanjs/lib/scan.test.js && node /tmp/opencode/scanjs/lib/motion.test.js && node /tmp/opencode/scanjs/lib/spectrum.test.js && node /tmp/opencode/scanjs/lib/bundle.test.js && node /tmp/opencode/scanjs/lib/combinedSound.test.js"
   },
   "engines": {
     "node": "24.x"

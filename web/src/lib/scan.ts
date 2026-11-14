@@ -142,7 +142,7 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
     const dur = s.colSeconds * s.noteFill;
     const pos = total > 1 ? c / (total - 1) : 0;
     if (!col.peaks.length) {
-      notes.push({ t, dur, hz: null, unverified: false, pan: 0, lambda: pos });
+      notes.push({ t, dur, hz: null, unverified: false, pan: 0, lambda: pos, voice: "scan" });
     } else {
       for (const p of col.peaks) {
         notes.push({
@@ -154,12 +154,13 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
           pan: 0,
           // Posisi pindai 0..1, bukan panjang gelombang: jadwal tidak memakainya.
           lambda: pos,
+          voice: "scan",
         });
       }
     }
     // Earcon target selalu berbunyi saat pindai melewati tengah, walau kolomnya kosong.
     if (col.center) {
-      notes.push({ t, dur: s.earconSeconds, hz: s.earconHz, vol: s.earconGain, unverified: false, pan: 0, lambda: 0.5 });
+      notes.push({ t, dur: s.earconSeconds, hz: s.earconHz, vol: s.earconGain, unverified: false, pan: 0, lambda: 0.5, voice: "scan" });
     }
   });
   return notes;
