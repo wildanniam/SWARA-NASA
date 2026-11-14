@@ -38,6 +38,7 @@ import {
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
+import { framesForWindow, readyFrameForWindow } from "./lib/visitFrames";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { readFramePixels } from "./lib/framePixels";
 import { prefersReducedMotion } from "./lib/hooks";
@@ -510,12 +511,15 @@ export function App() {
     (id: string) => {
       setPlaying(false);
       setSky(false);
-      if (availableIds.has(id)) {
+      if (manifest && targetId) {
+        const frame = readyFrameForWindow(manifest.frames, id, bandId, (f) => !!images.get(assetUrl(targetId, custom, f.image)));
+        if (!frame) return;
         setWiseId(undefined);
+        if (frame.band !== bandId) setBandId(frame.band);
         setWindowId(id);
       }
     },
-    [availableIds],
+    [manifest, targetId, custom, bandId, images],
   );
 
   // Sapuan dimulai: lensa dipaksa ke medan penuh, blink berhenti. Citra WISE
@@ -555,6 +559,14 @@ export function App() {
       return !!f && !!images.get(assetUrl(targetId, custom, f.image));
     },
     [manifest, targetId, custom, bandId, images],
+  );
+
+  const hasVisitImage = useCallback(
+    (id: string) =>
+      !!manifest &&
+      !!targetId &&
+      framesForWindow(manifest.frames, id).some((f) => !!images.get(assetUrl(targetId, custom, f.image))),
+    [manifest, targetId, custom, images],
   );
 
   const chooseBand = useCallback(
@@ -1186,6 +1198,7 @@ export function App() {
               motionReady={canHearMotion}
               readVisit={readVisit}
               hasImage={hasImage}
+              hasVisitImage={hasVisitImage}
               soundRing={soundRing}
               scanLine={scanLine}
             />

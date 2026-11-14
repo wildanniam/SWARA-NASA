@@ -31,6 +31,9 @@ const median = (v: number[]) => {
 
 export type Quality = "ok" | "faint" | "saturated" | "empty";
 
+/** Batas minimal titik layak untuk membunyikan satu kunjungan. */
+export const MIN_VISIT_POINTS = 8;
+
 /** Apakah ada spektrum yang layak ditampilkan dan dibunyikan? */
 export function assess(points: SpectrumPoint[]): Quality {
   const good = points.filter(isUsable);
@@ -40,6 +43,25 @@ export function assess(points: SpectrumPoint[]): Quality {
   }
   // Di langit kosong fluks apertur hanya derau: separuh titiknya di bawah 3 sigma.
   return median(good.map((p) => p.snr)) < 3 ? "faint" : "ok";
+}
+
+/** Nilai kelayakan satu kunjungan, agar visit baik tidak tertutup statistik visit lain. */
+export function assessVisit(points: SpectrumPoint[], minPoints = MIN_VISIT_POINTS): Quality {
+  const usable = points.filter(isUsable);
+  if (usable.length < minPoints) {
+    const cores = points.filter((p) => p.flag === "saturated_core").length;
+    return points.length > 0 && cores > points.length / 2 ? "saturated" : "empty";
+  }
+  return median(usable.map((p) => p.snr)) < 3 ? "faint" : "ok";
+}
+
+/** Visit spektrum yang punya cukup pengukuran berguna dan SNR yang layak. */
+export function playableVisits(
+  windowIds: string[],
+  points: SpectrumPoint[],
+  minPoints = MIN_VISIT_POINTS,
+): string[] {
+  return windowIds.filter((id) => assessVisit(points.filter((p) => p.window === id), minPoints) === "ok");
 }
 
 /** Batas atas skala terang, sama untuk semua kunjungan supaya perubahan antar

@@ -180,4 +180,21 @@ const s = { ...SCAN, columns: COLS };
   console.log("ok: default rasa");
 }
 
+// 8. Ukuran frame berbeda tetap dipetakan tanpa ukuran preset/target yang dikunci.
+{
+  const size = 96;
+  const gray = new Uint8ClampedArray(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) gray[y * size + x] = 10 + ((x * 5 + y * 11) % 3);
+  }
+  for (let y = 21; y <= 27; y++) {
+    for (let x = 69; x <= 75; x++) gray[y * size + x] = 220;
+  }
+  const grid = scanGrid(gray, size, null, { columns: 12, maxPeaks: 3 });
+  assert.equal(grid.columns.length, 12);
+  assert.ok(grid.columns[9].peaks.length > 0);
+  assert.ok(grid.columns.filter((c) => c.peaks.length > 0).length < 12);
+  console.log("ok: pindai gambar menyesuaikan ukuran frame");
+}
+
 console.log("semua uji sapuan lolos");

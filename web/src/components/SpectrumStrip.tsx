@@ -5,13 +5,14 @@ import { microns, monthYear } from "../lib/format";
 import { useDialog, useWidth } from "../lib/hooks";
 import { scanGrid, scanPhrase } from "../lib/scan";
 import {
-  assess,
+  assessVisit,
   binVisit,
   fluxLabel,
   fluxTop,
   isUsable,
   LAMBDA_MAX,
   LAMBDA_MIN,
+  playableVisits,
   type Bin,
   type Spectrum,
   type SpectrumPoint,
@@ -44,6 +45,8 @@ type Props = {
   readVisit: (windowId: string) => { gray: Uint8ClampedArray; mask: Uint8ClampedArray | null; size: number } | undefined;
   /** Citra kunjungan ini (band yang tampil) sudah dimuat. */
   hasImage: (windowId: string) => boolean;
+  /** Sedikitnya satu frame band untuk kunjungan ini sudah dimuat. */
+  hasVisitImage: (windowId: string) => boolean;
   /** Busur di cincin lensa; menyapu seiring suara. */
   soundRing: RefObject<SVGCircleElement | null>;
   /** Garis pindai di lensa; digerakkan kolom-per-kolom mengikuti jam audio. */
@@ -52,7 +55,6 @@ type Props = {
 
 const H = 84;
 const M = { left: 2, right: 2, top: 12, bottom: 18 };
-const MIN_POINTS = 8; // kunjungan dengan titik layak lebih sedikit tidak dibunyikan
 const TICKS = [1, 2, 3, 4, 5];
 const HEARD_KEY = "swara.heard";
 // Jeda antar kunjungan saat All visits memutar sapuan berurutan, detik.
@@ -117,20 +119,21 @@ export function SpectrumStrip(p: Props) {
   readVisitRef.current = p.readVisit;
   const hasImageRef = useRef(p.hasImage);
   hasImageRef.current = p.hasImage;
+  const shown = playVisit ?? windowId;
 
   const points = useMemo(() => spectrum?.points ?? [], [spectrum]);
-  const quality = useMemo(() => (spectrum ? assess(spectrum.points) : undefined), [spectrum]);
   const top = useMemo(() => fluxTop(points), [points]);
   const binned = useMemo(
     () => new Map(windows.map((w) => [w.id, binVisit(points, w.id, SOUND.steps)])),
     [points, windows],
   );
+  const qualityByVisit = useMemo(
+    () => new Map(windows.map((w) => [w.id, assessVisit(points.filter((q) => q.window === w.id))] as const)),
+    [points, windows],
+  );
   const playable = useMemo(
-    () =>
-      quality === "ok"
-        ? windows.filter((w) => points.filter((q) => q.window === w.id && isUsable(q)).length >= MIN_POINTS)
-        : [],
-    [points, quality, windows],
+    () => playableVisits(windows.map((w) => w.id), points).map((id) => windows.find((w) => w.id === id)!),
+    [points, windows],
   );
 
   const abandon = useCallback(() => {
@@ -323,28 +326,28 @@ export function SpectrumStrip(p: Props) {
     return () => cancelAnimationFrame(raf);
   }, [play, stop, abandon, windows, bands, xOf, p.soundRing, p.scanLine]);
 
-  const shown = playVisit ?? windowId;
   const bandsLocked = !!play;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
-  const spectrumReady = windows.filter((w) => p.hasImage(w.id) && playable.includes(w)).map((w) => w.id);
+  const spectrumReady = windows.filter((w) => p.hasVisitImage(w.id) && playable.includes(w)).map((w) => w.id);
   const spectrumReadyRef = useRef(spectrumReady);
   spectrumReadyRef.current = spectrumReady;
-  const motionReadyVisits = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
+  const motionReadyVisits = windows.filter((w) => p.hasVisitImage(w.id)).map((w) => w.id);
   const motionReadyRef = useRef(motionReadyVisits);
   motionReadyRef.current = motionReadyVisits;
   const canScan = !!windowId && p.hasImage(windowId);
   // Jelaskan syarat spektrum yang belum terpenuhi dengan apa adanya.
+  const blockedQualities = windows.map((w) => qualityByVisit.get(w.id));
   const spectrumReason = !spectrum
     ? p.failed
       ? "Spektrum gagal dimuat."
       : "Spektrum masih dimuat."
-    : quality === "faint"
+    : !playable.length && blockedQualities.length > 0 && blockedQualities.every((q) => q === "saturated")
+      ? "Spektrum terlalu jenuh untuk dibunyikan dengan andal."
+      : !playable.length && blockedQualities.includes("faint")
       ? "Spektrum terlalu redup untuk disuarakan dengan andal."
-      : quality === "saturated"
-        ? "Spektrum jenuh dan tidak memiliki nilai yang dapat dipakai."
-        : quality === "empty" || !playable.length
-          ? "Terlalu sedikit pengukuran spektrum yang dapat dipakai."
-          : undefined;
+      : !playable.length
+        ? "Terlalu sedikit pengukuran spektrum yang dapat dipakai."
+        : undefined;
   const spectrumDisabledReason = [
     spectrumReason,
     playable.length && !spectrumReady.length ? "Menunggu citra kunjungan selesai dimuat." : undefined,
@@ -390,7 +393,8 @@ export function SpectrumStrip(p: Props) {
     return d;
   };
 
-  const drawn = quality === "ok";
+  const currentQuality = shown ? qualityByVisit.get(shown) : undefined;
+  const drawn = currentQuality === "ok";
   const current = drawn ? points.filter((q) => q.window === shown) : [];
   const good = current.filter(isUsable);
   const unusable = current.filter((q) => !isUsable(q));
@@ -402,8 +406,8 @@ export function SpectrumStrip(p: Props) {
     ? "The spectrum could not be loaded."
     : !spectrum
       ? "Loading spectrum"
-      : quality && quality !== "ok"
-        ? NO_SPECTRUM[quality]
+      : currentQuality && currentQuality !== "ok"
+        ? NO_SPECTRUM[currentQuality]
         : !good.length
           ? "No usable measurements in this visit."
           : undefined;
