@@ -39,13 +39,16 @@ Urutan `z-index`: latar 0, tirai 1, panggung 2, bilah atas dan dok 3, laci 4, di
 - **Rantai pembesaran.** Pandangan lebar (latar, 40 menit busur), lalu lensa 6, 3, dan 2 menit busur. Menjauh dari tingkat terlebar menutup lensa: ia mengecil sampai isinya tepat seukuran latar (skalanya dihitung dari skala latar, bukan angka tetap), lalu larut. Yang tersisa cincin ambar selebar petak yang diperbesar lensa; mengekliknya membuka lensa lagi. Membuka sebuah tempat selalu lewat urutan ini: langit lebar, lensa terbuka, lalu menyelam ke pembesaran kerja.
 - **Berpindah tempat.** Lensa menutup, latar bergeser, dan baris di bawah lensa membaca posisi yang sedang dilewati di sepanjang busur lingkaran besar serta sisa jaraknya. Lama perpindahan mengikuti jarak sudut yang sebenarnya (0,8 sampai 2,4 detik).
 - **Tanda acuan dan jejak.** Tanda silang ambar menandai posisi pada kunjungan pertama. Posisi terukur tiap kunjungan digambar sebagai titik yang tersambung, jadi geraknya terbaca walau blink dijeda.
-- **Satelit.** Tombol bundar kecil menempel di cincin lensa: palet warna dan penanda piksel yang tidak bisa dipercaya di kanan, perbesar dan perkecil di kiri.
+- **Satelit.** Tombol bundar kecil menempel di cincin lensa: look, penanda piksel yang tidak bisa dipercaya, dan Reveal faint di kanan; perbesar dan perkecil di kiri.
+- **Roda filter.** Tombol look membuka enam contoh warna yang berjajar di cincin, seperti roda filter teleskop: Ember (bawaan), Glacier, Aurora, Nebula, Mono, Paper. Semuanya dikurasi dengan satu aturan: terang selalu naik (untuk Paper selalu turun) dari nilai terendah ke tertinggi, jadi look mengubah suasana, bukan urutan terang. Tidak ada peta pelangi atau dua arah, dan tidak ada pengatur manual. Latar ikut look lensa (untuk Paper latar memakai Mono supaya teks tetap terbaca). Look tercatat di URL.
+- **Reveal faint.** Satu tombol yang mengangkat nilai redup (kurva gamma) di lensa dan latar. Urutan terang tetap.
+- **Share dan Guide.** Dua tombol di kanan atas adalah fitur, bukan catatan kaki. Share berbingkai aksen: di ponsel membuka lembar berbagi sistem, di tempat lain menyalin tautan. Guide berbingkai jelas dan diberi penanda sampai pernah dibuka; isinya dimulai dengan legenda bergambar tentang tanda-tanda di lensa.
 - **Tombol putar.** Blink dan Dengar adalah tombol bundar besar. Hanya Blink yang berisi warna aksen.
 - **Penggaris waktu.** Kunjungan diletakkan pada jarak tanggal yang sebenarnya, dengan pergeseran terukur di bawah tiap kunjungan.
 - **Rentang waktu.** Sakelar dua pilihan di kiri penggaris: "16 years" memutar citra WISE lalu kunjungan SPHEREx pada satu penggaris 2010 sampai sekarang, dengan lensa selebar 6 menit busur; "SPHEREx" kembali ke kunjungan SPHEREx saja, diperbesar ke 2 menit busur. Benda yang punya riwayat WISE dibuka di "16 years".
 - **Pita spektrum.** Selebar dok. Enam ruasnya adalah enam band citra: mengeklik satu ruas mengganti band di lensa. Saat suara berjalan, lensa ikut menampilkan band yang sedang terdengar.
 - **Pergi ke.** Satu kotak untuk nama atau koordinat, lalu daftar benda contoh dengan cuplikan citra aslinya.
-- **Catatan.** Laci di kanan untuk semua yang tidak perlu tampil terus: rincian data, cara membaca spektrum, cara kerja suara, dan tombol papan ketik.
+- **Guide.** Laci di kanan untuk semua yang tidak perlu tampil terus: rincian data, cara membaca spektrum, cara kerja suara, dan tombol papan ketik.
 
 ## Bentuk
 
