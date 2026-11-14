@@ -13,7 +13,7 @@ Tingkat: variasi tata letak sedang, gerak sedang, kepadatan rendah.
 **Yang data harus terlihat sebagai data, dan suasana tidak boleh menyamar sebagai data.**
 
 - Lensa di tengah adalah data: citra SPHEREx yang dipakai untuk mengukur, 2 sampai 6 menit busur tergantung pembesaran. Warnanya hangat (panas inframerah).
-- Citra WISE 2010-2024 juga tampil di lensa, tapi hanya untuk dilihat. Keterangan di bawah lensa selalu menyebut teleskopnya, dan tidak ada angka yang diukur dari WISE.
+- Citra WISE 2010-2024 juga tampil di lensa, tapi hanya untuk dilihat. Ia ditulis dengan aturan regangan yang sama dengan frame SPHEREx dan dihaluskan ke ketajaman yang sama, supaya yang berubah saat teleskop berganti adalah langitnya, bukan gaya gambarnya. Keterangan di bawah lensa selalu menyebut teleskopnya, dan tidak ada angka yang diukur dari WISE.
 - Latar adalah langit yang sama pada pembesaran lebih kecil: citra SPHEREx 40 menit busur di posisi yang sama (`context.png`), dipusatkan tepat di bawah lensa dan memakai palet lensa. Lensa adalah bagian tengahnya yang diperbesar. Selama lensa terbuka latar diredupkan; di pandangan lebar ia tampil terang penuh.
 - Latar tidak pernah digeser, diputar, atau dihanyutkan untuk hiasan: bintang di luar lensa harus tetap kelanjutan bintang di dalamnya. Ia hanya bergerak saat teleskop memang berpindah tempat.
 - Tidak ada bintang karangan, pendar hias, atau gradien dekoratif. Gradien hanya dipakai sebagai tirai supaya teks terbaca.
@@ -85,6 +85,7 @@ Tiap gerak punya alasan:
 | Gerak | Artinya |
 |---|---|
 | Blink berpindah tanpa pudar | mata menangkap gerak dari loncatan |
+| Citra larut saat teleskop berganti (WISE ke SPHEREx dan sebaliknya) | ini serah-terima antar alat, bukan perbandingan posisi; kunjungan di titik itu ditahan lebih lama dan nama teleskop di keterangan menyala sebentar |
 | Latar bergeser saat pindah tempat | teleskop diarahkan ke bagian langit lain, dengan arah yang benar dan lama yang mengikuti jaraknya |
 | Lensa mengecil ke latar atau membesar darinya | lensa dan latar adalah langit yang sama pada pembesaran berbeda |
 | Isi lensa membesar atau mengecil saat ganti tingkat | pembesaran berubah, tempatnya tetap |

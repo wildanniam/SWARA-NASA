@@ -601,6 +601,29 @@ kbd {
   inset: 0;
 }
 
+/* Citra sebelumnya, ditaruh di atas citra baru dan dilarutkan saat teleskop berganti. */
+.lens-fade {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Nama teleskop di keterangan menyala sebentar saat berganti. */
+.lens-caption .caption-cue {
+  animation: caption-cue 1800ms ease-out;
+}
+
+@keyframes caption-cue {
+  from {
+    color: var(--accent);
+  }
+  60% {
+    color: var(--accent);
+  }
+  to {
+    color: var(--muted);
+  }
+}
+
 /* Cincin di pandangan lebar: garis tengahnya adalah petak langit yang diperbesar lensa. */
 .reticle {
   position: absolute;

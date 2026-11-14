@@ -8,11 +8,15 @@ let scratch: HTMLCanvasElement | undefined;
 /** Bagian citra yang ditampilkan, dalam piksel citra itu. Boleh melewati tepinya. */
 export type Rect = { x: number; y: number; w: number; h: number };
 
-function pixels(img: HTMLImageElement, size: number, view?: Rect): Uint8ClampedArray {
+function pixels(img: HTMLImageElement, size: number, view?: Rect, soften = 0): Uint8ClampedArray {
   scratch ??= document.createElement("canvas");
   if (scratch.width !== size) scratch.width = scratch.height = size;
   const ctx = scratch.getContext("2d", { willReadFrequently: true })!;
   ctx.clearRect(0, 0, size, size);
+  // `soften` dalam piksel citra; di kanvas ia ikut skala gambarnya. Browser tanpa
+  // filter kanvas mengabaikannya, dan citra tampil setajam aslinya.
+  const scale = view ? size / view.w : size / img.naturalWidth;
+  ctx.filter = soften > 0 ? `blur(${(soften * scale).toFixed(2)}px)` : "none";
   if (view) {
     // Bagian di luar citra dibiarkan kosong; letaknya dihitung sendiri supaya
     // tidak bergantung pada cara browser memotong persegi sumber.
@@ -23,7 +27,9 @@ function pixels(img: HTMLImageElement, size: number, view?: Rect): Uint8ClampedA
 }
 
 /** Gambar `img` ke `canvas` (persegi `size` piksel). `mask` menandai piksel jenuh dan
- *  rusak. `view` memilih bagian citra yang tampil; tanpa itu seluruh citra. */
+ *  rusak. `view` memilih bagian citra yang tampil; tanpa itu seluruh citra. `tone`
+ *  memetakan ulang tingkat abu sebelum diwarnai dan `soften` menghaluskan citra
+ *  lebih dulu, dalam piksel citra (lihat tone.ts). */
 export function paint(
   canvas: HTMLCanvasElement,
   img: HTMLImageElement,
@@ -31,12 +37,14 @@ export function paint(
   size: number,
   mask?: HTMLImageElement,
   view?: Rect,
+  tone?: Uint8ClampedArray,
+  soften = 0,
 ) {
   if (canvas.width !== size) canvas.width = canvas.height = size;
-  const gray = pixels(img, size, view);
+  const gray = pixels(img, size, view, soften);
   const out = new ImageData(size, size);
   for (let i = 0; i < size * size; i++) {
-    const v = gray[i * 4] * 3;
+    const v = (tone ? tone[gray[i * 4]] : gray[i * 4]) * 3;
     out.data[i * 4] = lut[v];
     out.data[i * 4 + 1] = lut[v + 1];
     out.data[i * 4 + 2] = lut[v + 2];

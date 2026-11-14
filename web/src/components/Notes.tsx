@@ -58,6 +58,8 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame }: Props)
               <dd>WISE W2 (4.6 µm), unWISE coadd, 2.75″ pixels</dd>
               <dt>Use</dt>
               <dd>For viewing. Positions and brightness are measured on SPHEREx only.</dd>
+              <dt>Display</dt>
+              <dd>Stretched by the same rule as the SPHEREx images and softened to their sharpness</dd>
               <dt>Centre</dt>
               <dd>{coord(manifest.ra, manifest.dec)}</dd>
             </dl>

@@ -45,12 +45,17 @@ import { preload, useImageStore } from "./lib/images";
 import { LUTS, type PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
+import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
 import { motionNote, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
 // Deretan 16 tahun punya belasan citra, jadi diputar lebih cepat.
 const LONG_MS = 420;
+// Di deretan 16 tahun, kunjungan SPHEREx ditahan lebih lama dari citra WISE, dan
+// paling lama tepat di serah-terima antar teleskop supaya larutnya sempat selesai.
+const LONG_VISIT_MS = 900;
+const HANDOVER_MS = 1600;
 // Lebar langit yang tampil di lensa saat hanya SPHEREx: gerak sekitar satu piksel perlu didekati.
 const CLOSE_ARCSEC = 120;
 // Jeda antara lensa terbuka dan menyelam ke pembesaran kerja, supaya terlihat dua tahap.
@@ -418,12 +423,23 @@ export function App() {
     [sequence, cursor, show],
   );
 
-  // Blink.
+  // Blink. Tiap citra ditahan selama gilirannya, lalu maju satu.
   useEffect(() => {
     if (!playing || sequence.length < 2) return;
-    const timer = window.setInterval(() => step(1), long ? LONG_MS : BLINK_MS);
-    return () => window.clearInterval(timer);
-  }, [playing, step, sequence.length, long]);
+    const at = Math.max(cursor, 0);
+    const here = sequence[at];
+    const before = sequence[(at - 1 + sequence.length) % sequence.length];
+    const after = sequence[(at + 1) % sequence.length];
+    const dwell = !long
+      ? BLINK_MS
+      : here.wise
+        ? LONG_MS
+        : before.wise || after.wise
+          ? HANDOVER_MS
+          : LONG_VISIT_MS;
+    const timer = window.setTimeout(() => step(1), dwell);
+    return () => window.clearTimeout(timer);
+  }, [playing, step, sequence, cursor, long]);
 
   const chooseEra = useCallback(
     (next: Era) => {
@@ -649,8 +665,17 @@ export function App() {
   const bandLabel = shownWise
     ? `WISE ${wise!.band.lambda_um} µm`
     : band
-      ? microns(band.lambda_min, band.lambda_max)
+      ? `${long ? "SPHEREx " : ""}${microns(band.lambda_min, band.lambda_max)}`
       : "";
+  // Citra WISE dilukis dengan aturan regangan yang sama dengan frame SPHEREx.
+  const firstWise = wise?.frames[0];
+  const firstWiseImage = images.get(firstWise && targetId ? assetUrl(targetId, custom, firstWise.image) : undefined);
+  // Hanya untuk bundle lama: yang baru sudah ditulis pipeline dengan aturan itu.
+  const soften = shownWise && wise && !wise.matched ? WISE_SOFTEN_ARCSEC / wise.pixel_arcsec : 0;
+  const tone =
+    shownWise && wise && !wise.matched && firstWiseImage && targetId
+      ? wiseTone(targetId, firstWiseImage, soften)
+      : undefined;
   const description = !target
     ? "Infrared image"
     : shownWise
@@ -790,6 +815,9 @@ export function App() {
           palette={palette}
           showFlags={showFlags}
           view={imageView}
+          tone={tone}
+          soften={soften}
+          source={`${targetId ?? ""}:${shownWise ? "wise" : "spherex"}`}
           markView={markView}
           viewArcsec={viewArcsec}
           mark={mark}

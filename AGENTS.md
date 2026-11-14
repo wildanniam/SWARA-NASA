@@ -57,12 +57,11 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 Urutan platform berikutnya:
 
-1. Peralihan WISE ke SPHEREx yang lebih halus (nada citra disamakan, serah-terima yang terlihat).
-2. Pilihan warna yang dikurasi, tombol Share dan Guide yang menonjol, kartu berbagi.
-3. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
-4. Halaman proyek dan video demo berbahasa Inggris.
+1. Pilihan warna yang dikurasi, tombol Share dan Guide yang menonjol, kartu berbagi.
+2. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
+3. Halaman proyek dan video demo berbahasa Inggris.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, dan pemuatan bertahap untuk tempat baru.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, dan peralihan WISE ke SPHEREx yang setara tampilannya.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -139,6 +138,12 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: kenapa pindah dari WISE ke SPHEREx terasa meloncat, dan perbaikannya.**
+  - Sebab terukur: latar citra WISE bernilai abu 23-33 dari 255 sedangkan latar frame SPHEREx 0; rata-rata terang lensa 2-4 kali lebih tinggi; dan citra dari layanan WiseView terpotong di 500 satuan, jadi bintang terang menyilaukan (Barnard's Star: rata-rata 57 lawan 14).
+  - Layanan WiseView menerima rentang terang dan parameter asinh. Diperiksa dengan tiga permintaan: keluarannya mengikuti `AsinhStretch` astropy dalam satu tingkat abu, jadi bisa dikembalikan ke satuan unWISE.
+  - `wise.py` sekarang meminta rentang lebar, mengembalikannya ke satuan, mengisi inti jenuh yang kosong, menghaluskan 3 detik busur, lalu memakai `frames.stretch` yang sama dengan frame SPHEREx. Jumlah permintaan ke layanan tidak bertambah.
+  - Hasil pada citra WISE terakhir lawan kunjungan SPHEREx pertama (rata-rata abu di medan 6 menit busur): WISE 0855 13,4 lawan 13,3; Barnard's Star 19 lawan 14; RW Aurigae 15 lawan 12; R Draconis 25 lawan 27; Epsilon Indi B 19 lawan 8 (WISE memang melihat lebih banyak bintang di sana).
+  - Di viewer: saat teleskop berganti citranya larut 0,7 detik, kunjungan di titik itu ditahan 1,6 detik, dan nama teleskop di keterangan menyala sebentar. Blink dalam satu teleskop tetap meloncat. Bundle lama yang citra WISE-nya belum ditulis ulang disamakan nadanya di viewer saat dilukis.
 - **TEMUAN: pemuatan bertahap jalan.** Selagi bundle tempat baru dibuat, server menulis `preview.json` dan keadaan pekerjaan menyebut apa yang sudah siap. Diukur di laptop pada satu tempat baru: riwayat WISE siap dalam 4 detik, citra medan lebar dalam 22 detik, bundle lengkap dalam 87 detik. Di viewer, lensa memutar riwayat WISE mulai sekitar detik ke-13 (termasuk perpindahan dan pencarian), cincinnya menunjukkan progres, dan pita spektrum terisi satu garis per eksposur yang terbaca. Saat bundle lengkap datang, pemutaran tidak diulang: kunjungan SPHEREx menyusul di ujung deretan.
   - Citra medan lebar sekarang memilih eksposurnya dari header saja supaya bisa jadi lebih awal. Hasilnya sama persis dengan cara lama. Jalur ini berebut jaringan dengan unduhan utama dan sekali tidak jadi saat dua bundle dibuat bersamaan; karena itu kalau gagal, ia dibuat lagi dari cutout di akhir.
 - **TEMUAN: kenapa benda baru lambat, dan perbaikannya.** Diukur di laptop dan di server, keduanya di Indonesia.

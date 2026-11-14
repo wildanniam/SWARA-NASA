@@ -54,6 +54,9 @@ export type Wise = {
   /** Letak posisi bundle di citra WISE, piksel dari kiri atas (bilangan bulat = pusat piksel). */
   target_px: [number, number];
   frames: WiseFrame[];
+  /** Citra sudah ditulis pipeline dengan aturan tampilan frame SPHEREx. Bundle lama
+   *  belum; untuk itu viewer menyamakan nadanya sendiri saat melukis (tone.ts). */
+  matched?: boolean;
 };
 
 export type Manifest = {
