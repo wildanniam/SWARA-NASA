@@ -1361,7 +1361,12 @@ export function App() {
             >
               {playing && sequence.length > 1 ? <Pause weight="fill" /> : <Play weight="fill" />}
             </button>
-            <span className="dial-caption">{playing && sequence.length > 1 ? "Pause" : long ? "Play" : "Blink"}</span>
+            <span className="dial-text">
+              <span className="dial-kicker" aria-hidden="true">
+                <b>II</b> Path
+              </span>
+              <span className="dial-caption">{playing && sequence.length > 1 ? "Pause" : long ? "Play" : "Blink"}</span>
+            </span>
           </div>
           <div className="timebar">
             {wise && !manifest?.preview && (

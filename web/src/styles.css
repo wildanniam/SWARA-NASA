@@ -3962,3 +3962,340 @@ kbd {
     padding: 0 11px;
   }
 }
+
+/* ---------- dok sebagai meja alat ---------- */
+
+/* Dok bukan kotak panel lagi: skalanya berdiri langsung di atas langit, seperti skala
+   yang terukir di kaca teleskop. Bahasanya sama dengan kartu: garis tipis, garis ganda,
+   bintang empat sudut, angka Romawi (II jalannya, III cahayanya). */
+.dock {
+  margin: 0;
+  padding: 22px 34px 14px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(to top, rgba(5, 6, 11, 0.94) 0%, rgba(5, 6, 11, 0.86) 62%, transparent 100%);
+  gap: 4px;
+}
+
+/* Garis ukir di atas dok, terputus di tengah oleh satu bintang empat sudut. */
+.dock::before,
+.dock::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.dock::before {
+  left: 34px;
+  right: 34px;
+  top: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hair-strong) 10%, var(--hair-strong) 47%, transparent 48.6%, transparent 51.4%, var(--hair-strong) 53%, var(--hair-strong) 90%, transparent);
+}
+
+.dock::after {
+  left: 50%;
+  top: 3px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  transform: translateX(-50%);
+}
+
+/* Dua baris dipisah garis titik tipis, seperti baris titik di bingkai kartu. */
+.dock-row + .dock-row {
+  padding-top: 8px;
+  background: radial-gradient(circle, var(--hair-strong) 0.8px, transparent 1.2px) top left / 6px 2px repeat-x;
+}
+
+/* Kenop: cincin ganda, dan cincin luarnya bergerigi seperti cincin lensa. */
+.dial {
+  width: 44px;
+  height: 44px;
+  background: rgba(5, 6, 11, 0.6);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.9),
+    inset 0 0 0 3px rgb(255 180 84 / 0.28);
+  border-color: rgb(255 180 84 / 0.6);
+  color: var(--accent);
+}
+
+.dial::before {
+  inset: -7px;
+  border: 0;
+  background: repeating-conic-gradient(from -1deg, var(--hair-strong) 0 2deg, transparent 2deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 4px), #000 calc(50% - 4px) 50%, transparent 50%);
+  mask: radial-gradient(circle, transparent 0 calc(50% - 4px), #000 calc(50% - 4px) 50%, transparent 50%);
+}
+
+.dial:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgb(255 180 84 / 0.1);
+}
+
+.dial.dial-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    inset 0 0 0 3px rgb(27 18 4 / 0.35);
+  color: var(--accent-ink);
+}
+
+.dial.dial-accent:hover:not(:disabled) {
+  background: #ffc57a;
+}
+
+.dial-accent::before {
+  background: repeating-conic-gradient(from -1deg, rgb(255 180 84 / 0.55) 0 2deg, transparent 2deg 15deg);
+}
+
+.dial-text {
+  display: grid;
+  gap: 3px;
+}
+
+.dial-kicker {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dial-kicker b {
+  margin-right: 4px;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.12em;
+}
+
+.dock .dial-caption {
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* Sakelar rentang waktu: garis ganda; yang terpilih bergaris ambar, tidak diisi
+   (isi ambar penuh hanya untuk satu tombol utama, yaitu Play). */
+.dock .era {
+  padding: 2px;
+  border-color: rgb(255 180 84 / 0.45);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.9),
+    inset 0 0 0 3px rgb(255 180 84 / 0.14);
+}
+
+.dock .era button {
+  letter-spacing: 0.06em;
+}
+
+.dock .era button[aria-pressed="true"] {
+  background: rgb(255 180 84 / 0.14);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent);
+}
+
+/* Penggaris waktu: tiap pengamatan satu sinar tegak, seperti busur di kartu II.
+   WISE berujung titik berongga, SPHEREx lebih tinggi dan berujung penuh. */
+.dock .timeline-rule {
+  background: linear-gradient(90deg, transparent, var(--hair-strong) 4%, var(--hair-strong) 96%, transparent);
+}
+
+.tick span {
+  position: relative;
+  width: 1.4px;
+  height: 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--muted);
+  transform-origin: 50% 100%;
+}
+
+.tick span::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 5px;
+  height: 5px;
+  border: 1.2px solid var(--muted);
+  border-radius: 50%;
+  background: var(--void);
+  transform: translateX(-50%);
+}
+
+.tick[data-kind="spherex"] span {
+  height: 14px;
+  background: var(--text);
+}
+
+.tick[data-kind="spherex"] span::after {
+  border-color: var(--text);
+  background: var(--text);
+}
+
+.tick:hover span {
+  transform: scaleY(1.2);
+}
+
+.tick:hover span,
+.tick:hover span::after {
+  border-color: var(--text);
+}
+
+/* Yang sedang tampil di lensa: sinar ambar dengan bintang empat sudut di ujungnya. */
+.tick[aria-pressed="true"] span {
+  height: 15px;
+  background: var(--accent);
+  transform: none;
+}
+
+.tick[aria-pressed="true"] span::after {
+  top: -9px;
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 4px rgb(255 180 84 / 0.8));
+}
+
+.dock .era-tag {
+  letter-spacing: 0.2em;
+}
+
+.dock .era-break {
+  border-left-color: rgb(255 180 84 / 0.5);
+}
+
+/* Kunjungan SPHEREx saja: simpulnya bintang empat sudut kecil, terang saat terpilih. */
+.visit-node {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 0;
+  background: var(--muted);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+
+.visit:hover:not(:disabled) .visit-node {
+  background: var(--text);
+}
+
+.visit[aria-pressed="true"] .visit-node {
+  background: var(--accent);
+  filter: drop-shadow(0 0 4px rgb(255 180 84 / 0.8));
+  transform: scale(1.3);
+}
+
+/* Spektrum: garis kunjungan yang tampil berwarna aksen; enam ruas band dibatasi
+   kurung tipis di bawah, seperti skala, dan yang terpilih kurungnya menyala. */
+.dock .spec-line {
+  stroke: var(--accent);
+  opacity: 0.75;
+}
+
+.dock .spec-axis {
+  stroke: var(--hair-strong);
+}
+
+.dock .segment {
+  border-left: 0;
+  background: none;
+}
+
+.dock .segment::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0;
+  height: 5px;
+  border: 1px solid var(--hair-strong);
+  border-top: 0;
+}
+
+.dock .segment:last-child {
+  border-right: 0;
+}
+
+.dock .segment:hover:not(:disabled) {
+  background: linear-gradient(to top, var(--wash), transparent);
+}
+
+.dock .segment[aria-pressed="true"] {
+  background: linear-gradient(to top, rgb(255 180 84 / 0.12), transparent 80%);
+  box-shadow: none;
+}
+
+.dock .segment[aria-pressed="true"]::before {
+  border-color: var(--accent);
+}
+
+.dock .segment[data-heard="true"] {
+  background: linear-gradient(to top, rgb(255 180 84 / 0.26), transparent 90%);
+}
+
+.dock .segment:disabled {
+  background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(205, 214, 255, 0.05) 5px 6px);
+}
+
+/* Tombol di ekor dok: pangkat tenang, huruf mono kecil. */
+.dock-tail .pill {
+  height: 32px;
+  padding: 0 13px;
+  border-color: var(--hair-strong);
+  background: rgba(5, 6, 11, 0.5);
+  color: var(--soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dock-tail .pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dock-tail .pill:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgb(255 180 84 / 0.08);
+}
+
+.dock-tail .pill[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.9),
+    inset 0 0 0 3px rgb(255 180 84 / 0.3);
+}
+
+.dock .round {
+  background: rgba(5, 6, 11, 0.5);
+}
+
+.dock .round:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 860px) {
+  .dock {
+    margin: 0;
+    padding: 20px 14px 14px;
+  }
+
+  .dock::before {
+    left: 14px;
+    right: 14px;
+  }
+}
