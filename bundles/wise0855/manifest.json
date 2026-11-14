@@ -331,7 +331,14 @@
   ],
   "coverage": 0.996,
   "orientation": "north up, east left",
-  "stretch": "linear, -50 to 500 unWISE units; for viewing, not photometry",
+  "stretch": "asinh(v/knee)/asinh(vmax/knee) on sky-subtracted unWISE units, knee = 3x sky noise, same for all epochs; the same rule as the SPHEREx frames. For viewing, not photometry",
+  "matched": true,
+  "display": {
+   "sky": -0.77,
+   "knee": 20.78,
+   "vmax": 1100.4,
+   "soften_arcsec": 3.0
+  },
   "frames": [
    {
     "id": "x1",

@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { prefersReducedMotion } from "../lib/hooks";
 import { paint, type Rect } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
 
@@ -9,6 +10,13 @@ type Props = {
   showFlags: boolean;
   /** Bagian citra yang tampil, dalam piksel citra itu. */
   view?: Rect;
+  /** Pemetaan ulang tingkat abu sebelum diwarnai; dipakai untuk citra WISE. */
+  tone?: Uint8ClampedArray;
+  /** Penghalusan sebelum diwarnai, dalam piksel citra; dipakai untuk citra WISE. */
+  soften?: number;
+  /** Tempat dan teleskop citra yang tampil, "tempat:teleskop". Saat teleskopnya
+   *  berganti di tempat yang sama, citra lama larut ke citra baru. */
+  source: string;
   /** Bagian yang sama dalam piksel frame SPHEREx; tanda dan jejak digambar di sini. */
   markView: Rect;
   /** Lebar langit yang tampil, detik busur. */
@@ -52,18 +60,56 @@ type Props = {
 };
 
 const CANVAS_PX = 480;
+const DISSOLVE_MS = 700;
 const WHEEL_GAP_MS = 240;
 const R = 100; // jari-jari lensa dalam satuan gambar cincin
 const TICKS = Array.from({ length: 24 }, (_, i) => i * 15);
 
 export function Lens(p: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fadeRef = useRef<HTMLCanvasElement>(null);
+  const lastSource = useRef<string | undefined>(undefined);
+  const dissolve = useRef<{ animation?: Animation; timer: number }>({ timer: 0 });
+  // Naik tiap kali teleskop berganti, supaya keterangan di bawah lensa ikut memberi tanda.
+  const [cue, setCue] = useState(0);
 
   // Dilukis sebelum browser menggambar, supaya pergantian pembesaran tidak berkedip.
   useLayoutEffect(() => {
-    if (!canvasRef.current || !p.image) return;
-    paint(canvasRef.current, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view);
-  }, [p.image, p.mask, p.palette, p.showFlags, p.view]);
+    const canvas = canvasRef.current;
+    const fade = fadeRef.current;
+    if (!canvas || !p.image) return;
+    // Blink dalam satu teleskop tetap meloncat, karena loncatan itulah yang dibaca
+    // mata sebagai gerak. Pergantian teleskop bukan perbandingan posisi: citranya
+    // berbeda alat, jadi citra lama dilarutkan ke citra baru.
+    const [place, telescope] = p.source.split(":");
+    const [lastPlace, lastTelescope] = (lastSource.current ?? ":").split(":");
+    const handover = place === lastPlace && telescope !== lastTelescope && !prefersReducedMotion();
+    lastSource.current = p.source;
+    if (handover && fade) {
+      window.clearTimeout(dissolve.current.timer);
+      dissolve.current.animation?.cancel();
+      fade.getContext("2d")!.drawImage(canvas, 0, 0);
+      fade.style.opacity = "1";
+    }
+    paint(canvas, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view, p.tone, p.soften);
+    if (handover && fade) {
+      if (typeof fade.animate === "function") {
+        dissolve.current.animation = fade.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: DISSOLVE_MS,
+          easing: "ease-in-out",
+        });
+      }
+      // Pewaktu yang menutupnya, supaya tidak tertahan kalau halaman tidak sedang digambar.
+      fade.style.opacity = "0";
+      dissolve.current.timer = window.setTimeout(() => dissolve.current.animation?.cancel(), DISSOLVE_MS + 60);
+      setCue((n) => n + 1);
+    }
+  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source]);
+
+  useEffect(() => {
+    const state = dissolve.current;
+    return () => window.clearTimeout(state.timer);
+  }, []);
 
   // Gulir memperbesar hanya kalau halaman sendiri tidak perlu digulir.
   const { slotRef, onWheelZoom } = p;
@@ -103,6 +149,7 @@ export function Lens(p: Props) {
           <div className="lens-aperture">
             <div className="lens-zoomer" ref={p.zoomerRef}>
               <canvas ref={canvasRef} width={CANVAS_PX} height={CANVAS_PX} role="img" aria-label={p.description} />
+              <canvas ref={fadeRef} className="lens-fade" width={CANVAS_PX} height={CANVAS_PX} aria-hidden="true" />
               <svg
                 className="lens-marks"
                 viewBox={`${p.markView.x} ${p.markView.y} ${p.markView.w} ${p.markView.h}`}
@@ -229,7 +276,9 @@ export function Lens(p: Props) {
           (open && !p.collapsed && (
             <>
               <b>{p.dateLabel}</b>
-              <span>{p.bandLabel}</span>
+              <span key={cue} className={cue ? "caption-cue" : undefined}>
+                {p.bandLabel}
+              </span>
               <span>{Math.round(p.viewArcsec / 60)}′ wide</span>
             </>
           ))}
