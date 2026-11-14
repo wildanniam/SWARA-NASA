@@ -5,25 +5,35 @@ import { FLAG_BAD, FLAG_SATURATED } from "./palette";
 
 let scratch: HTMLCanvasElement | undefined;
 
-function pixels(img: HTMLImageElement, size: number): Uint8ClampedArray {
+/** Bagian citra yang ditampilkan, dalam piksel citra itu. Boleh melewati tepinya. */
+export type Rect = { x: number; y: number; w: number; h: number };
+
+function pixels(img: HTMLImageElement, size: number, view?: Rect): Uint8ClampedArray {
   scratch ??= document.createElement("canvas");
   if (scratch.width !== size) scratch.width = scratch.height = size;
   const ctx = scratch.getContext("2d", { willReadFrequently: true })!;
   ctx.clearRect(0, 0, size, size);
-  ctx.drawImage(img, 0, 0, size, size);
+  if (view) {
+    // Bagian di luar citra dibiarkan kosong; letaknya dihitung sendiri supaya
+    // tidak bergantung pada cara browser memotong persegi sumber.
+    const k = size / view.w;
+    ctx.drawImage(img, -view.x * k, -view.y * k, img.naturalWidth * k, img.naturalHeight * k);
+  } else ctx.drawImage(img, 0, 0, size, size);
   return ctx.getImageData(0, 0, size, size).data;
 }
 
-/** Gambar `img` ke `canvas` (persegi `size` piksel). `mask` menandai piksel jenuh dan rusak. */
+/** Gambar `img` ke `canvas` (persegi `size` piksel). `mask` menandai piksel jenuh dan
+ *  rusak. `view` memilih bagian citra yang tampil; tanpa itu seluruh citra. */
 export function paint(
   canvas: HTMLCanvasElement,
   img: HTMLImageElement,
   lut: Uint8ClampedArray,
   size: number,
   mask?: HTMLImageElement,
+  view?: Rect,
 ) {
   if (canvas.width !== size) canvas.width = canvas.height = size;
-  const gray = pixels(img, size);
+  const gray = pixels(img, size, view);
   const out = new ImageData(size, size);
   for (let i = 0; i < size * size; i++) {
     const v = gray[i * 4] * 3;
@@ -33,7 +43,7 @@ export function paint(
     out.data[i * 4 + 3] = 255;
   }
   if (mask) {
-    const m = pixels(mask, size);
+    const m = pixels(mask, size, view);
     for (let i = 0; i < size * size; i++) {
       const tint = m[i * 4] > 200 ? FLAG_SATURATED : m[i * 4] > 64 ? FLAG_BAD : null;
       if (!tint) continue;

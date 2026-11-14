@@ -12,7 +12,8 @@ Tingkat: variasi tata letak sedang, gerak sedang, kepadatan rendah.
 
 **Yang data harus terlihat sebagai data, dan suasana tidak boleh menyamar sebagai data.**
 
-- Lensa di tengah adalah data: citra SPHEREx 2 menit busur yang dipakai untuk mengukur. Warnanya hangat (panas inframerah).
+- Lensa di tengah adalah data: citra SPHEREx yang dipakai untuk mengukur, 2 sampai 6 menit busur tergantung pembesaran. Warnanya hangat (panas inframerah).
+- Citra WISE 2010-2024 juga tampil di lensa, tapi hanya untuk dilihat. Keterangan di bawah lensa selalu menyebut teleskopnya, dan tidak ada angka yang diukur dari WISE.
 - Latar adalah suasana, tapi tetap asli: citra SPHEREx 40 menit busur di sekitar posisi yang sama (`context.png`). Warnanya dingin (cahaya bintang) dan diredupkan, supaya tidak dikira bagian yang diukur.
 - Tidak ada bintang karangan, pendar hias, atau gradien dekoratif. Gradien hanya dipakai sebagai tirai supaya teks terbaca.
 
@@ -35,9 +36,10 @@ Urutan `z-index`: latar 0, tirai 1, panggung 2, bilah atas dan dok 3, laci 4, di
 
 - **Lensa.** Bundar, seperti medan pandang teleskop. Cincin luarnya bertanda derajat dengan huruf N dan E. Cincin itu juga penunjuk: terisi saat data dimuat, dan menyapu saat suara spektrum berjalan. Membuka dan menutup seperti diafragma.
 - **Tanda acuan dan jejak.** Tanda silang ambar menandai posisi pada kunjungan pertama. Posisi terukur tiap kunjungan digambar sebagai titik yang tersambung, jadi geraknya terbaca walau blink dijeda.
-- **Satelit.** Dua tombol bundar kecil menempel di cincin lensa: palet warna dan penanda piksel yang tidak bisa dipercaya.
+- **Satelit.** Tombol bundar kecil menempel di cincin lensa: palet warna dan penanda piksel yang tidak bisa dipercaya di kanan, perbesar dan perkecil di kiri.
 - **Tombol putar.** Blink dan Dengar adalah tombol bundar besar. Hanya Blink yang berisi warna aksen.
 - **Penggaris waktu.** Kunjungan diletakkan pada jarak tanggal yang sebenarnya, dengan pergeseran terukur di bawah tiap kunjungan.
+- **Rentang waktu.** Sakelar dua pilihan di kiri penggaris: "16 years" memutar citra WISE lalu kunjungan SPHEREx pada satu penggaris 2010 sampai sekarang, dengan lensa selebar 6 menit busur; "SPHEREx" kembali ke kunjungan SPHEREx saja, diperbesar ke 2 menit busur. Benda yang punya riwayat WISE dibuka di "16 years".
 - **Pita spektrum.** Selebar dok. Enam ruasnya adalah enam band citra: mengeklik satu ruas mengganti band di lensa. Saat suara berjalan, lensa ikut menampilkan band yang sedang terdengar.
 - **Pergi ke.** Satu kotak untuk nama atau koordinat, lalu daftar benda contoh dengan cuplikan citra aslinya.
 - **Catatan.** Laci di kanan untuk semua yang tidak perlu tampil terus: rincian data, cara membaca spektrum, cara kerja suara, dan tombol papan ketik.

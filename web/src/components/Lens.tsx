@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { paint } from "../lib/paint";
+import { paint, type Rect } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
 
 type Props = {
@@ -7,8 +7,12 @@ type Props = {
   mask?: HTMLImageElement;
   palette: PaletteId;
   showFlags: boolean;
-  sizePx: number;
-  fovArcsec: number;
+  /** Bagian citra yang tampil, dalam piksel citra itu. */
+  view?: Rect;
+  /** Bagian yang sama dalam piksel frame SPHEREx; tanda dan jejak digambar di sini. */
+  markView: Rect;
+  /** Lebar langit yang tampil, detik busur. */
+  viewArcsec: number;
   /** Posisi acuan di piksel frame; tetap di langit yang sama untuk semua kunjungan. */
   mark?: { x: number; y: number };
   /** Posisi terukur tiap kunjungan di piksel frame. */
@@ -29,7 +33,7 @@ type Props = {
   children?: ReactNode;
 };
 
-const SCALE_ARCSEC = 20;
+const CANVAS_PX = 480;
 const R = 100; // jari-jari lensa dalam satuan gambar cincin
 const TICKS = Array.from({ length: 24 }, (_, i) => i * 15);
 
@@ -38,10 +42,12 @@ export function Lens(p: Props) {
 
   useEffect(() => {
     if (!canvasRef.current || !p.image) return;
-    paint(canvasRef.current, p.image, LUTS[p.palette], p.sizePx, p.showFlags ? p.mask : undefined);
-  }, [p.image, p.mask, p.palette, p.showFlags, p.sizePx]);
+    paint(canvasRef.current, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view);
+  }, [p.image, p.mask, p.palette, p.showFlags, p.view]);
 
-  const s = p.sizePx;
+  // Ukuran tanda mengikuti lebar yang tampil, jadi tetap sama besar di layar saat diperbesar.
+  const s = p.markView.w;
+  const scaleArcsec = p.viewArcsec >= 240 ? 60 : 20;
   const gap = s * 0.026;
   const arm = s * 0.036;
   const open = !!p.image && !p.status;
@@ -52,8 +58,12 @@ export function Lens(p: Props) {
     <div className="lens" data-open={open} data-status={p.status ?? "ready"}>
       <div className="lens-body">
         <div className="lens-aperture">
-          <canvas ref={canvasRef} width={s} height={s} role="img" aria-label={p.description} />
-          <svg className="lens-marks" viewBox={`0 0 ${s} ${s}`} aria-hidden="true">
+          <canvas ref={canvasRef} width={CANVAS_PX} height={CANVAS_PX} role="img" aria-label={p.description} />
+          <svg
+            className="lens-marks"
+            viewBox={`${p.markView.x} ${p.markView.y} ${p.markView.w} ${p.markView.h}`}
+            aria-hidden="true"
+          >
             {moved && (
               <>
                 <polyline className="trail-line" points={p.trail.map((t) => `${t.x},${t.y}`).join(" ")} />
@@ -77,8 +87,8 @@ export function Lens(p: Props) {
                 </g>
               ))}
           </svg>
-          <div className="lens-scale" style={{ width: `${(SCALE_ARCSEC / p.fovArcsec) * 100}%` }} aria-hidden="true">
-            <span>{SCALE_ARCSEC}″</span>
+          <div className="lens-scale" style={{ width: `${(scaleArcsec / p.viewArcsec) * 100}%` }} aria-hidden="true">
+            <span>{scaleArcsec === 60 ? "1′" : "20″"}</span>
           </div>
         </div>
 
@@ -150,6 +160,7 @@ export function Lens(p: Props) {
           <>
             <b>{p.dateLabel}</b>
             <span>{p.bandLabel}</span>
+            <span>{Math.round(p.viewArcsec / 60)}′ wide</span>
           </>
         )}
       </p>
