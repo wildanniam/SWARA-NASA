@@ -3,5 +3,9 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/api/:path*", "destination": "/api/proxy" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/proxy" },
+    { "source": "/sky", "destination": "/index.html" },
+    { "source": "/sky/:path*", "destination": "/index.html" }
+  ]
 }

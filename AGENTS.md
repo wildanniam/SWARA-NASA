@@ -37,7 +37,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 | Permintaan wajib | Status |
 |---|---|
-| Web tool yang terbuka untuk publik | Ada: https://swara-nasa.vercel.app |
+| Web tool yang terbuka untuk publik | Ada: https://swara-nasa.vercel.app (landing page), aplikasinya di https://swara-nasa.vercel.app/sky |
 | Pengguna memasukkan koordinat (RA dan Dec) | Ada: dua isian berlabel RA dan Dec (derajat atau jam/derajat-menit-detik), satu kotak untuk nama benda atau koordinat, pratinjau "dibaca sebagai" di peta, atau klik titik mana pun di peta seluruh langit |
 | Deretan citra patch itu "seperti video kecil" | Ada: 13-18 citra WISE lalu 3-4 kunjungan SPHEREx diputar berurutan; blink antar kunjungan SPHEREx |
 | Diuji pada Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | Sudah; lihat hasil per target |
@@ -60,13 +60,13 @@ Urutan platform berikutnya:
 2. Halaman proyek dan video demo berbahasa Inggris.
 3. Identitas visual: logo sudah ada; sisanya penerapan ke cuplikan penanda dan hasil Go to. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), dan pembuka seluruh langit.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), pembuka seluruh langit, dan landing page di `/` (aplikasi pindah ke `/sky`).
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
 ## Deploy
 
-Situs publik: https://swara-nasa.vercel.app
+Situs publik: https://swara-nasa.vercel.app (landing page). Aplikasinya di `/sky`; tautan lama `/?target=...` dan `/?ra=...` tetap membuka aplikasi.
 
 - **Frontend** di Vercel, proyek `swara-nasa`. Dibangun di mesin sendiri lalu diunggah, karena build membutuhkan `bundles/` di luar folder `web/`. Dari `web/`:
   ```
@@ -137,6 +137,12 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **KEPUTUSAN (Wildan): landing page di `/`, aplikasi di `/sky`, mengikuti mockup v2.** Arahnya minimalis dan modern dengan rasi bintang sebagai aksen. Mockup pertama ditolak karena kartunya polos, isinya terlalu umum, bagian contohnya lemah, dan kakinya berantakan. Isi landing page dihitung dari bundle yang sama dengan aplikasi; sasaran dan mikro-interaksi tiap bagian ada di [web/DESIGN.md](web/DESIGN.md).
+  - Tautan lama yang membawa parameter aplikasi tetap membuka aplikasi, dan aplikasi sekarang selalu menulis alamatnya di `/sky`, jadi memuat ulang tidak jatuh ke landing page. Tautan Share dan QR kartu berbagi ikut menunjuk `/sky`.
+  - Diuji di Chromium headless dengan GPU laptop: enam ukuran layar dari 1440 sampai 360 px tanpa tabrakan dan tanpa geser horizontal; keenam kartu menyala saat ditunjuk dan animasinya jalan; pemilih contoh membaca kelima benda (Barnard's Star 10,1″ lawan Gaia 10,2″; Epsilon Indi B 6,2″ lawan Gaia 6,6″ untuk rentang yang sama; RW Aurigae ≈ 0″; WISE 0855 "Not in Gaia DR3"; R Draconis tidak terukur); bola langit median 16,7 ms per bingkai dan berhenti saat tidak terlihat; gerak dikurangi; tanpa WebGL; dan regresi aplikasi 26 langkah di `/sky`.
+  - Belum diuji: ponsel asli, Safari, Firefox, pembaca layar.
+  - **Revisi atas masukan Wildan (15 November dini hari), disetujui dari usulan bergambar:** judul SWARA diketik lalu membuka jadi kepanjangannya; bola langit bisa diseret dengan momentum, ditunjuk untuk membaca rasi dan koordinat, dan diklik untuk membidik lalu membuka tempat itu di aplikasi; penanda contoh memperlihatkan cuplikan citra asli; bintang latar memakai 757 bintang sungguhan (titik garis rasi), bukan titik acak; bagian Why diganti panel pembanding (satu citra SPHEREx lawan jejak 16 tahun Barnard's Star) tanpa coretan. Diuji di Chromium headless: seret, momentum, bacaan (Scorpius), bidikan (tautan `/sky?ra=&dec=`), Esc, cuplikan penanda, panel diseret dan digeser dengan panah, ponsel 390 px, enam ukuran layar tanpa tabrakan, gerak dikurangi, tanpa WebGL, bola tetap median 16,7 ms per bingkai.
+  - Untuk Nayla: teks Inggris landing page ada di `web/src/landing/Landing.tsx`, `Why.tsx`, dan `Features.tsx`. Baris kaki "Built for NASA Space Apps 2026" perlu dicek terhadap aturan penamaan NASA.
 - **KEPUTUSAN (Wildan, Alif, Nayla): lisensi repo pindah dari MIT ke AGPL-3.0-or-later.** Alasannya: mesin suara Alif akan memakai Strudel (AGPL) yang berjalan di browser, dan tim ingin semangat open source yang tinggi. Akibatnya: siapa pun yang menjalankan versi modifikasi SWARA untuk orang lain lewat jaringan wajib membuka kodenya; versi tertutup hanya mungkin kalau Strudel diganti. Tautan "Source · AGPL" selalu terlihat di kaki dialog The cards. Versi lama repo tetap MIT.
 - **TEMUAN: citra selisih, bintang Gaia, dua isian koordinat, dan koleksi data sebagai pengaturan sudah jalan.** Keempat baris tabel challenge yang masih kosong atau sebagian sekarang terisi. Cara kerjanya di [pipeline/README.md](pipeline/README.md) dan [web/DESIGN.md](web/DESIGN.md).
   - **Citra selisih** dihitung di viewer dari dua frame, setelah tingkat abu dikembalikan ke satuan aslinya dengan `knee` dan `vmax` yang tercatat di bundle. Diperiksa pada Barnard's Star di data WISE: jarak inti "sekarang" ke inti "dulu" cocok dengan gerak diri katalog dalam 0,5 detik busur di empat epoch (2024 dikurangi 2010: terukur 142,7 detik busur ke utara, katalog 142,5).

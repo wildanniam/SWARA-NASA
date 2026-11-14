@@ -2,7 +2,7 @@
 
 **Sky Watch with Audio & Real-time Access.** A web tool that turns SPHEREx infrared data into images you can blink across time and a spectrum you can hear, so anyone can look for objects that move or change brightness.
 
-**Live: https://swara-nasa.vercel.app**
+**Live: https://swara-nasa.vercel.app** (the tool itself is at [/sky](https://swara-nasa.vercel.app/sky))
 
 Built for the NASA Space Apps Challenge 2026, challenge [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/).
 
@@ -42,7 +42,7 @@ The viewer needs Node 20.19 or newer. The pipeline and API need [uv](https://doc
 cd web && npm install && npm run dev
 ```
 
-Open http://localhost:5183. The examples work without the API. For names and free coordinates, start the API in a second terminal:
+Open http://localhost:5183 for the landing page and http://localhost:5183/sky for the tool. The examples work without the API. For names and free coordinates, start the API in a second terminal:
 
 ```bash
 cd pipeline && uv sync && uv run skychange serve
