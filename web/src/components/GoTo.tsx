@@ -2,12 +2,12 @@ import { ArrowRight, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { atlasUrl, constellationAt, decDms, raHms, readCoordinates, toMap, type Atlas } from "../lib/allsky";
 import { KIND_LABEL } from "../content";
-import { assetUrl, defaultBand, findFrame, loadManifest, type Manifest, type TargetRef } from "../lib/bundle";
+import type { TargetRef } from "../lib/bundle";
 import { coord } from "../lib/format";
 import { useDialog } from "../lib/hooks";
-import { paint } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
 import { loadGray, paintSky } from "../lib/skyimage";
+import { PlaceThumb } from "./PlaceThumb";
 
 type Props = {
   open: boolean;
@@ -64,49 +64,6 @@ function ReadAs({ atlas, look, ra, dec }: { atlas: Atlas; look: PaletteId; ra: n
   );
 }
 
-const manifests = new Map<string, Promise<Manifest>>();
-
-/** Cuplikan bundar dari citra asli benda itu: kunjungan pertama di band bawaannya. */
-function Thumb({ target, enabled }: { target: TargetRef; enabled: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const [shown, setShown] = useState(false);
-  const custom = target.kind === "custom";
-
-  useEffect(() => {
-    if (!enabled) return;
-    let alive = true;
-    const key = `${custom ? "api" : "preset"}:${target.id}`;
-    let pending = manifests.get(key);
-    if (!pending) {
-      pending = loadManifest(target.id, custom);
-      manifests.set(key, pending);
-      pending.catch(() => manifests.delete(key));
-    }
-    pending
-      .then((m) => {
-        const band = defaultBand(m);
-        const frame = m.windows.map((w) => findFrame(m, w.id, band)).find(Boolean);
-        if (!frame || !alive) return;
-        const img = new Image();
-        img.onload = () => {
-          if (!alive || !ref.current) return;
-          // Cuplikan menampilkan 2 menit busur di tengah, sebesar apa pun medan bundle-nya.
-          const w = (Math.min(120, m.fov_arcsec) / m.fov_arcsec) * m.frame_px;
-          const view = { x: (m.frame_px - w) / 2, y: (m.frame_px - w) / 2, w, h: w };
-          paint(ref.current, img, LUTS.heat, 96, undefined, view);
-          setShown(true);
-        };
-        img.src = assetUrl(target.id, custom, frame.image);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [target.id, custom, enabled]);
-
-  return <canvas ref={ref} className="thumb" data-shown={shown} width={96} height={96} aria-hidden="true" />;
-}
-
 /** Pintu masuk: satu kotak untuk nama benda atau koordinat, lalu tempat yang bisa langsung dituju. */
 export function GoTo(p: Props) {
   const ref = useDialog<HTMLDivElement>(p.open, p.onClose);
@@ -121,7 +78,7 @@ export function GoTo(p: Props) {
   const row = (t: TargetRef, detail: string) => (
     <li key={t.id}>
       <button type="button" className="place" aria-current={t.id === p.currentId} onClick={() => p.onPick(t.id)}>
-        <Thumb target={t} enabled={!p.building.has(t.id)} />
+        <PlaceThumb id={t.id} custom={t.kind === "custom"} enabled={!p.building.has(t.id)} />
         <span className="place-name">{t.name}</span>
         <span className="place-detail">{detail}</span>
         <ArrowRight aria-hidden="true" />

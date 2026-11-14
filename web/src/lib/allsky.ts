@@ -1,10 +1,10 @@
 // Peta seluruh langit: bentuk `bundles/allsky/manifest.json` (dibuat `skychange allsky`,
 // kontraknya di pipeline/README.md), proyeksinya, dan pembacaan koordinat.
 //
-// Petanya Hammer-Aitoff dalam koordinat galaktik: Bima Sakti mendatar, pusat galaksi di
-// tengah, bujur naik ke kiri. Rumus di sini sama dengan yang dipakai pipeline untuk
-// melukis peta, dan matriks ICRS ke galaktik dibaca dari manifest, jadi penanda dan
-// bacaan koordinat jatuh di piksel yang sama dengan bintangnya.
+// Peta dasarnya Hammer-Aitoff dalam koordinat galaktik: Bima Sakti mendatar, pusat
+// galaksi di tengah, bujur naik ke kiri. `toMap` memakai rumus yang sama dengan
+// pipeline, dengan matriks ICRS ke galaktik dari manifest. Pandangan yang bisa
+// diperbesar dan digeser ada di skyview.ts.
 
 export type SkyFrame = {
   band: string;
@@ -82,87 +82,6 @@ export function toMap(atlas: Atlas, ra: number, dec: number): MapPoint {
   const Y = (SQRT2 * Math.sin(b)) / k;
   const { width, height } = atlas.projection;
   return { x: ((X / (2 * SQRT2) + 1) / 2) * width, y: ((1 - Y / SQRT2) / 2) * height };
-}
-
-/** Piksel peta ke RA dan Dec (derajat); undefined di luar elips. */
-export function fromMap(atlas: Atlas, x: number, y: number): { ra: number; dec: number } | undefined {
-  const { width, height } = atlas.projection;
-  const X = ((x / width) * 2 - 1) * 2 * SQRT2;
-  const Y = (1 - (y / height) * 2) * SQRT2;
-  if ((X / (2 * SQRT2)) ** 2 + (Y / SQRT2) ** 2 > 1) return undefined;
-  const z = Math.sqrt(Math.max(0, 1 - (X / 4) ** 2 - (Y / 2) ** 2));
-  const lam = 2 * Math.atan2(z * X, 2 * (2 * z * z - 1));
-  const b = Math.asin(Math.max(-1, Math.min(1, z * Y)));
-  const l = -lam;
-  const g = [Math.cos(b) * Math.cos(l), Math.cos(b) * Math.sin(l), Math.sin(b)];
-  const m = atlas.projection.icrs_to_galactic;
-  // Matriks putar: kebalikannya adalah transposnya.
-  const v = [0, 1, 2].map((i) => m[0][i] * g[0] + m[1][i] * g[1] + m[2][i] * g[2]);
-  const ra = ((Math.atan2(v[1], v[0]) / RAD) % 360 + 360) % 360;
-  const dec = Math.asin(Math.max(-1, Math.min(1, v[2]))) / RAD;
-  return { ra, dec };
-}
-
-/** Apakah piksel peta ada di dalam elips langit. */
-export function insideMap(atlas: Atlas, x: number, y: number): boolean {
-  const { width, height } = atlas.projection;
-  const u = (x / width) * 2 - 1;
-  const v = 1 - (y / height) * 2;
-  return u * u + v * v <= 1;
-}
-
-function unit(ra: number, dec: number): [number, number, number] {
-  const cd = Math.cos(dec * RAD);
-  return [cd * Math.cos(ra * RAD), cd * Math.sin(ra * RAD), Math.sin(dec * RAD)];
-}
-
-/** Garis di langit (titik RA/Dec berurutan) menjadi atribut `d` SVG di ruang piksel peta.
- *  Tiap ruas mengikuti lingkaran besar, dan garis diputus di tepi peta. */
-export function skyPath(atlas: Atlas, points: [number, number][], stepDeg = 2): string {
-  const out: string[] = [];
-  let prev: MapPoint | undefined;
-  const jump = atlas.projection.width * 0.25;
-  const push = (p: MapPoint) => {
-    const cmd = !prev || Math.abs(p.x - prev.x) > jump ? "M" : "L";
-    out.push(`${cmd}${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
-    prev = p;
-  };
-  for (let i = 0; i < points.length; i++) {
-    if (i === 0) {
-      push(toMap(atlas, points[0][0], points[0][1]));
-      continue;
-    }
-    const a = unit(points[i - 1][0], points[i - 1][1]);
-    const b = unit(points[i][0], points[i][1]);
-    const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
-    const angle = Math.acos(dot);
-    const n = Math.max(1, Math.ceil(angle / RAD / stepDeg));
-    for (let k = 1; k <= n; k++) {
-      const t = k / n;
-      const s = Math.sin(angle);
-      const wa = s < 1e-9 ? 1 - t : Math.sin((1 - t) * angle) / s;
-      const wb = s < 1e-9 ? t : Math.sin(t * angle) / s;
-      const v = [0, 1, 2].map((j) => wa * a[j] + wb * b[j]);
-      const r = Math.hypot(v[0], v[1], v[2]);
-      const dec = Math.asin(v[2] / r) / RAD;
-      const ra = Math.atan2(v[1], v[0]) / RAD;
-      push(toMap(atlas, ra, dec));
-    }
-  }
-  return out.join("");
-}
-
-/** Lingkaran deklinasi atau garis RA, untuk kisi koordinat. */
-export function parallel(atlas: Atlas, dec: number): string {
-  const pts: [number, number][] = [];
-  for (let ra = 0; ra <= 360; ra += 1) pts.push([ra, dec]);
-  return skyPath(atlas, pts, 1);
-}
-
-export function meridian(atlas: Atlas, ra: number): string {
-  const pts: [number, number][] = [];
-  for (let dec = -89; dec <= 89; dec += 1) pts.push([ra, dec]);
-  return skyPath(atlas, pts, 1);
 }
 
 const decoded = new WeakMap<Atlas, Uint8Array>();
