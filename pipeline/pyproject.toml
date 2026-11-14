@@ -14,6 +14,10 @@ dependencies = [
     "uvicorn>=0.30",
 ]
 
+[project.optional-dependencies]
+# Hanya untuk `skychange allsky` (dijalankan sekali, di mesin sendiri); API tidak membutuhkannya.
+sky = ["astropy-healpix>=1.0"]
+
 [project.scripts]
 skychange = "skychange.cli:main"
 

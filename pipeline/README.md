@@ -74,6 +74,30 @@ Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordi
 uv run skychange context
 ```
 
+## Peta seluruh langit (`bundles/allsky/`)
+
+Pembuka viewer: seluruh langit menurut peta langit penuh SPHEREx DR1 dari IRSA (HiPS kubus, 102 panjang gelombang, data April 2025 sampai Mei 2026). Dibuat sekali di mesin sendiri, lalu ikut git sebagai berkas statis:
+
+```bash
+uv run --extra sky skychange allsky
+```
+
+| Berkas | Isi |
+|---|---|
+| `sky_D1.png` ... `sky_D6.png` | peta abu-abu 2048x1024, satu per band: saluran tengah band itu |
+| `sky_D1_small.png` ... | versi 1024x512 untuk layar kecil |
+| `manifest.json` | sumber, proyeksi, daftar peta, benda berlabel, dan rasi |
+
+**Proyeksi.** Hammer-Aitoff dalam koordinat galaktik: Bima Sakti mendatar, pusat galaksi di tengah, bujur naik ke kiri. Di luar elips bernilai 0. `projection.icrs_to_galactic` adalah matriks putar astropy; viewer memakainya bersama rumus yang sama (`web/src/lib/allsky.ts`) untuk menaruh penanda dan membaca koordinat di bawah penunjuk.
+
+**Sumber.** Pratinjau `Norder3/Allsky_F.png` dari HiPS (768 tile 64 piksel, sekitar 6,9 menit busur per piksel; nilainya sudah diregangkan asinh, potong 0-40). Tile disusun ulang menjadi peta HEALPix lalu diinterpolasi bilinear ke proyeksi. Susunan piksel di dalam tile dipastikan dari data, dan tiap kali dibuat diperiksa lagi: titik ujung garis rasi (757 bintang terang) harus jatuh di piksel terang (median 77 lawan 12 di titik acak).
+
+**`frames`**: `band`, `frame` (indeks kubus: 17 x (band - 1) + saluran - 1), `lambda_um`, `band_min_um` dan `band_max_um` (rentang saluran band itu), `image`, `small`.
+
+**`constellations`**: `names` (nama rasi per singkatan IAU), `labels` (titik label), `lines` (garis rasi, RA dan Dec dalam derajat), dan `grid`: singkatan rasi di kisi 0,5 derajat dari batas resmi IAU (astropy), dipadatkan per baris sebagai pasangan (indeks, panjang). Garis rasi dari d3-celestial oleh Olaf Frohn (lisensi BSD-3-Clause, commit dicatat di `source`).
+
+Peta ini untuk orientasi; tidak ada yang diukur darinya. Beberapa bercak hitam di dekat daerah yang sangat terang adalah celah di peta SPHEREx sendiri.
+
 ## spectrum.json (kontrak untuk sonifikasi)
 
 SPHEREx memakai filter yang panjang gelombangnya berubah di sepanjang detektor, jadi tiap eksposur melihat target di panjang gelombang yang berbeda. Titik-titik dalam satu jendela membentuk spektrum. `points` sudah diurutkan per jendela lalu per panjang gelombang.

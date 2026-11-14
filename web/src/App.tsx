@@ -10,6 +10,7 @@ import {
   Pause,
   Play,
   ShareNetwork,
+  StarFour,
   SunDim,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,10 +20,12 @@ import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
 import { Notes } from "./components/Notes";
+import { ShareCard } from "./components/ShareCard";
+import { SkyMap, type MapSpot, type SkyMarker } from "./components/SkyMap";
 import { SlewReadout, type Slew } from "./components/SlewReadout";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
-import { CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
+import { BLENDED, CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
 import {
   assetUrl,
   defaultBand,
@@ -39,6 +42,8 @@ import {
   type TargetRef,
 } from "./lib/bundle";
 import { readyFrameForWindow } from "./lib/visitFrames";
+import { loadAtlas, toMap, type Atlas } from "./lib/allsky";
+import type { CardInput } from "./lib/card";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { readFramePixels } from "./lib/framePixels";
 import { prefersReducedMotion } from "./lib/hooks";
@@ -83,6 +88,22 @@ const LINK_RA = Number(LINK.get("ra") ?? NaN);
 const LINK_DEC = Number(LINK.get("dec") ?? NaN);
 const LINK_HAS_POSITION = Number.isFinite(LINK_RA) && Number.isFinite(LINK_DEC);
 const LINK_VIEW = LINK.get("view");
+const LINK_TARGET = LINK.get("target");
+// Tanpa tautan ke satu tempat, situs dibuka di seluruh langit.
+const LINK_OPENS_PLACE = !!(LINK_TARGET || LINK_NAME || LINK_HAS_POSITION);
+const LINK_SKY_BAND = /^D[1-6]$/.test(LINK.get("band") ?? "") ? LINK.get("band")! : "D5";
+// Lama peralihan antara seluruh langit dan satu tempat.
+const ATLAS_FX_MS = 700;
+// Tujuan tombol "Show me a moving star": gerak diri tercepat di langit kita.
+const TOUR_ID = "barnard";
+const KIND_DETAIL = { moving: "moves", variable: "changes brightness", custom: "yours" } as const;
+
+/** Letak satu posisi di peta seluruh langit, dalam persen. */
+function spotOn(atlas: Atlas | undefined, ra: number, dec: number): MapSpot {
+  if (!atlas) return { x: 50, y: 50 };
+  const p = toMap(atlas, ra, dec);
+  return { x: (p.x / atlas.projection.width) * 100, y: (p.y / atlas.projection.height) * 100 };
+}
 const LINK_LOOK = LINK.get("look");
 const GUIDE_KEY = "swara.guide";
 
@@ -139,7 +160,19 @@ export function App() {
   const [gotoOpen, setGotoOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Band yang sedang terdengar di mode Spektrum; lensa ikut menampilkannya.
+  // Dialog kartu berbagi.
+  const [cardOpen, setCardOpen] = useState(false);
+  // Seluruh langit: tingkat terluar teleskop, di atas panggung tempat yang terakhir dibuka.
+  const [atlas, setAtlas] = useState(!LINK_OPENS_PLACE);
+  const [atlasFx, setAtlasFx] = useState<{ kind: "enter" | "leave"; at: MapSpot }>();
+  const [atlasData, setAtlasData] = useState<Atlas>();
+  const [atlasFailed, setAtlasFailed] = useState(false);
+  const [skyBand, setSkyBand] = useState(LINK_SKY_BAND);
+  const [skyLines, setSkyLines] = useState(true);
+  const atlasTimer = useRef(0);
+  // Tempat yang dibuka dari seluruh langit: datangnya lewat menyelam, bukan berpindah.
+  const quietArrival = useRef<string | undefined>(undefined);
+  // Band yang sedang terdengar saat suara spektrum berjalan; lensa ikut menampilkannya.
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
   const scanLine = useRef<SVGLineElement>(null);
@@ -170,23 +203,25 @@ export function App() {
   const custom = job !== undefined;
   const ready = !job || job.status === "ready";
 
-  /** Buka satu nama benda atau koordinat. Mengembalikan false kalau ditolak atau gagal. */
-  const openSky = useCallback(async (text: string): Promise<boolean> => {
+  /** Buka satu nama benda atau koordinat. Mengembalikan job-nya, atau pesan kalau
+   *  ditolak atau gagal. `quiet`: datang dari seluruh langit, tanpa gerak berpindah. */
+  const openSky = useCallback(async (text: string, quiet = false): Promise<SkyJob | string> => {
     setFormBusy(true);
     setFormError(undefined);
     try {
       const next = await requestSky(text);
       setJobs((all) => ({ ...all, [next.id]: next }));
+      if (quiet) quietArrival.current = next.id;
       setTargetId(next.id);
-      return true;
+      return next;
     } catch (err) {
-      if (err instanceof SkyRequestError) {
-        setFormError(err.message);
-      } else {
-        console.error(err);
-        setFormError("The search service is not reachable right now. The examples still work.");
-      }
-      return false;
+      const message =
+        err instanceof SkyRequestError
+          ? err.message
+          : "The search service is not reachable right now. The examples still work.";
+      if (!(err instanceof SkyRequestError)) console.error(err);
+      setFormError(message);
+      return message;
     } finally {
       setFormBusy(false);
     }
@@ -226,8 +261,8 @@ export function App() {
     if (linkOpened.current || !(LINK_NAME || LINK_HAS_POSITION)) return;
     linkOpened.current = true;
     void (async () => {
-      const byName = LINK_NAME ? await openSky(LINK_NAME) : false;
-      const opened = byName || (LINK_HAS_POSITION && (await openSky(`${LINK_RA} ${LINK_DEC}`)));
+      const byName = LINK_NAME ? typeof (await openSky(LINK_NAME)) !== "string" : false;
+      const opened = byName || (LINK_HAS_POSITION && typeof (await openSky(`${LINK_RA} ${LINK_DEC}`)) !== "string");
       // Tautan yang tidak bisa dibuka tidak boleh gagal diam-diam: dialog menampilkan alasannya.
       if (!opened) setGotoOpen(true);
     })();
@@ -240,8 +275,10 @@ export function App() {
     loadIndex(ac.signal)
       .then((list) => {
         setTargets(list);
-        const linked = LINK_NAME || LINK_HAS_POSITION ? undefined : list.find((t) => t.id === LINK.get("target"));
-        setTargetId((cur) => cur ?? (linked ?? list[0])?.id);
+        const linked = LINK_NAME || LINK_HAS_POSITION ? undefined : list.find((t) => t.id === LINK_TARGET);
+        if (linked) setTargetId((cur) => cur ?? linked.id);
+        // Tautan ke tempat yang tidak dikenal dibuka di seluruh langit.
+        else if (LINK_TARGET && !LINK_NAME && !LINK_HAS_POSITION) setAtlas(true);
       })
       .catch((err) => {
         if (!ac.signal.aborted) {
@@ -333,6 +370,14 @@ export function App() {
 
   // Yang sedang tampil dicatat di URL, supaya tautannya membuka pandangan yang sama.
   useEffect(() => {
+    if (atlas) {
+      const p = new URLSearchParams();
+      if (skyBand !== "D5") p.set("band", skyBand);
+      if (palette !== "heat") p.set("look", palette);
+      const q = p.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+      return;
+    }
     if (!targetId || !bandId || !manifest) return;
     const p = new URLSearchParams();
     if (job) {
@@ -344,7 +389,7 @@ export function App() {
     if (manifest.wise?.frames.length && era === "spherex") p.set("view", "spherex");
     if (palette !== "heat") p.set("look", palette);
     window.history.replaceState(null, "", `${window.location.pathname}?${p}`);
-  }, [targetId, bandId, manifest, job, era, palette]);
+  }, [targetId, bandId, manifest, job, era, palette, atlas, skyBand]);
 
   // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
   useEffect(() => {
@@ -376,6 +421,32 @@ export function App() {
     [targets, jobs],
   );
   const target = allTargets.find((t) => t.id === targetId);
+  // Penanda di peta seluruh langit: contoh, lalu tempat yang dibuka di sesi ini.
+  const skyMarkers = useMemo<SkyMarker[]>(
+    () => [
+      ...(targets ?? []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        detail: KIND_DETAIL[t.kind],
+        ra: t.ra,
+        dec: t.dec,
+        yours: false,
+        current: t.id === targetId,
+      })),
+      ...Object.values(jobs)
+        .filter((j) => j.status !== "error")
+        .map((j) => ({
+          id: j.id,
+          name: j.label || coordShort(j.ra, j.dec),
+          detail: "yours",
+          ra: j.ra,
+          dec: j.dec,
+          yours: true,
+          current: j.id === targetId,
+        })),
+    ],
+    [targets, jobs, targetId],
+  );
 
   // Arah pindah dari tempat sebelumnya, untuk gerak latar. Diturunkan saat render
   // supaya tempat baru dan arahnya sampai ke latar pada saat yang sama.
@@ -385,17 +456,19 @@ export function App() {
     bearing: { x: 0, y: 0 },
   });
   if (target && target.id !== route.id) {
+    // Dari seluruh langit, teleskop menyelam ke titiknya; tidak ada perpindahan lagi.
+    const from = quietArrival.current === target.id ? undefined : route.id;
     setRoute({
       id: target.id,
       ra: target.ra,
       dec: target.dec,
-      bearing: route.id ? bearingBetween(route, target) : { x: 0, y: 0 },
+      bearing: from ? bearingBetween(route, target) : { x: 0, y: 0 },
     });
     setSky(false);
     // Lama perpindahan mengikuti jarak sudut yang sebenarnya di langit.
-    const degrees = route.id ? separationDeg(route, target) : 0;
+    const degrees = from ? separationDeg(route, target) : 0;
     setSlew(
-      route.id && !prefersReducedMotion()
+      from && !prefersReducedMotion()
         ? {
             id: target.id,
             from: { ra: route.ra, dec: route.dec },
@@ -412,6 +485,74 @@ export function App() {
     const timer = window.setTimeout(() => setSlew((cur) => (cur === slew ? undefined : cur)), slew.ms);
     return () => window.clearTimeout(timer);
   }, [slew]);
+  useEffect(() => {
+    if (route.id && quietArrival.current === route.id) quietArrival.current = undefined;
+  }, [route.id]);
+
+  // Manifest peta seluruh langit dimuat begitu dibutuhkan: pembuka, atau pratinjau di "Go to".
+  useEffect(() => {
+    if (atlasData || (!atlas && !gotoOpen)) return;
+    let alive = true;
+    loadAtlas()
+      .then((data) => alive && setAtlasData(data))
+      .catch((err) => {
+        console.error(err);
+        if (alive) setAtlasFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [atlas, gotoOpen, atlasData]);
+
+  // Menjauh dari pandangan lebar: peta seluruh langit mengecil dari titik tempat ini.
+  const enterAtlas = useCallback(() => {
+    window.clearTimeout(atlasTimer.current);
+    setPlaying(false);
+    setWheelOpen(false);
+    setAtlas(true);
+    if (prefersReducedMotion()) {
+      setAtlasFx(undefined);
+      return;
+    }
+    setAtlasFx({ kind: "enter", at: target ? spotOn(atlasData, target.ra, target.dec) : { x: 50, y: 50 } });
+    atlasTimer.current = window.setTimeout(() => setAtlasFx(undefined), ATLAS_FX_MS);
+  }, [target, atlasData]);
+
+  // Mendekat ke satu titik: peta membesar ke titik itu dan larut ke tempatnya.
+  const leaveAtlas = useCallback((at: MapSpot) => {
+    window.clearTimeout(atlasTimer.current);
+    if (prefersReducedMotion()) {
+      setAtlas(false);
+      setAtlasFx(undefined);
+      return;
+    }
+    setAtlasFx({ kind: "leave", at });
+    atlasTimer.current = window.setTimeout(() => {
+      setAtlas(false);
+      setAtlasFx(undefined);
+    }, ATLAS_FX_MS);
+  }, []);
+  useEffect(() => () => window.clearTimeout(atlasTimer.current), []);
+
+  /** Pilih tempat dari seluruh langit (penanda, contoh, atau tombol tur). */
+  const pickFromAtlas = useCallback(
+    (id: string, at: MapSpot) => {
+      if (id === targetId) setSky(false);
+      else {
+        quietArrival.current = id;
+        selectTarget(id);
+      }
+      leaveAtlas(at);
+    },
+    [targetId, selectTarget, leaveAtlas],
+  );
+
+  /** Kembali dari seluruh langit ke tempat terakhir, di pandangan lebarnya. */
+  const backToPlace = useCallback(() => {
+    if (!target) return;
+    setSky(true);
+    leaveAtlas(spotOn(atlasData, target.ra, target.dec));
+  }, [target, atlasData, leaveAtlas]);
 
   const available = useMemo(
     () => (manifest && bandId ? manifest.windows.filter((w) => findFrame(manifest, w.id, bandId)) : []),
@@ -494,6 +635,7 @@ export function App() {
       homeZoom.current = undefined;
       if (sky) {
         if (dir === 1) setSky(false);
+        else enterAtlas();
         return;
       }
       const next = zoomLevels[zoomIndex + dir];
@@ -501,9 +643,9 @@ export function App() {
       else if (dir === -1 && canSky) {
         setPlaying(false);
         setSky(true);
-      }
+      } else if (dir === -1) enterAtlas();
     },
-    [zoomLevels, zoomIndex, sky, canSky],
+    [zoomLevels, zoomIndex, sky, canSky, enterAtlas],
   );
 
   // Suara mulai memutar satu kunjungan: blink berhenti dan panggung ikut ke kunjungan itu.
@@ -579,6 +721,18 @@ export function App() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement;
       if (el.closest?.("input, select, textarea, [role=dialog]")) return;
+      if (atlas) {
+        // Di seluruh langit: 1-6 memilih panjang gelombang, + kembali ke tempat terakhir.
+        if (/^[1-6]$/.test(e.key)) {
+          setSkyBand(`D${e.key}`);
+          return;
+        }
+        if (e.key === "+" || e.key === "=") {
+          backToPlace();
+          return;
+        }
+        if (e.key === " " || e.key.startsWith("Arrow") || e.key === "-" || e.key.toLowerCase() === "m") return;
+      }
       if (e.key === "/") {
         e.preventDefault();
         setFormError(undefined);
@@ -617,7 +771,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, chooseBand, manifest, zoom, openGuide]);
+  }, [step, chooseBand, manifest, zoom, openGuide, atlas, backToPlace]);
 
   // Mode Spektrum: lensa menampilkan band yang sedang terdengar.
   const shownBandId =
@@ -644,7 +798,7 @@ export function App() {
   const collapsed = sky || slewing || !landed;
   const imageReady = !!image && !status;
   useEffect(() => {
-    if (!targetId || slewing || landed) return;
+    if (!targetId || slewing || landed || atlas) return;
     if (imageReady) {
       // Sejenak dalam keadaan tertutup dulu, supaya terbukanya teranimasi.
       const timer = window.setTimeout(() => setLandedId(targetId), 40);
@@ -653,7 +807,7 @@ export function App() {
     // Bundle baru yang sedang dibuat langsung menampilkan lensa beserta progresnya.
     const timer = window.setTimeout(() => setLandedId(targetId), pending || failed ? 0 : LAND_WAIT_MS);
     return () => window.clearTimeout(timer);
-  }, [targetId, slewing, landed, imageReady, pending, failed]);
+  }, [targetId, slewing, landed, imageReady, pending, failed, atlas]);
 
   // Setelah terbuka pada medan terlebar, lensa menyelam ke pembesaran kerjanya.
   useEffect(() => {
@@ -820,24 +974,87 @@ export function App() {
     return notes;
   }, [manifest]);
 
-  // Berbagi: di ponsel lewat lembar berbagi sistem, di tempat lain tautannya disalin.
+  const copyLink = useCallback(() => {
+    void navigator.clipboard?.writeText(window.location.href).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    });
+  }, []);
+
+  // Berbagi: begitu bundle lengkap, Share membuka kartu. Selagi bundle masih dibuat
+  // yang dibagikan tautannya: lembar berbagi sistem di ponsel, salin di tempat lain.
+  const canDrawCard = !atlas && !!manifest && !manifest.preview;
   const share = useCallback(() => {
-    const url = window.location.href;
-    const copy = () =>
-      navigator.clipboard?.writeText(url).then(() => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1800);
-      });
+    if (canDrawCard) {
+      setCardOpen(true);
+      return;
+    }
     const touch = window.matchMedia?.("(pointer: coarse)").matches;
     if (touch && typeof navigator.share === "function") {
-      const title = targetName ? `${targetName} on SWARA` : "SWARA";
+      const title = !atlas && targetName ? `${targetName} on SWARA` : "SWARA";
+      const text = atlas
+        ? "The whole sky as SPHEREx saw it. Pick a place and watch it change."
+        : "Watch this patch of sky change and hear its spectrum.";
       void navigator
-        .share({ title, text: "Watch this patch of sky change and hear its spectrum.", url })
+        .share({ title, text, url: window.location.href })
         .catch((err: unknown) => {
-          if (!(err instanceof DOMException && err.name === "AbortError")) void copy();
+          if (!(err instanceof DOMException && err.name === "AbortError")) copyLink();
         });
-    } else void copy();
-  }, [targetName]);
+    } else copyLink();
+  }, [targetName, canDrawCard, copyLink, atlas]);
+
+  // Bahan kartu: citra yang sudah termuat untuk tempat ini, spektrumnya, dan tautan
+  // pendek ke tempat yang sama. Hanya disusun selagi dialognya terbuka.
+  useEffect(() => {
+    if (cardOpen && contextUrl) preload([contextUrl]);
+  }, [cardOpen, contextUrl]);
+  const cardContext = images.get(cardOpen ? contextUrl : undefined);
+  const cardWindow = available[available.length - 1];
+  const cardFrame = manifest && cardWindow && bandId ? findFrame(manifest, cardWindow.id, bandId) : undefined;
+  const cardFrameImage = images.get(cardOpen && cardFrame && targetId ? assetUrl(targetId, custom, cardFrame.image) : undefined);
+  const cardWise =
+    cardOpen && wise && targetId
+      ? wise.frames.flatMap((f) => images.get(assetUrl(targetId, custom, f.image)) ?? [])
+      : [];
+  const cardWiseCount = cardWise.length;
+  const cardPoints = spectrum?.data?.points;
+  const cataloguePm = job?.pm_arcsec_yr;
+  const jobRa = job?.ra;
+  const jobDec = job?.dec;
+  const jobLabel = job?.label;
+  const cardInput = useMemo<CardInput | undefined>(() => {
+    if (!cardOpen || !manifest || manifest.preview || !target || !targetId) return undefined;
+    if (!cardWiseCount && !cardFrameImage) return undefined;
+    const link = new URLSearchParams();
+    if (jobRa !== undefined && jobDec !== undefined) {
+      link.set("ra", jobRa.toFixed(4));
+      link.set("dec", jobDec.toFixed(4));
+      if (jobLabel) link.set("name", jobLabel);
+    } else link.set("target", targetId);
+    return {
+      name: target.name,
+      manifest,
+      look: palette,
+      url: `${window.location.origin}${window.location.pathname}?${link}`,
+      site: window.location.host,
+      context: cardContext,
+      wiseImages: cardWise,
+      wiseTone:
+        wise && !wise.matched && cardWise[0]
+          ? wiseTone(targetId, cardWise[0], WISE_SOFTEN_ARCSEC / wise.pixel_arcsec)
+          : undefined,
+      frame:
+        cardFrameImage && cardFrame && cardWindow
+          ? { image: cardFrameImage, bandId: cardFrame.band, mjd: cardWindow.mjd_mid }
+          : undefined,
+      points: cardPoints,
+      blended: custom ? undefined : BLENDED[targetId],
+      cataloguePm,
+      today: new Date(),
+    };
+    // `cardWise` berganti tiap render; jumlahnya yang menandai citra baru termuat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardOpen, manifest, target, targetId, custom, palette, cardContext, cardWiseCount, cardFrameImage, cardPoints, cataloguePm, jobRa, jobDec, jobLabel]);
 
   const openGoTo = () => {
     setFormError(undefined);
@@ -882,7 +1099,26 @@ export function App() {
           <kbd aria-hidden="true">/</kbd>
         </button>
         <div className="top-actions">
-          <button type="button" className="pill pill-share" aria-label="Share a link to this view" onClick={share}>
+          {/* Di tempat: ke seluruh langit. Di seluruh langit: kembali ke tempat terakhir, kalau ada. */}
+          {!atlas ? (
+            <button type="button" className="pill pill-sky" aria-label="See the whole sky" onClick={enterAtlas}>
+              <StarFour aria-hidden="true" />
+              <span>Whole sky</span>
+            </button>
+          ) : (
+            target && (
+              <button
+                type="button"
+                className="pill pill-back"
+                aria-label={`Back to ${target.name}`}
+                onClick={backToPlace}
+              >
+                <CaretLeft aria-hidden="true" />
+                <span>{target.name}</span>
+              </button>
+            )
+          )}
+          <button type="button" className="pill pill-share" aria-label="Share this view" onClick={share}>
             <ShareNetwork aria-hidden="true" />
             <span aria-live="polite">{copied ? "Link copied" : "Share"}</span>
           </button>
@@ -900,7 +1136,7 @@ export function App() {
         </div>
       </header>
 
-      <main className="stage">
+      <main className="stage" inert={atlas}>
         <section className="identity" aria-label="Where you are looking">
           {target && (
             <>
@@ -1004,15 +1240,15 @@ export function App() {
           >
             <Flag aria-hidden="true" />
           </button>
-          {(zoomLevels.length > 1 || canSky) && (
+          {zoomLevels.length > 0 && (
             <>
               <button
                 type="button"
                 className="satellite satellite-left"
                 style={{ "--a": "214deg" } as React.CSSProperties}
-                aria-label={zoomIndex === 0 ? "Step back to the wide view" : "Zoom out"}
-                data-tip={zoomIndex === 0 ? "Wide view" : "Zoom out"}
-                disabled={zoomIndex === 0 && !canSky}
+                aria-label={zoomIndex > 0 ? "Zoom out" : canSky ? "Step back to the wide view" : "Step back to the whole sky"}
+                data-tip={zoomIndex > 0 ? "Zoom out" : canSky ? "Wide view" : "Whole sky"}
+
                 onClick={() => zoom(-1)}
               >
                 <MagnifyingGlassMinus aria-hidden="true" />
@@ -1083,7 +1319,7 @@ export function App() {
         </section>
       </main>
 
-      <section className="dock" aria-label="Controls">
+      <section className="dock" aria-label="Controls" inert={atlas}>
         <div className="dock-row">
           <div className="dock-lead">
             <button
@@ -1199,6 +1435,34 @@ export function App() {
         </div>
       </section>
 
+      {atlas && (
+        <SkyMap
+          atlas={atlasData}
+          failed={atlasFailed}
+          band={skyBand}
+          onBand={setSkyBand}
+          look={palette}
+          onPalette={setPalette}
+          reveal={reveal}
+          lines={skyLines}
+          onLines={setSkyLines}
+          markers={skyMarkers}
+          onPick={pickFromAtlas}
+          onGo={async (ra, dec, at) => {
+            const result = await openSky(`${ra.toFixed(4)} ${dec.toFixed(4)}`, true);
+            if (typeof result === "string") return result;
+            leaveAtlas(at);
+            return null;
+          }}
+          onTour={() => {
+            const tour = targets?.find((t) => t.id === TOUR_ID) ?? targets?.find((t) => t.kind === "moving");
+            if (tour) pickFromAtlas(tour.id, spotOn(atlasData, tour.ra, tour.dec));
+          }}
+          fx={atlasFx}
+          busy={gotoOpen || notesOpen || cardOpen}
+        />
+      )}
+
       <GoTo
         open={gotoOpen}
         onClose={() => setGotoOpen(false)}
@@ -1206,15 +1470,34 @@ export function App() {
         onQuery={setQuery}
         busy={formBusy}
         error={formError}
-        onSubmit={(text) => void openSky(text).then((ok) => ok && setGotoOpen(false))}
+        onSubmit={(text) =>
+          void openSky(text, atlas).then((result) => {
+            if (typeof result === "string") return;
+            setGotoOpen(false);
+            if (atlas) leaveAtlas(spotOn(atlasData, result.ra, result.dec));
+          })
+        }
         examples={targets ?? []}
         yours={allTargets.filter((t) => t.kind === "custom")}
         building={new Set(Object.values(jobs).filter((j) => j.status !== "ready").map((j) => j.id))}
         currentId={targetId}
         onPick={(id) => {
-          selectTarget(id);
           setGotoOpen(false);
+          const t = allTargets.find((x) => x.id === id);
+          if (atlas && t) pickFromAtlas(id, spotOn(atlasData, t.ra, t.dec));
+          else selectTarget(id);
         }}
+        atlas={atlasData}
+        look={palette}
+      />
+      <ShareCard
+        open={cardOpen}
+        onClose={() => setCardOpen(false)}
+        input={cardInput}
+        lookName={LOOKS.find((l) => l.id === palette)?.name ?? ""}
+        spectrumPending={!spectrum?.data && !spectrum?.error}
+        copied={copied}
+        onCopyLink={copyLink}
       />
       <Notes
         open={notesOpen}
@@ -1224,10 +1507,12 @@ export function App() {
         frame={frame}
         wiseFrame={shownWise}
         look={palette}
+        atlas={atlas ? atlasData : undefined}
+        skyBand={skyBand}
       />
 
       <p className="sr-only" role="status" aria-live="polite">
-        {sky && target ? `Wide view of the sky around ${target.name}.` : playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
+        {atlas ? "" : sky && target ? `Wide view of the sky around ${target.name}.` : playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
       </p>
     </div>
   );

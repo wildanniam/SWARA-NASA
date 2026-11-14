@@ -1,4 +1,5 @@
 import { X } from "@phosphor-icons/react";
+import type { Atlas } from "../lib/allsky";
 import type { Frame, Manifest, TimeWindow, WiseFrame } from "../lib/bundle";
 import { lookGradient, LOOKS, type PaletteId } from "../lib/palette";
 import { coord, dayMonthYear, microns } from "../lib/format";
@@ -14,13 +15,126 @@ type Props = {
   wiseFrame?: WiseFrame;
   /** Look yang sedang dipakai, untuk legenda terangnya. */
   look: PaletteId;
+  /** Ada kalau yang tampil adalah seluruh langit. */
+  atlas?: Atlas;
+  skyBand: string;
 };
+
+const SKY_KEYS: [string, string][] = [
+  ["1 to 6", "wavelength"],
+  ["+", "back to the last place"],
+  ["Esc", "clear the aim"],
+  ["C", "next look"],
+  ["R", "reveal faint things"],
+  ["/", "go to a place"],
+  ["G", "this guide"],
+];
+
+function SkyGuide({ atlas, look, skyBand }: { atlas: Atlas; look: PaletteId; skyBand: string }) {
+  const frame = atlas.frames.find((f) => f.band === skyBand) ?? atlas.frames[0];
+  return (
+    <>
+      <section>
+        <h3>The whole sky</h3>
+        <p>
+          This is SPHEREx's own map of the entire sky, made from its first year of scans (DR1). It is the widest step of
+          the telescope: from here you choose a place, and the lens shows it up close.
+        </p>
+        <p>
+          The sky is a sphere, so a flat map has to stretch it. This one keeps our galaxy, the Milky Way, straight
+          across the middle with its centre in the middle of the map. East is to the left, as when you look up.
+        </p>
+      </section>
+
+      <section>
+        <h3>Reading the map</h3>
+        <ul className="guide-rows">
+          <li>
+            <svg viewBox="-14 -14 28 28" aria-hidden="true">
+              <circle className="g-ring" r="6" />
+              <circle className="g-dot g-dot-now" r="2" />
+            </svg>
+            <span>
+              <b>Amber rings</b> are the examples and the places you opened. Choose one to look closer.
+            </span>
+          </li>
+          <li>
+            <svg viewBox="-14 -14 28 28" aria-hidden="true">
+              <path className="g-trail" d="M-11 6L-3 -2L5 1L11 -8" />
+            </svg>
+            <span>
+              <b>Constellations</b> are the traditional star figures, drawn between the real stars. Pointing at the sky
+              lights up the one you are in.
+            </span>
+          </li>
+          <li>
+            <svg viewBox="-14 -14 28 28" aria-hidden="true">
+              <path className="g-ring" d="M-12 4C-4 -4 4 -4 12 4" />
+            </svg>
+            <span>
+              <b>The faint grid</b> is right ascension and declination, the sky's longitude and latitude. The brighter
+              curve is the celestial equator.
+            </span>
+          </li>
+          <li>
+            <i className="g-ramp" style={{ background: lookGradient(look) }} aria-hidden="true" />
+            <span>
+              <b>The colours</b> ({LOOKS.find((l) => l.id === look)?.name}) run from faint to bright, as in the lens.
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>On screen</h3>
+        <dl className="facts">
+          <dt>Map</dt>
+          <dd>SPHEREx DR1 all-sky data cube from IRSA</dd>
+          <dt>Light</dt>
+          <dd>
+            {frame.lambda_um.toFixed(2)} µm, one of SPHEREx's 102 wavelengths; the six buttons pick one in each detector
+            band
+          </dd>
+          <dt>Detail</dt>
+          <dd>About {Math.round(atlas.source.pixel_arcmin)}′ per pixel, far coarser than the lens</dd>
+          <dt>Gaps</dt>
+          <dd>A few black patches near very bright regions are gaps in SPHEREx's map</dd>
+        </dl>
+        <p>
+          Nothing is measured from this map. Motion and spectra come from the individual SPHEREx images of each place.
+        </p>
+      </section>
+
+      <section>
+        <h3>Keys</h3>
+        <dl className="facts keys">
+          {SKY_KEYS.map(([key, what]) => (
+            <div key={key}>
+              <dt>
+                <kbd>{key}</kbd>
+              </dt>
+              <dd>{what}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h3>Source</h3>
+        <p>
+          SPHEREx DR1 all-sky map: NASA/JPL-Caltech/IPAC, served by the NASA/IPAC Infrared Science Archive. Constellation
+          figures from d3-celestial by Olaf Frohn; constellation boundaries are the official IAU ones.
+        </p>
+      </section>
+    </>
+  );
+}
 
 const KEYS: [string, string][] = [
   ["Space", "blink"],
   ["← →", "step through visits"],
   ["1 to 6", "image band"],
-  ["+ −", "zoom the lens, out to the wide view"],
+  ["+ −", "zoom the lens, out to the wide view and the whole sky"],
   ["C", "next look"],
   ["R", "reveal faint things"],
   ["L", "listen to image, spectrum, and motion together"],
@@ -29,7 +143,7 @@ const KEYS: [string, string][] = [
 ];
 
 /** Laci catatan: semua yang benar tapi tidak perlu tampil terus. */
-export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: Props) {
+export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look, atlas, skyBand }: Props) {
   const ref = useDialog<HTMLElement>(open, onClose);
   if (!open) return null;
   const ctx = manifest?.context;
@@ -49,6 +163,11 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: 
             <X aria-hidden="true" />
           </button>
         </header>
+
+        {atlas ? (
+          <SkyGuide atlas={atlas} look={look} skyBand={skyBand} />
+        ) : (
+          <>
 
         <section>
           <h3>Reading the lens</h3>
@@ -232,6 +351,8 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: 
             by WiseView from the Backyard Worlds: Planet 9 project.
           </p>
         </section>
+          </>
+        )}
       </aside>
     </div>
   );

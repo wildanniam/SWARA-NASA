@@ -6,6 +6,7 @@
   skychange index              # tulis ulang bundles/index.json
   skychange serve              # API koordinat bebas untuk viewer (lihat server.py)
   skychange context            # tambah citra medan lebar ke bundle yang sudah ada
+  skychange allsky             # peta seluruh langit untuk pembuka viewer (butuh extra "sky")
 """
 
 from __future__ import annotations
@@ -92,6 +93,9 @@ def main() -> None:
     c.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
     c.add_argument("--out", type=Path, default=ROOT / "bundles")
     c.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
+    k = sub.add_parser("allsky", help="peta seluruh langit SPHEREx untuk pembuka viewer")
+    k.add_argument("--out", type=Path, default=ROOT / "bundles" / "allsky")
+    k.add_argument("--width", type=int, default=2048, help="lebar peta, piksel (tinggi = setengahnya)")
     x = sub.add_parser("wise", help="ambil ulang riwayat WISE untuk bundle yang sudah ada")
     x.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
     x.add_argument("--out", type=Path, default=ROOT / "bundles")
@@ -103,6 +107,11 @@ def main() -> None:
 
     if a.cmd == "index":
         print(write_index(a.out))
+        return
+    if a.cmd == "allsky":
+        from .allsky import build_allsky
+
+        build_allsky(a.out, a.width)
         return
     if a.cmd == "context":
         for bundle in sorted(d for d in a.out.iterdir() if (d / "manifest.json").exists()):

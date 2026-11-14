@@ -8,6 +8,14 @@ Alat yang imersif untuk pemula yang penasaran. Suasananya **melayang di angkasa*
 
 Tingkat: variasi tata letak sedang, gerak sedang, kepadatan rendah.
 
+## Arah identitas
+
+Keputusan Wildan, 14 November 2026: **tarot dan rasi bintang** menjadi DNA visual SWARA ke depan. Orang sudah akrab dengan bahasa itu, jadi ia memancing orang untuk melihat dan membagikan.
+
+Cara kita memakainya: tarot memberi **formatnya** (kartu tinggi, jendela melengkung, angka Romawi, pita julukan, sinar), langit memberi **isinya**. Tiap tempat yang di kartu tarot diisi hiasan, di sini diisi data. Emasnya adalah aksen ambar yang sudah ada, dan huruf tidak berubah.
+
+Yang sudah memakai arah ini: kartu berbagi dan peta seluruh langit (lihat di bawah). Yang belum ada dan perlu dibuat setelah pekerjaan fitur: **logo** (sekarang hanya tanda sementara: cincin lensa dan satu titik), lalu penerapan arah ini ke halaman pembuka dan Guide. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
+
 ## Aturan paling penting
 
 **Yang data harus terlihat sebagai data, dan suasana tidak boleh menyamar sebagai data.**
@@ -26,23 +34,24 @@ Relawan pemula. Tugasnya tiga, berurutan: lihat apa yang bergerak atau berubah t
 
 Empat lapis, dari belakang ke depan:
 
+0. **Seluruh langit** (kalau terbuka), di atas semua lapis di bawah ini kecuali bilah atas; lapis lain tetap ada di bawahnya.
 1. **Latar langit.** Citra medan lebar, dipusatkan di pusat lensa; sisinya dihitung dari layar supaya menutup dari pusat lensa ke semua tepi. Saat pindah tempat, latar lama bergeser pergi ke arah yang sebenarnya di langit dan latar baru datang dari arah sebaliknya.
 2. **Panggung.** Lensa bundar di tengah, diapit dua blok teks: identitas benda di kiri, temuan di kanan.
 3. **Dok kendali** di bawah, dua baris: waktu (blink dan kunjungan) dan cahaya (dengar dan spektrum).
 4. **Lapis sementara:** dialog "pergi ke" dan laci catatan.
 
-Urutan `z-index`: latar 0, tirai 1, panggung 2, bilah atas dan dok 3, laci 4, dialog 5.
+Urutan `z-index`: latar 0, tirai 1, panggung 2, dok dan seluruh langit 3, bilah atas dan laci 4, dialog 5.
 
 ## Komponen dan wataknya
 
 - **Lensa.** Bundar, seperti medan pandang teleskop. Cincin luarnya bertanda derajat dengan huruf N dan E. Cincin itu juga penunjuk: terisi saat data dimuat, dan menyapu saat suara spektrum berjalan. Membuka dan menutup seperti diafragma.
-- **Rantai pembesaran.** Pandangan lebar (latar, 40 menit busur), lalu lensa 6, 3, dan 2 menit busur. Menjauh dari tingkat terlebar menutup lensa: ia mengecil sampai isinya tepat seukuran latar (skalanya dihitung dari skala latar, bukan angka tetap), lalu larut. Yang tersisa cincin ambar selebar petak yang diperbesar lensa; mengekliknya membuka lensa lagi. Membuka sebuah tempat selalu lewat urutan ini: langit lebar, lensa terbuka, lalu menyelam ke pembesaran kerja.
+- **Rantai pembesaran.** Seluruh langit, pandangan lebar (latar, 40 menit busur), lalu lensa 6, 3, dan 2 menit busur. Menjauh dari tingkat terlebar menutup lensa: ia mengecil sampai isinya tepat seukuran latar (skalanya dihitung dari skala latar, bukan angka tetap), lalu larut. Yang tersisa cincin ambar selebar petak yang diperbesar lensa; mengekliknya membuka lensa lagi. Membuka sebuah tempat selalu lewat urutan ini: langit lebar, lensa terbuka, lalu menyelam ke pembesaran kerja.
 - **Berpindah tempat.** Lensa menutup, latar bergeser, dan baris di bawah lensa membaca posisi yang sedang dilewati di sepanjang busur lingkaran besar serta sisa jaraknya. Lama perpindahan mengikuti jarak sudut yang sebenarnya (0,8 sampai 2,4 detik).
 - **Tanda acuan dan jejak.** Tanda silang ambar menandai posisi pada kunjungan pertama. Posisi terukur tiap kunjungan digambar sebagai titik yang tersambung, jadi geraknya terbaca walau blink dijeda.
 - **Satelit.** Tombol bundar kecil menempel di cincin lensa: look, penanda piksel yang tidak bisa dipercaya, dan Reveal faint di kanan; perbesar dan perkecil di kiri.
 - **Roda filter.** Tombol look membuka enam contoh warna yang berjajar di cincin, seperti roda filter teleskop: Ember (bawaan), Glacier, Aurora, Nebula, Mono, Paper. Semuanya dikurasi dengan satu aturan: terang selalu naik (untuk Paper selalu turun) dari nilai terendah ke tertinggi, jadi look mengubah suasana, bukan urutan terang. Tidak ada peta pelangi atau dua arah, dan tidak ada pengatur manual. Latar ikut look lensa (untuk Paper latar memakai Mono supaya teks tetap terbaca). Look tercatat di URL.
 - **Reveal faint.** Satu tombol yang mengangkat nilai redup (kurva gamma) di lensa dan latar. Urutan terang tetap.
-- **Share dan Guide.** Dua tombol di kanan atas adalah fitur, bukan catatan kaki. Share berbingkai aksen: di ponsel membuka lembar berbagi sistem, di tempat lain menyalin tautan. Guide berbingkai jelas dan diberi penanda sampai pernah dibuka; isinya dimulai dengan legenda bergambar tentang tanda-tanda di lensa.
+- **Share dan Guide.** Dua tombol di kanan atas adalah fitur, bukan catatan kaki. Share berbingkai aksen dan membuka dialog kartu berbagi. Selagi bundle tempat baru masih dibuat belum ada yang bisa digambar, jadi Share membagikan tautannya saja: lembar berbagi sistem di ponsel, salin di tempat lain. Guide berbingkai jelas dan diberi penanda sampai pernah dibuka; isinya dimulai dengan legenda bergambar tentang tanda-tanda di lensa.
 - **Tombol putar.** Blink dan Dengar adalah tombol bundar besar. Hanya Blink yang berisi warna aksen.
 - **Penggaris waktu.** Kunjungan diletakkan pada jarak tanggal yang sebenarnya, dengan pergeseran terukur di bawah tiap kunjungan.
 - **Rentang waktu.** Sakelar dua pilihan di kiri penggaris: "16 years" memutar citra WISE lalu kunjungan SPHEREx pada satu penggaris 2010 sampai sekarang, dengan lensa selebar 6 menit busur; "SPHEREx" kembali ke kunjungan SPHEREx saja, diperbesar ke 2 menit busur. Benda yang punya riwayat WISE dibuka di "16 years".
@@ -76,6 +85,34 @@ Tampilan ini hanya gelap, karena citra astronomi gelap dan bintang redup harus t
 - **IBM Plex Mono** untuk semua bacaan alat: tanggal, panjang gelombang, koordinat, pergeseran.
 
 Penekanan memakai tebal atau miring dari keluarga yang sama, bukan huruf lain. Teks antarmuka tidak memakai tanda pisah panjang.
+
+## Seluruh langit
+
+Pembuka situs dan tingkat terluar teleskop (`web/src/components/SkyMap.tsx`). Petanya peta langit penuh SPHEREx DR1, satu dari enam panjang gelombang, dalam proyeksi Hammer-Aitoff galaktik: Bima Sakti mendatar dengan pusatnya di tengah, karena bentuk itulah yang dikenali orang. Timur di kiri, seperti lensa.
+
+- **Lapis.** Citra (diwarnai look), kisi RA dan Dec yang melengkung dengan ekuator langit bertitik, garis rasi tipis dalam keluarga warna aksen look, dan elips kedua yang tipis sebagai bingkai pelat. Judul pelat diapit dua bintang empat sudut.
+- **Label.** Contoh dan tempat milik pengguna adalah cincin ambar dengan titik, seperti tanda acuan di lensa; tempat terakhir diberi cincin kedua. Label jam RA dan benda yang bisa dikenali (pusat Bima Sakti, Awan Magellan, Andromeda) dipindah ke sisi lain atau disembunyikan kalau menimpa penanda; nama penanda yang tidak muat disembunyikan sampai ditunjuk. Tidak ada label di luar elips.
+- **Menunjuk.** Di bawah penunjuk tampil RA, Dec, dan nama rasi, dan garis rasi itu menyala bersama namanya. Kursor tetap kursor biasa (crosshair).
+- **Membidik.** Klik atau ketuk mengunci bidikan dan membuka kartu kecil: nama rasi, koordinat, keterangan bahwa tempat baru butuh sekitar semenit, dan "Look here". Klik yang hampir mengenai penanda memilih penanda itu. Enter membuka, Esc membatalkan.
+- **Panjang gelombang.** Enam tombol selebar rentang band-nya; peta lama larut ke peta baru, karena langitnya sama dan hanya cahayanya yang berganti.
+- **Gerak.** Masuk: peta mengecil dari titik tempat terakhir sambil menutup panggung. Keluar: peta membesar ke titik yang dipilih lalu larut, dan lensa baru membuka setelah itu. Tidak ada gerak berpindah tambahan. Peta tidak bisa diperbesar terus sampai 40 menit busur (satu piksel peta sekitar 7 menit busur), jadi peralihannya larut, bukan zoom kontinu.
+- **Layar kecil.** Peta selebar layar, kartu bidikan di bawahnya, label kisi dan benda disembunyikan.
+
+## Kartu berbagi
+
+Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang sedang tampil (`web/src/lib/card.ts`). Dialognya menampilkan kartu itu, lalu menyimpannya sebagai PNG, membagikannya lewat lembar berbagi sistem kalau sistem menerima berkas, atau menyalin tautan.
+
+**Satu aturan: sinar adalah data.**
+
+- **Kartu I, geraknya.** Jendela melengkung berisi semua citra WISE yang ditumpuk (tiap piksel mengambil nilai paling terang), jadi yang bergerak meninggalkan garis. Busur di atasnya adalah garis waktu: satu sinar per pengamatan pada tanggalnya, sinar WISE pendek dan sinar SPHEREx panjang. Tanpa riwayat WISE, jendelanya berisi frame SPHEREx dan busurnya hanya kunjungan SPHEREx.
+- **Kartu II, cahayanya.** Spektrum sebagai 72 sinar mengelilingi frame SPHEREx, 0,75 sampai 5 mikron searah jarum jam; panjang sinar adalah terang. Hanya titik bersih yang dipakai; irisan tanpa titik bersih digambar sebagai titik kosong. Kartu ini hanya ada kalau sedikitnya sepertiga irisannya terisi.
+- **Julukan mengikuti yang terukur SPHEREx**, sama dengan blok temuan: bergeser jadi THE WANDERER, tidak bergeser jadi THE STILL ONE, tidak terlacak jadi THE RIDDLE. Julukan adalah nama panggilan, bukan klasifikasi. Benda contoh yang tidak terpisah dari bintang latar (`BLENDED` di `content.ts`) selalu THE RIDDLE dan tidak punya kartu cahaya.
+- **Warna kartu mengikuti look** yang dipakai di viewer: enam look, enam warna kartu. Garisnya memakai keluarga warna aksen look itu.
+- **Yang murni hiasan** hanya bingkai, pita, dan bintang empat sudut, dan bintang empat sudut tidak pernah digambar di dalam jendela data.
+- **Langit di belakang kartu** adalah citra medan lebar yang asli, redup. Dari tiga potongan yang mungkin dipakai yang paling sedikit piksel terangnya, supaya satu bintang terang tidak mendominasi.
+- **Kode QR** gelap di atas ubin terang dengan modul berukuran bilangan bulat piksel, dan mengarah ke tautan pendek tempat itu.
+
+Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai yang dilarang di viewer: gradien latar, satu pendar lembut, dan garis hias di bingkai. Aturan viewer di atas tidak berubah.
 
 ## Ikon
 
