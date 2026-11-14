@@ -2,6 +2,8 @@
 
 **Sky Watch with Audio & Real-time Access.** A web tool that turns SPHEREx infrared data into images you can blink across time and a spectrum you can hear, so anyone can look for objects that move or change brightness.
 
+**Live: https://swara-nasa.vercel.app**
+
 Built for the NASA Space Apps Challenge 2026, challenge [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/).
 
 ## What it does
