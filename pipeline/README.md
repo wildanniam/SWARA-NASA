@@ -43,7 +43,7 @@ API berjalan di `http://127.0.0.1:8000`; dev server viewer meneruskan `/api` ke 
 | Permintaan | Isi |
 |---|---|
 | `POST /api/sky` dengan `{"query": "..."}` | Mulai membuat bundle, atau langsung `ready` kalau sudah pernah dibuat. Jawabannya keadaan pekerjaan, termasuk `id`; untuk pencarian nama juga `label` dan `pm_arcsec_yr` (gerak diri katalog). |
-| `GET /api/sky/<id>` | Keadaan pekerjaan: `status` (`queued`, `running`, `ready`, `error`), `stage` (`search`, `fetch`, `frames`), `done`, `total`, `error` (`no_data`, `failed`). |
+| `GET /api/sky/<id>` | Keadaan pekerjaan: `status` (`queued`, `running`, `ready`, `error`), `stage` (`search`, `fetch`, `frames`), `done`, `total`, `error` (`no_data`, `archive` bila layanan SIA IRSA tetap tidak menjawab setelah dicoba ulang, `failed`). |
 | `GET /api/bundles/<id>/...` | Berkas bundle, bentuknya sama dengan preset. |
 
 `query` boleh koordinat atau nama benda:
