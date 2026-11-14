@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { decDms, raHms } from "../lib/allsky";
 import { prefersReducedMotion } from "../lib/hooks";
 import { paint, paintDifference, type Linear, type Rect } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
@@ -19,6 +20,11 @@ type Props = {
   /** Bintang katalog Gaia di posisinya pada tanggal citra yang tampil, piksel frame.
    *  `tail` = dari mana bintang cepat itu datang sejak pengamatan pertama. */
   stars?: { x: number; y: number; g: number; tail?: { x: number; y: number } }[];
+  /** Cara citra dilukis (selisih, look, Reveal faint, penanda piksel). Saat ini berganti di
+   *  tempat yang sama, citra lama tersapu oleh citra baru, seperti filter teleskop yang diputar. */
+  mode?: string;
+  /** Pusat frame di langit dan skalanya, untuk membaca RA/Dec di bawah kursor. */
+  pointing?: { ra: number; dec: number; fovArcsec: number; framePx: number };
   /** Tempat dan teleskop citra yang tampil, "tempat:teleskop". Saat teleskopnya
    *  berganti di tempat yang sama, citra lama larut ke citra baru. */
   source: string;
@@ -70,6 +76,8 @@ type Props = {
 
 const CANVAS_PX = 480;
 const DISSOLVE_MS = 700;
+const SWEEP_MS = 640;
+const GAIA_OUT_MS = 380;
 const WHEEL_GAP_MS = 240;
 const R = 100; // jari-jari lensa dalam satuan gambar cincin
 const TICKS = Array.from({ length: 24 }, (_, i) => i * 15);
@@ -79,6 +87,10 @@ export function Lens(p: Props) {
   const fadeRef = useRef<HTMLCanvasElement>(null);
   const lastSource = useRef<string | undefined>(undefined);
   const dissolve = useRef<{ animation?: Animation; timer: number }>({ timer: 0 });
+  const sweepRef = useRef<HTMLDivElement>(null);
+  const lastMode = useRef<string | undefined>(undefined);
+  const lastPlace = useRef<string | undefined>(undefined);
+  const sweep = useRef<{ animations: Animation[]; timer: number }>({ animations: [], timer: 0 });
   // Naik tiap kali teleskop berganti, supaya keterangan di bawah lensa ikut memberi tanda.
   const [cue, setCue] = useState(0);
 
@@ -91,13 +103,22 @@ export function Lens(p: Props) {
     // mata sebagai gerak. Pergantian teleskop bukan perbandingan posisi: citranya
     // berbeda alat, jadi citra lama dilarutkan ke citra baru.
     const [place, telescope] = p.source.split(":");
-    const [lastPlace, lastTelescope] = (lastSource.current ?? ":").split(":");
-    const handover = place === lastPlace && telescope !== lastTelescope && !prefersReducedMotion();
+    const [prevPlace, lastTelescope] = (lastSource.current ?? ":").split(":");
+    const calm = prefersReducedMotion();
+    const handover = place === prevPlace && telescope !== lastTelescope && !calm;
+    // Ganti cara melukis di tempat yang sama: citra lama tersapu dari kiri ke kanan.
+    const restyle = !handover && !calm && place === lastPlace.current && lastMode.current !== undefined && lastMode.current !== p.mode;
     lastSource.current = p.source;
-    if (handover && fade) {
+    lastPlace.current = place;
+    lastMode.current = p.mode;
+    if ((handover || restyle) && fade) {
       window.clearTimeout(dissolve.current.timer);
+      window.clearTimeout(sweep.current.timer);
       dissolve.current.animation?.cancel();
-      fade.getContext("2d")!.drawImage(canvas, 0, 0);
+      sweep.current.animations.forEach((a) => a.cancel());
+      const ctx = fade.getContext("2d")!;
+      ctx.clearRect(0, 0, fade.width, fade.height);
+      ctx.drawImage(canvas, 0, 0);
       fade.style.opacity = "1";
     }
     if (p.difference)
@@ -114,12 +135,112 @@ export function Lens(p: Props) {
       fade.style.opacity = "0";
       dissolve.current.timer = window.setTimeout(() => dissolve.current.animation?.cancel(), DISSOLVE_MS + 60);
       setCue((n) => n + 1);
+    } else if (restyle && fade) {
+      const line = sweepRef.current;
+      const easing = "cubic-bezier(0.65, 0, 0.35, 1)";
+      if (typeof fade.animate === "function") {
+        sweep.current.animations = [
+          fade.animate(
+            [
+              { clipPath: "inset(0 0 0 0%)", opacity: 1 },
+              { clipPath: "inset(0 0 0 100%)", opacity: 1 },
+            ],
+            { duration: SWEEP_MS, easing },
+          ),
+        ];
+        if (line)
+          sweep.current.animations.push(
+            line.animate(
+              [
+                { left: "0%", opacity: 0 },
+                { left: "8%", opacity: 1, offset: 0.08 },
+                { left: "92%", opacity: 1, offset: 0.92 },
+                { left: "100%", opacity: 0 },
+              ],
+              { duration: SWEEP_MS, easing },
+            ),
+          );
+      }
+      fade.style.opacity = "0";
+      sweep.current.timer = window.setTimeout(() => sweep.current.animations.forEach((a) => a.cancel()), SWEEP_MS + 60);
     }
-  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source, p.difference]);
+  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source, p.difference, p.mode]);
+
+  // Cincin Gaia mengunci satu per satu saat dinyalakan, dan memudar saat dimatikan.
+  const [gaia, setGaia] = useState(p.stars);
+  const [gaiaLeaving, setGaiaLeaving] = useState(false);
+  useEffect(() => {
+    if (p.stars) {
+      setGaia(p.stars);
+      setGaiaLeaving(false);
+      return;
+    }
+    if (prefersReducedMotion()) {
+      setGaia(undefined);
+      return;
+    }
+    setGaiaLeaving(true);
+    const t = window.setTimeout(() => setGaia(undefined), GAIA_OUT_MS);
+    return () => window.clearTimeout(t);
+  }, [p.stars]);
+
+  // Bacaan teleskop di bawah kursor: RA/Dec titik itu, jaraknya dari tanda, dan arah di cincin.
+  const readRef = useRef<HTMLDivElement>(null);
+  const pointerRef = useRef<SVGGElement>(null);
+  const [hovering, setHovering] = useState(false);
+  const pointing = useRef(p.pointing);
+  pointing.current = p.pointing;
+  const marks = useRef({ view: p.markView, mark: p.mark });
+  marks.current = { view: p.markView, mark: p.mark };
+  const onLensMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const read = readRef.current;
+    const pt = pointing.current;
+    const box = e.currentTarget.getBoundingClientRect();
+    const u = (e.clientX - box.left) / box.width;
+    const v = (e.clientY - box.top) / box.height;
+    const dx = u - 0.5;
+    const dy = v - 0.5;
+    if (dx * dx + dy * dy > 0.25) {
+      setHovering(false);
+      return;
+    }
+    setHovering(true);
+    // Arah dari pusat, diukur dari utara: jarum kecil di cincin mengikutinya.
+    const angle = (Math.atan2(dx, -dy) * 180) / Math.PI;
+    pointerRef.current?.setAttribute("transform", `rotate(${angle.toFixed(1)})`);
+    if (!read || !pt) return;
+    const { view, mark } = marks.current;
+    const fx = view.x + u * view.w;
+    const fy = view.y + v * view.h;
+    const step = pt.fovArcsec / pt.framePx;
+    // Sama dengan sky_grid di pipeline: kolom 0 = timur, baris 0 = utara, pusat = posisi benda.
+    const east = -(fx * step - pt.fovArcsec / 2);
+    const north = -(fy * step - pt.fovArcsec / 2);
+    const dec = pt.dec + north / 3600;
+    const ra = (((pt.ra + east / 3600 / Math.cos((pt.dec * Math.PI) / 180)) % 360) + 360) % 360;
+    const from = mark ? Math.hypot(fx - mark.x, fy - mark.y) * step : undefined;
+    const text = `${raHms(ra)}|${decDms(dec)}|${from === undefined ? "" : from < 1 ? "on the mark" : from < 60 ? `${from.toFixed(0)}″ from the mark` : `${(from / 60).toFixed(1)}′ from the mark`}`;
+    if (read.dataset.text !== text) {
+      read.dataset.text = text;
+      const [a, b, c] = text.split("|");
+      (read.children[0] as HTMLElement).textContent = a;
+      (read.children[1] as HTMLElement).textContent = b;
+      (read.children[2] as HTMLElement).textContent = c;
+    }
+    const bodyBox = read.parentElement!.getBoundingClientRect();
+    const x = e.clientX - bodyBox.left;
+    const y = e.clientY - bodyBox.top;
+    const flip = u > 0.62;
+    read.style.transform = `translate(${(x + (flip ? -18 : 18)).toFixed(1)}px, ${(y + 16).toFixed(1)}px) translateX(${flip ? "-100%" : "0"})`;
+  };
 
   useEffect(() => {
     const state = dissolve.current;
-    return () => window.clearTimeout(state.timer);
+    const wipe = sweep.current;
+    return () => {
+      window.clearTimeout(state.timer);
+      window.clearTimeout(wipe.timer);
+    };
   }, []);
 
   // Gulir memperbesar hanya kalau halaman sendiri tidak perlu digulir.
@@ -151,7 +272,8 @@ export function Lens(p: Props) {
   const open = !!p.image && !p.status;
   const moved = p.trail.length > 1 && p.trail.some((t) => Math.hypot(t.x - p.trail[0].x, t.y - p.trail[0].y) > 1.5);
   const loadPct = p.progress && p.progress.total > 0 ? (p.progress.done / p.progress.total) * 100 : undefined;
-  const slotStyle = { "--k": p.collapseScale, "--foot": `${p.footprintPx}px` } as React.CSSProperties;
+  const slotStyle = { "--k": p.collapseScale, "--foot": `${p.footprintPx}px` } as CSSProperties;
+  const live = open && !p.collapsed;
 
   return (
     <div
@@ -161,26 +283,28 @@ export function Lens(p: Props) {
       data-collapsed={p.collapsed}
       data-look={p.palette}
       data-difference={!!p.difference}
+      data-hover={hovering && live}
     >
       <div className="lens-slot" ref={p.slotRef} style={slotStyle}>
         <div className="lens-body" inert={p.collapsed}>
-          <div className="lens-aperture">
+          <div className="lens-aperture" onPointerMove={live ? onLensMove : undefined} onPointerLeave={() => setHovering(false)}>
             <div className="lens-zoomer" ref={p.zoomerRef}>
               <canvas ref={canvasRef} width={CANVAS_PX} height={CANVAS_PX} role="img" aria-label={p.description} />
               <canvas ref={fadeRef} className="lens-fade" width={CANVAS_PX} height={CANVAS_PX} aria-hidden="true" />
+              <div ref={sweepRef} className="lens-sweep" aria-hidden="true" />
               <svg
                 className="lens-marks"
                 viewBox={`${p.markView.x} ${p.markView.y} ${p.markView.w} ${p.markView.h}`}
                 aria-hidden="true"
               >
                 {/* Cincin Gaia: tipis dan dingin, supaya tidak tertukar dengan tanda ambar kita. */}
-                {p.stars && (
-                  <g className="gaia">
-                    {p.stars.map((st, i) => {
+                {gaia && (
+                  <g className="gaia" data-leaving={gaiaLeaving}>
+                    {gaia.map((st, i) => {
                       // Makin terang bintangnya, makin besar cincinnya.
                       const r = s * (0.0085 + 0.017 * Math.min(1, Math.max(0, (15 - st.g) / 8)));
                       return (
-                        <g key={i}>
+                        <g key={i} className="gaia-one" style={{ "--i": Math.min(i, 40) } as CSSProperties}>
                           {st.tail && <line className="gaia-tail" x1={st.tail.x} y1={st.tail.y} x2={st.x} y2={st.y} />}
                           <circle className="gaia-halo" cx={st.x} cy={st.y} r={r} />
                           <circle className="gaia-star" cx={st.x} cy={st.y} r={r} />
@@ -245,6 +369,11 @@ export function Lens(p: Props) {
                 transform={`rotate(${a})`}
               />
             ))}
+            {/* Jarum arah: mengikuti kursor di atas lensa, diukur dari utara. */}
+            <g ref={pointerRef} className="ring-pointer">
+              <line x1={0} y1={-(R + 3)} x2={0} y2={-(R + 10)} />
+              <circle cx={0} cy={-(R + 2.2)} r={1.3} />
+            </g>
             <text className="ring-label" x={0} y={-(R + 12.5)} textAnchor="middle">
               N
             </text>
@@ -293,6 +422,12 @@ export function Lens(p: Props) {
             </div>
           )}
 
+          <div ref={readRef} className="lens-read" aria-hidden="true">
+            <span />
+            <span />
+            <em />
+          </div>
+
           {p.children}
         </div>
 
@@ -313,7 +448,7 @@ export function Lens(p: Props) {
         </button>
       </div>
 
-      <p className="lens-caption" aria-hidden="true">
+      <p key={p.mode ?? ""} className={lastMode.current === undefined ? "lens-caption" : "lens-caption caption-swap"} aria-hidden="true">
         {p.caption ??
           (open && !p.collapsed && (
             <>

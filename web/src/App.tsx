@@ -1312,6 +1312,8 @@ export function App() {
           tone={shownTone}
           soften={soften}
           difference={difference}
+          mode={`${difference ? "difference" : "image"}|${palette}|${showFlags ? "flags" : ""}|${reveal ? "reveal" : ""}`}
+          pointing={manifest ? { ra: manifest.ra, dec: manifest.dec, fovArcsec: manifest.fov_arcsec, framePx: manifest.frame_px } : undefined}
           stars={gaiaShown}
           note={gaiaShown ? `${gaiaShown.length} Gaia star${gaiaShown.length === 1 ? "" : "s"}, placed for ${dateLabel}` : undefined}
           source={`${targetId ?? ""}:${shownWise ? "wise" : "spherex"}`}
