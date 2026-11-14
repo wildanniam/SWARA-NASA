@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import math
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -70,6 +71,12 @@ def build(
     selesai; tahap: "search", "fetch", "frames", "context", "wise"."""
     report = progress or (lambda stage, done, total: None)
     t0 = time.time()
+    out = out_root / target_id
+    (out / "frames").mkdir(parents=True, exist_ok=True)
+    # Dua tambahan yang tidak bergantung pada hasil utama dijalankan di samping:
+    # riwayat WISE sejak awal, citra medan lebar begitu cutout siap.
+    side = ThreadPoolExecutor(2, thread_name_prefix="side")
+    wise_job = side.submit(build_wise, ra, dec, out, fov_arcsec, log=log)
     report("search", 0, 0)
     exposures = search(ra, dec)
     t_search = time.time() - t0
@@ -94,6 +101,8 @@ def build(
         if len(failed) == len(exposures):
             raise RuntimeError(f"Semua cutout gagal diambil: {failed[0][1]}")
         raise NoData("Posisi ini jatuh di luar semua detektor")
+    context_job = side.submit(build_context, cutouts, ra, dec, out, cache_root, log=log)
+    side.shutdown(wait=False)
     report("frames", 0, 0)
 
     win_idx = fr.split_windows([c.mjd for c in cutouts])
@@ -182,8 +191,6 @@ def build(
         )
 
     # --- frame ---
-    out = out_root / target_id
-    (out / "frames").mkdir(parents=True, exist_ok=True)
     gra, gdec = fr.sky_grid(ra, dec, fov_arcsec, frame_px)
     stacks = {}
     for w in range(n_win):
@@ -229,7 +236,7 @@ def build(
     # Citra medan lebar untuk latar viewer. Tambahan saja: kalau gagal, bundle tetap jadi.
     report("context", 0, 0)
     try:
-        context = build_context(cutouts, ra, dec, out, cache_root, log=log)
+        context = context_job.result()
     except Exception as err:
         log(f"[{target_id}] konteks gagal: {type(err).__name__}: {err}")
         context = None
@@ -237,7 +244,7 @@ def build(
     # Riwayat WISE 2010-2024 di medan yang sama. Juga tambahan saja.
     report("wise", 0, 0)
     try:
-        wise = build_wise(ra, dec, out, fov_arcsec, log=log)
+        wise = wise_job.result()
     except Exception as err:
         log(f"[{target_id}] WISE gagal: {type(err).__name__}: {err}")
         wise = None
