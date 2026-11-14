@@ -1,0 +1,29 @@
+# Layanan API SWARA (koordinat bebas). Pasang ke /etc/systemd/system/.
+# Kunci bersama dengan proxy situs ada di /etc/swara-api.env (SWARA_API_KEY=...),
+# hanya terbaca root; jangan disimpan di repo.
+
+[Unit]
+Description=SWARA sky API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=swara
+Group=swara
+WorkingDirectory=/opt/swara/app/pipeline
+EnvironmentFile=/etc/swara-api.env
+ExecStart=/opt/swara/venv/bin/skychange serve --host 0.0.0.0 --port 8080 --bundles /opt/swara/data/bundles --cache /opt/swara/data/cache
+Restart=on-failure
+RestartSec=5
+# Server ini juga menjalankan layanan lain: batasi supaya satu bundle yang berat tidak mengganggunya.
+MemoryMax=2500M
+CPUQuota=150%
+Nice=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/swara/data
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -7,12 +7,18 @@ bentuk yang sama seperti preset.
   POST /api/sky            {"query": "nama benda, atau RA dan Dec"} -> keadaan pekerjaan
   GET  /api/sky/{id}       keadaan pekerjaan
   GET  /api/bundles/{id}/  manifest.json, spectrum.json, frames/*.png
+
+Kalau variabel lingkungan SWARA_API_KEY diisi, setiap permintaan harus membawa
+kunci itu di header X-Swara-Key. Dipakai saat layanan terbuka ke internet dan
+hanya boleh dipanggil lewat proxy situsnya.
 """
 
 from __future__ import annotations
 
+import hmac
 import logging
 import math
+import os
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -22,7 +28,8 @@ from pathlib import Path
 import astropy.units as u
 import httpx
 from astropy.coordinates import SkyCoord
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -82,7 +89,18 @@ class SkyRequest(BaseModel):
 
 def create_app(bundles: Path, cache: Path) -> FastAPI:
     bundles.mkdir(parents=True, exist_ok=True)
-    app = FastAPI(title="SWARA API")
+    key = os.environ.get("SWARA_API_KEY", "")
+    # Dengan kunci, dokumentasi otomatis ikut ditutup: layanan hanya untuk proxy situs.
+    app = FastAPI(title="SWARA API", **({"docs_url": None, "redoc_url": None, "openapi_url": None} if key else {}))
+
+    if key:
+
+        @app.middleware("http")
+        async def require_key(request: Request, call_next):
+            if not hmac.compare_digest(request.headers.get("x-swara-key", ""), key):
+                return JSONResponse({"detail": "Forbidden"}, status_code=403)
+            return await call_next(request)
+
     jobs: dict[str, Job] = {}
     lock = threading.Lock()
     pool = ThreadPoolExecutor(MAX_BUILDS)
