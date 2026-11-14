@@ -98,6 +98,7 @@ export function SpectrumStrip(p: Props) {
   const [announce, setAnnounce] = useState<string>();
   const [hover, setHover] = useState<SpectrumPoint>();
   const [heardLambda, setHeardLambda] = useState<number>();
+  const [motionNoteActive, setMotionNoteActive] = useState(false);
   const [fresh, setFresh] = useState(() => {
     try {
       return !window.localStorage.getItem(HEARD_KEY);
@@ -143,6 +144,7 @@ export function SpectrumStrip(p: Props) {
     setPlay(undefined);
     setPlayVisit(undefined);
     setHeardLambda(undefined);
+    setMotionNoteActive(false);
     hearRef.current(undefined);
   }, [p.soundRing, p.scanLine]);
 
@@ -156,6 +158,7 @@ export function SpectrumStrip(p: Props) {
     if (!windows.length) return;
     setAnnounce("");
     setHeardLambda(undefined);
+    setMotionNoteActive(false);
     hearRef.current(undefined);
 
     const scanLayers = new Map<string, Note[]>();
@@ -228,6 +231,7 @@ export function SpectrumStrip(p: Props) {
     let centerTold = "";
     let lastBand: string | undefined;
     let lastStep = -1;
+    let lastMotionActive: boolean | undefined;
     const epoch = soundEpoch.n;
     const tick = () => {
       if (soundEpoch.n !== epoch) {
@@ -245,6 +249,11 @@ export function SpectrumStrip(p: Props) {
       while (i < play.visits.length - 1 && elapsed >= play.visits[i + 1].start) i++;
       const visit = play.visits[i];
       const local = elapsed - visit.start;
+      const motionActive = visit.layers.motion && local >= 0 && local < MOTION.seconds;
+      if (motionActive !== lastMotionActive) {
+        lastMotionActive = motionActive;
+        setMotionNoteActive(motionActive);
+      }
       if (elapsed >= 0 && i !== lastVisit) {
         lastVisit = i;
         centerTold = "";
@@ -336,9 +345,15 @@ export function SpectrumStrip(p: Props) {
   const bandsLocked = !!play;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
   const spectrumReady = windows.filter((w) => playable.includes(w)).map((w) => w.id);
-  const motionReadyVisits = p.motionReady ? windows.map((w) => w.id) : [];
+  const motionReadyVisits = p.motionReady ? windows.filter((w) => !!p.readMotion(w.id)).map((w) => w.id) : [];
   const canPlayCombined = scanReady.length > 0 || spectrumReady.length > 0 || motionReadyVisits.length > 0;
   const combinedVisitCount = new Set([...scanReady, ...spectrumReady, ...motionReadyVisits]).size;
+  const currentLayers = play?.visits.find((visit) => visit.id === playVisit)?.layers;
+  const soundLegend = [
+    { id: "scan", label: "Scan", available: scanReady.length > 0 },
+    { id: "spectrum", label: "Spectrum", available: spectrumReady.length > 0 },
+    { id: "motion", label: "Motion", available: motionReadyVisits.length > 0 },
+  ] as const;
 
   const toggle = useCallback(() => {
     if (play) stop();
@@ -522,6 +537,28 @@ export function SpectrumStrip(p: Props) {
               {hover.lambda_um.toFixed(2)} µm, {fluxLabel(hover.flux_jy)}, {FLAG_TEXT[hover.flag]}
             </p>
           )}
+        </div>
+        <div className={`sound-legend${play ? " is-playing" : ""}`} aria-label="Sound layer indicators">
+          {soundLegend.map((layer) => {
+            const active = layer.id === "motion"
+              ? motionNoteActive
+              : currentLayers?.[layer.id] === true;
+            const status = play ? (active ? "playing" : "inactive for this visit") : layer.available ? "available" : "unavailable";
+            return (
+              <span
+                key={layer.id}
+                className={`sound-layer sound-layer--${layer.id}`}
+                role="img"
+                data-active={play && active ? "true" : undefined}
+                data-available={layer.available ? "true" : undefined}
+                aria-label={`${layer.label} ${status}`}
+                title={`${layer.label}: ${status}`}
+              >
+                <span className="sound-note-glyph" aria-hidden="true">♪</span>
+                <span>{layer.label}</span>
+              </span>
+            );
+          })}
         </div>
       </div>
 

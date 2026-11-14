@@ -320,7 +320,9 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look, at
             columns from east to west: higher is further north, louder is brighter, and a short ping marks the
             target at the centre. The spectrum follows 48 wavelengths from short to long, with higher pitch for
             brighter measurements and a soft tick for a data gap. Motion adds a brief bell at each measured visit.
-            The image uses percussive notes, the spectrum a smooth flute-like tone, and motion a bell-like tone.
+            The note legend uses yellow-green for the image scan, orange for the spectrum, and blue for motion; the
+            active source glows while it sounds. The image uses percussive notes, the spectrum a smooth flute-like
+            tone, and motion a bell-like tone.
             Missing layers or visits are skipped and announced; the scan line, wavelength cursor, and lens follow
             the same clock.
           </p>
