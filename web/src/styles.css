@@ -83,6 +83,7 @@ kbd {
 .app {
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -779,14 +780,15 @@ kbd {
   font-family: var(--mono);
   font-size: 11.5px;
   white-space: nowrap;
-  opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms;
+  /* Tidak digambar sama sekali sampai dibutuhkan: label tersembunyi yang tetap
+     punya tempat akan melebarkan halaman di layar ponsel. */
+  display: none;
 }
 
 .satellite:hover::after,
 .satellite:focus-visible::after {
-  opacity: 1;
+  display: block;
 }
 
 /* ---------- dok kendali ---------- */
@@ -1528,6 +1530,12 @@ kbd {
     gap: 14px;
   }
 
+  /* Di layar sempit label satelit muncul di sisi kiri, ke arah dalam layar. */
+  .satellite::after {
+    left: auto;
+    right: calc(100% + 8px);
+  }
+
   .yr-long {
     display: none;
   }
@@ -1575,18 +1583,34 @@ kbd {
     border-left: 0;
   }
 
+  /* Dua baris: nama di atas, keterangan di bawah. Tiap anak diberi tempat
+     pasti supaya tidak ada kolom tambahan yang melebarkan dialog. */
   .place {
     grid-template-columns: 44px minmax(0, 1fr) 16px;
+    grid-template-rows: auto auto;
+    row-gap: 0;
+    border-radius: 28px;
+  }
+
+  .place .thumb {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .place-name {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .place-detail {
     grid-column: 2;
     grid-row: 2;
-    margin-top: -12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .place .thumb,
   .place svg {
+    grid-column: 3;
     grid-row: 1 / span 2;
   }
 }
