@@ -209,6 +209,10 @@ Tiap gerak punya alasan:
 | Isi lensa membesar atau mengecil saat ganti tingkat | pembesaran berubah, tempatnya tetap |
 | Lensa membuka seperti diafragma | data untuk tempat ini sudah siap |
 | Cincin terisi atau menyapu | progres muat atau posisi suara |
+| Citra lama tersapu dari kiri ke kanan oleh garis ambar saat Difference, look, Reveal faint, atau penanda piksel diganti | filter teleskop diputar: tempat dan waktunya sama, hanya cara melihatnya yang berubah. Blink tidak tersapu |
+| Cincin Gaia mengunci dari besar ke ukurannya satu per satu, lalu memudar saat dimatikan | katalog sedang dicocokkan ke bintang di citra |
+| Menunjuk lensa: bacaan RA/Dec dan jarak dari tanda di samping kursor, jarum ambar di cincin menunjuk arahnya, N dan E menyala | lensa adalah alat ukur; tiap titiknya punya koordinat (rumusnya sama dengan `sky_grid` di pipeline) |
+| Kenop di cincin sedikit masuk saat ditekan dan bercahaya saat menyala | kenop alat, bukan tombol halaman |
 
 Dengan `prefers-reduced-motion`: tidak ada geser, perpindahan, atau gerak pembesaran; lensa langsung terbuka pada pembesaran kerjanya, dan blink tidak mulai sendiri.
 
