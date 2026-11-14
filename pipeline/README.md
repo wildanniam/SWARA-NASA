@@ -1,4 +1,4 @@
-# skychange: pipeline data SPHEREx
+# skychange: pipeline data SPHEREx untuk SWARA
 
 Mengubah satu koordinat langit menjadi "bundle" siap tampil: frame yang sudah diselaraskan untuk di-blink, dan spektrum untuk sonifikasi. Data diambil dari arsip publik NASA/IPAC IRSA (SPHEREx level-2), tanpa login.
 

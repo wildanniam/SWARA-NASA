@@ -483,7 +483,7 @@ export function App() {
             <circle cx="9" cy="11" r="6.5" />
             <circle className="brand-dot" cx="15.5" cy="4.5" r="2" />
           </svg>
-          <span>Sky Change Explorer</span>
+          <span>SWARA</span>
         </p>
         <button type="button" className="goto-trigger" onClick={openGoTo}>
           <MagnifyingGlass aria-hidden="true" />

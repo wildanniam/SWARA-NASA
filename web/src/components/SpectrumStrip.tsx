@@ -41,7 +41,7 @@ const H = 84;
 const M = { left: 2, right: 2, top: 12, bottom: 18 };
 const MIN_POINTS = 8; // kunjungan dengan titik layak lebih sedikit tidak dibunyikan
 const TICKS = [1, 2, 3, 4, 5];
-const HEARD_KEY = "sce.heard";
+const HEARD_KEY = "swara.heard";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 

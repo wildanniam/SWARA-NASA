@@ -82,7 +82,7 @@ class SkyRequest(BaseModel):
 
 def create_app(bundles: Path, cache: Path) -> FastAPI:
     bundles.mkdir(parents=True, exist_ok=True)
-    app = FastAPI(title="Sky Change Explorer API")
+    app = FastAPI(title="SWARA API")
     jobs: dict[str, Job] = {}
     lock = threading.Lock()
     pool = ThreadPoolExecutor(MAX_BUILDS)
