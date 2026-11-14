@@ -23,9 +23,7 @@ const KEYS: [string, string][] = [
   ["+ −", "zoom the lens, out to the wide view"],
   ["C", "next look"],
   ["R", "reveal faint things"],
-  ["L", "listen (scan or spectrum)"],
-  ["M", "motion sound"],
-  ["H", "motion history"],
+  ["L", "listen (scan, spectrum, or motion)"],
   ["/", "go to a place"],
   ["G", "this guide"],
 ];
@@ -204,14 +202,11 @@ export function Notes({ open, onClose, manifest, win, frame, wiseFrame, look }: 
             at the centre. An empty column is a soft tick. The scan line follows the sound.
           </p>
           <p>
-            Spectrum plays one visit from short to long wavelength, left to right. Higher pitch is brighter, a
-            rougher tone is a value flagged as saturated, and a soft tick is a gap in the data. The lens follows
-            the band being played. A rising melody means a cool or dusty object; dips are molecular absorption.
-          </p>
-          <p>
-            Motion sound plays one note per visit while blinking. Higher is further north, lower is further south,
-            and the note moves left or right with the picture. The same note means no measurable shift. History
-            plays the whole visit-to-visit trajectory in one go. Only one sound plays at a time.
+            Spectrum plays 48 notes from short to long wavelength for each visit, first to last, without a motion
+            sound mixed in. Higher pitch is brighter, dips are absorption, rougher notes mark saturated values,
+            and a soft tick marks a gap. Use it to follow how the object's infrared condition changes over time.
+            Scan plays the image as 32 columns from east to west. Motion is a third Listen choice: one position
+            note per visit, with a tick where the position was not measured. Each choice plays by itself.
           </p>
         </section>
 

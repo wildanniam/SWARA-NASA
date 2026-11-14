@@ -158,34 +158,9 @@ export class Sonifier {
     this.master = undefined;
   }
 
-  /** Suara spektrum sedang berjalan; motif gerak menunggu supaya tidak bertumpuk. */
+  /** Ada frasa suara yang sedang dijalankan. */
   get busy(): boolean {
     return this.sources.length > 0;
-  }
-
-  /** Satu nada pendek berbunyi lonceng untuk motif gerak; null = ketukan. */
-  blip(note: { hz: number; pan: number } | null, m: MotionSettings = MOTION) {
-    const ctx = (this.ctx ??= new AudioContext());
-    void ctx.resume();
-    const at = ctx.currentTime + 0.01;
-    const dur = note ? m.seconds : 0.02;
-    const env = ctx.createGain();
-    const pan = ctx.createStereoPanner();
-    pan.pan.value = note?.pan ?? 0;
-    env.gain.setValueAtTime(0, at);
-    env.gain.linearRampToValueAtTime(note ? m.gain : m.tickGain, at + 0.006);
-    env.gain.exponentialRampToValueAtTime(0.0005, at + dur);
-    env.connect(pan).connect(ctx.destination);
-    // Nada dasar ditambah oktafnya yang lebih pelan: cukup berbeda dari suara spektrum.
-    for (const [mult, level] of note ? [[1, 1], [2, 0.25]] : [[1, 1]]) {
-      const osc = ctx.createOscillator();
-      const part = ctx.createGain();
-      osc.frequency.value = (note?.hz ?? m.tickHz) * mult;
-      part.gain.value = level;
-      osc.connect(part).connect(env);
-      osc.start(at);
-      osc.stop(at + dur + 0.02);
-    }
   }
 
   /** Waktu konteks audio sekarang; penanda di panel mengikuti jam ini, bukan jam layar. */

@@ -10,8 +10,6 @@ import {
   Pause,
   Play,
   ShareNetwork,
-  SpeakerHigh,
-  SpeakerSlash,
   SunDim,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -49,8 +47,7 @@ import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
-import { motionNote, motionPhrase, sonifier, soundEpoch } from "./sound/sonify";
-import { MOTION } from "./sound/mapping";
+import { motionNote } from "./sound/sonify";
 
 const BLINK_MS = 700;
 // Deretan 16 tahun punya belasan citra, jadi diputar lebih cepat.
@@ -133,7 +130,6 @@ export function App() {
     }
   });
   const [showFlags, setShowFlags] = useState(false);
-  const [motionSound, setMotionSound] = useState(false);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
   const [query, setQuery] = useState("");
@@ -610,11 +606,6 @@ export function App() {
         e.preventDefault();
         setPlaying(false);
         step(e.key === "ArrowRight" ? 1 : -1);
-      } else if (e.key.toLowerCase() === "m" && manifest && referenceMotion(manifest)) {
-        setMotionSound((v) => !v);
-      } else if (e.key.toLowerCase() === "h" && manifest && referenceMotion(manifest)) {
-        if (melodyRef.current) melodyStopRef.current();
-        else melodyPlayRef.current();
       } else if (e.key === "+" || e.key === "=") zoom(1);
       else if (e.key === "-") zoom(-1);
       else if (manifest && /^[1-6]$/.test(e.key)) {
@@ -735,95 +726,17 @@ export function App() {
     else shift = `Shifted ${shiftWords(s.east, s.north)} since ${since}.`;
   }
 
-  // Motif gerak: tiap kunjungan yang tampil membunyikan satu nada dari posisinya.
+  // Nada gerak per kunjungan untuk pilihan tersendiri di modal Listen.
   const canHearMotion = !!ref;
-  useEffect(() => {
-    if (!motionSound || !manifest || !windowId || sonifier.busy) return;
-    const s = shiftAt(manifest, windowId);
-    if (s.kind === "none") return;
-    sonifier.blip(s.kind === "unmeasured" ? null : s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0));
-  }, [motionSound, manifest, windowId]);
-
-  // Melodi riwayat gerak: satu nada per kunjungan dari pertama sampai terakhir.
-  const [melody, setMelody] = useState<{ visits: string[]; starts: number[]; total: number; target?: string }>();
-  const [melodySay, setMelodySay] = useState<string>();
-  const abandonMelody = useCallback(() => {
-    soundRing.current?.setAttribute("stroke-dasharray", "0 100");
-    setMelody(undefined);
-  }, []);
-  const stopMelody = useCallback(() => {
-    sonifier.stop();
-    abandonMelody();
-  }, [abandonMelody]);
-  const playMelody = useCallback(() => {
-    if (!manifest || !ref) return;
-    const visits = manifest.windows.map((w) => w.id);
-    const steps = visits.map((v) => {
-      const s = shiftAt(manifest, v);
+  const readMotion = useCallback(
+    (id: string) => {
+      if (!manifest || !ref) return null;
+      const s = shiftAt(manifest, id);
       if (s.kind === "none" || s.kind === "unmeasured") return null;
       return s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0);
-    });
-    const notes = motionPhrase(steps);
-    if (!notes.length) return;
-    setPlaying(false);
-    setSky(false);
-    setWiseId(undefined);
-    if (!visits.includes(windowId ?? "")) setWindowId(visits[0]);
-    const starts = sonifier.play([notes]);
-    setMelody({ visits, starts, total: notes[notes.length - 1].t + MOTION.seconds, target: targetId });
-  }, [manifest, ref, windowId, targetId]);
-
-  // Cermin windowId/target untuk loop: berhenti kalau pengguna pindah manual.
-  const windowIdRef = useRef(windowId);
-  windowIdRef.current = windowId;
-  const targetRef = useRef(targetId);
-  targetRef.current = targetId;
-  const listenMelodyRef = useRef(listen);
-  listenMelodyRef.current = listen;
-  const melodyRef = useRef(melody);
-  melodyRef.current = melody;
-  const melodyPlayRef = useRef(playMelody);
-  melodyPlayRef.current = playMelody;
-  const melodyStopRef = useRef(stopMelody);
-  melodyStopRef.current = stopMelody;
-  useEffect(() => {
-    if (!melody) return;
-    let raf = 0;
-    let lastVisit = -1;
-    let lastCommanded = "";
-    const epoch = soundEpoch.n;
-    const tick = () => {
-      if (soundEpoch.n !== epoch || targetRef.current !== melody.target) {
-        // Diambil alih mode lain: play() barunya sudah menghentikan audio ini.
-        abandonMelody();
-        return;
-      }
-      const elapsed = sonifier.now() - melody.starts[0];
-      if (elapsed >= melody.total) {
-        setMelodySay("Motion history finished.");
-        stopMelody();
-        return;
-      }
-      let i = 0;
-      while (i < melody.visits.length - 1 && elapsed >= (i + 1) * MOTION.melodyStep) i++;
-      const cur = windowIdRef.current;
-      if (lastVisit >= 0 && cur !== melody.visits[i] && cur !== lastCommanded) {
-        stopMelody();
-        return;
-      }
-      if (i !== lastVisit) {
-        lastVisit = i;
-        lastCommanded = melody.visits[i];
-        listenMelodyRef.current(melody.visits[i]);
-        const w = manifest?.windows.find((q) => q.id === melody.visits[i]);
-        setMelodySay(`Motion history, visit ${w ? monthYear(w.mjd_mid) : melody.visits[i]}.`);
-      }
-      soundRing.current?.setAttribute("stroke-dasharray", `${Math.min(1, Math.max(0, elapsed / melody.total)) * 100} 100`);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [melody, stopMelody, abandonMelody, manifest]);
+    },
+    [manifest, ref],
+  );
 
   const dateLabel = shownWise ? monthYear(shownWise.mjd_mid) : win ? monthYear(win.mjd_mid) : "";
   const bandLabel = shownWise
@@ -1245,23 +1158,6 @@ export function App() {
               <CaretRight aria-hidden="true" />
             </button>
           </div>
-          <div className="dock-tail">
-            <button
-              type="button"
-              className="pill"
-              aria-pressed={motionSound && canHearMotion}
-              disabled={!canHearMotion}
-              title={
-                canHearMotion
-                  ? "One note per visit: higher is further north"
-                  : "Nothing here could be tracked between visits, so there is no motion sound"
-              }
-              onClick={() => setMotionSound((v) => !v)}
-            >
-              {motionSound && canHearMotion ? <SpeakerHigh aria-hidden="true" /> : <SpeakerSlash aria-hidden="true" />}
-              Motion sound
-            </button>
-          </div>
         </div>
 
         <div className="dock-row dock-light">
@@ -1286,9 +1182,7 @@ export function App() {
               onListen={listen}
               onHear={setHeardBand}
               onScanStart={startScan}
-              onMotionHistory={playMelody}
-              motionPlaying={!!melody}
-              onMotionStop={stopMelody}
+              readMotion={readMotion}
               motionReady={canHearMotion}
               readVisit={readVisit}
               hasImage={hasImage}
@@ -1330,9 +1224,6 @@ export function App() {
 
       <p className="sr-only" role="status" aria-live="polite">
         {sky && target ? `Wide view of the sky around ${target.name}.` : playing ? "" : shownWise ? `${dateLabel}, ${bandLabel}.` : win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
-      </p>
-      <p className="sr-only" role="status" aria-live="polite">
-        {melodySay ?? ""}
       </p>
     </div>
   );

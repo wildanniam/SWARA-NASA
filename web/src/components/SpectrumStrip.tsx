@@ -1,4 +1,4 @@
-import { Play, Stop } from "@phosphor-icons/react";
+import { ArrowRight, ArrowUpRight, Play, Scan, Stop, Waveform, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 import type { Band, TimeWindow } from "../lib/bundle";
 import { microns, monthYear } from "../lib/format";
@@ -16,8 +16,8 @@ import {
   type Spectrum,
   type SpectrumPoint,
 } from "../lib/spectrum";
-import { SCAN, SOUND } from "../sound/mapping";
-import { phrase, sonifier, soundEpoch, type Note } from "../sound/sonify";
+import { MOTION, SCAN, SOUND } from "../sound/mapping";
+import { motionPhrase, phrase, sonifier, soundEpoch, type Note } from "../sound/sonify";
 
 type Props = {
   spectrum?: Spectrum;
@@ -25,6 +25,10 @@ type Props = {
   windows: TimeWindow[];
   /** Kunjungan yang sedang tampil di lensa. */
   windowId?: string;
+  /** Nada dari posisi terukur; null = tidak ada pengukuran pada kunjungan itu. */
+  readMotion: (windowId: string) => { hz: number; pan: number } | null;
+  /** Posisi acuan cukup stabil untuk menyuarakan riwayat gerak. */
+  motionReady: boolean;
   bands: Band[];
   /** Band citra yang dipilih pengguna. */
   bandId?: string;
@@ -32,16 +36,8 @@ type Props = {
   onBand: (id: string) => void;
   /** Suara mulai memutar kunjungan ini: lensa ikut pindah dan blink berhenti. */
   onListen: (windowId: string) => void;
-  /** Band yang sedang terdengar di mode Spektrum, supaya lensa menampilkan band yang sama. */
+  /** Band yang sedang terdengar, supaya lensa menampilkan band yang sama. */
   onHear: (bandId: string | undefined) => void;
-  /** Memutar riwayat gerak penuh (dipicu dari pemilih suara). */
-  onMotionHistory: () => void;
-  /** Riwayat gerak sedang berbunyi (dimiliki App). */
-  motionPlaying: boolean;
-  /** Hentikan riwayat gerak. */
-  onMotionStop: () => void;
-  /** Ada posisi acuan stabil sehingga riwayat gerak bisa dibunyikan. */
-  motionReady: boolean;
   /** Paksa lensa ke medan penuh dan hentikan blink sebelum sapuan berbunyi. */
   onScanStart: (visits: string[]) => void;
   /** Piksel abu display kunjungan ini (band yang tampil), kalau citranya sudah dimuat. */
@@ -90,17 +86,18 @@ export function SpectrumStrip(p: Props) {
   );
 
   // Selama suara berjalan: kunjungan mana saja yang diputar dan kapan tiap kunjungan mulai.
-  const [play, setPlay] = useState<{ kind: "scan" | "spectrum"; visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
-  const [mode, setMode] = useState<"scan" | "spectrum">("scan");
+  const [play, setPlay] = useState<{ kind: "scan" | "spectrum" | "motion"; visits: string[]; starts: number[]; total: number; bounds: { visit: string; start: number }[] }>();
+  const [mode, setMode] = useState<"scan" | "spectrum" | "motion">("scan");
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const [chooser, setChooser] = useState(false);
   const chooserRef = useDialog<HTMLDivElement>(chooser, () => setChooser(false));
-  const motionRef = useRef(p.onMotionHistory);
-  motionRef.current = p.onMotionHistory;
+  const readMotionRef = useRef(p.readMotion);
+  readMotionRef.current = p.readMotion;
   const [playVisit, setPlayVisit] = useState<string>();
   const [announce, setAnnounce] = useState<string>();
   const [hover, setHover] = useState<SpectrumPoint>();
+  const [heardLambda, setHeardLambda] = useState<number>();
   const [fresh, setFresh] = useState(() => {
     try {
       return !window.localStorage.getItem(HEARD_KEY);
@@ -109,6 +106,7 @@ export function SpectrumStrip(p: Props) {
     }
   });
   const headRef = useRef<SVGLineElement>(null);
+  const headDotRef = useRef<SVGCircleElement>(null);
   const listenRef = useRef(p.onListen);
   listenRef.current = p.onListen;
   const hearRef = useRef(p.onHear);
@@ -117,6 +115,8 @@ export function SpectrumStrip(p: Props) {
   scanStartRef.current = p.onScanStart;
   const readVisitRef = useRef(p.readVisit);
   readVisitRef.current = p.readVisit;
+  const hasImageRef = useRef(p.hasImage);
+  hasImageRef.current = p.hasImage;
 
   const points = useMemo(() => spectrum?.points ?? [], [spectrum]);
   const quality = useMemo(() => (spectrum ? assess(spectrum.points) : undefined), [spectrum]);
@@ -126,17 +126,22 @@ export function SpectrumStrip(p: Props) {
     [points, windows],
   );
   const playable = useMemo(
-    () => windows.filter((w) => points.filter((q) => q.window === w.id && isUsable(q)).length >= MIN_POINTS),
-    [points, windows],
+    () =>
+      quality === "ok"
+        ? windows.filter((w) => points.filter((q) => q.window === w.id && isUsable(q)).length >= MIN_POINTS)
+        : [],
+    [points, quality, windows],
   );
 
   const abandon = useCallback(() => {
     if (headRef.current) headRef.current.style.visibility = "hidden";
+    if (headDotRef.current) headDotRef.current.style.visibility = "hidden";
     const line = p.scanLine.current;
     if (line) line.style.visibility = "hidden";
     p.soundRing.current?.setAttribute("stroke-dasharray", "0 100");
     setPlay(undefined);
     setPlayVisit(undefined);
+    setHeardLambda(undefined);
     hearRef.current(undefined);
   }, [p.soundRing, p.scanLine]);
 
@@ -145,22 +150,41 @@ export function SpectrumStrip(p: Props) {
     abandon();
   }, [abandon]);
 
-  // Satu suara = satu frasa gabungan. Sapuan: tiap kunjungan 32 kolom lalu jeda.
-  // Spektrum: satu frasa 48 nada per kunjungan seperti sebelum sapuan ada.
+  // Setiap pilihan Listen memakai satu suara saja: gambar, spektrum, atau gerak.
   const start = useCallback(
-    (visits: string[], kind: "scan" | "spectrum" = modeRef.current) => {
+    (visits: string[], kind: "scan" | "spectrum" | "motion" = modeRef.current) => {
       if (!visits.length) return;
-      if (kind === "spectrum") {
+      setAnnounce("");
+      setHeardLambda(undefined);
+      if (kind === "motion") {
+        const use = visits.filter((v) => hasImageRef.current(v));
+        if (!use.length) return;
+        setMode("motion");
+        hearRef.current(undefined);
+        const notes = motionPhrase(use.map((v) => readMotionRef.current(v)));
+        const starts = sonifier.play([notes]);
+        setPlay({
+          kind: "motion",
+          visits: use,
+          starts,
+          total: notes[notes.length - 1].t + MOTION.seconds,
+          // tick() membandingkan waktu relatif sejak awal frasa pertama.
+          bounds: use.map((v, i) => ({ visit: v, start: i * MOTION.melodyStep })),
+        });
+      } else if (kind === "spectrum") {
         const use = visits.filter((v) => (binned.get(v) ?? []).length > 0);
         if (!use.length) return;
         setMode("spectrum");
+        hearRef.current(undefined);
         const starts = sonifier.play(use.map((v) => phrase(binned.get(v) ?? [], top)));
+        const slot = SOUND.visitSeconds + SOUND.pauseSeconds;
         setPlay({
           kind: "spectrum",
           visits: use,
           starts,
-          total: starts[starts.length - 1] + SOUND.visitSeconds,
-          bounds: use.map((v, i) => ({ visit: v, start: starts[i] })),
+          total: (use.length - 1) * slot + SOUND.visitSeconds,
+          // starts[] memakai jam absolut AudioContext; batas tick relatif terhadap starts[0].
+          bounds: use.map((v, i) => ({ visit: v, start: starts[i] - starts[0] })),
         });
       } else {
         setMode("scan");
@@ -193,16 +217,13 @@ export function SpectrumStrip(p: Props) {
     [binned, top],
   );
 
-  // Memilih dari pemilih langsung memutar: kunjungan tampil untuk
-  // Scan/Spectrum, riwayat penuh untuk Motion history.
+  // Memilih dari pemilih langsung memutar gambar, riwayat spektrum, atau gerak.
   const choose = useCallback(
     (kind: "scan" | "spectrum" | "motion") => {
       setChooser(false);
-      if (kind === "motion") {
-        motionRef.current();
-        return;
-      }
-      if (windowId) start([windowId], kind);
+      if (kind === "spectrum") start(spectrumReadyRef.current, kind);
+      else if (kind === "motion") start(motionReadyRef.current, kind);
+      else if (windowId) start([windowId], kind);
     },
     [windowId, start],
   );
@@ -218,6 +239,7 @@ export function SpectrumStrip(p: Props) {
     let lastVisit = -1;
     let centerTold = "";
     let lastBand: string | undefined;
+    let lastStep = -1;
     const epoch = soundEpoch.n;
     const tick = () => {
       if (soundEpoch.n !== epoch) {
@@ -227,23 +249,24 @@ export function SpectrumStrip(p: Props) {
       }
       const elapsed = sonifier.now() - play.starts[0];
       if (elapsed >= play.total) {
-        setAnnounce(play.kind === "scan" ? "Scan finished." : "Finished.");
+        setAnnounce(play.kind === "scan" ? "Scan finished." : play.kind === "spectrum" ? "Spectrum finished." : "Motion finished.");
         stop();
         return;
       }
       let i = 0;
       while (i < play.bounds.length - 1 && elapsed >= play.bounds[i + 1].start) i++;
-      if (i !== lastVisit) {
+      if (elapsed >= 0 && i !== lastVisit) {
         lastVisit = i;
         centerTold = "";
         lastBand = undefined;
+        lastStep = -1;
         setPlayVisit(play.visits[i]);
         listenRef.current(play.visits[i]);
         const w = windows.find((q) => q.id === play.visits[i]);
         setAnnounce(
           play.kind === "scan"
             ? `Scanning visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`
-            : `Playing the spectrum of ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`,
+            : `${play.kind === "spectrum" ? "Spectrum" : "Motion"}, visit ${w ? monthYear(w.mjd_mid) : play.visits[i]}.`,
         );
       }
       if (play.kind === "scan") {
@@ -260,21 +283,38 @@ export function SpectrumStrip(p: Props) {
           centerTold = play.visits[i];
           setAnnounce("Target.");
         }
-      } else {
+      } else if (play.kind === "spectrum") {
         const frac = (elapsed - play.bounds[i].start) / SOUND.visitSeconds;
-        const lambda = LAMBDA_MIN + clamp01(frac) * (LAMBDA_MAX - LAMBDA_MIN);
+        const step = Math.min(SOUND.steps - 1, Math.max(0, Math.floor(clamp01(frac) * SOUND.steps)));
+        const lambda = LAMBDA_MIN + ((step + 0.5) / SOUND.steps) * (LAMBDA_MAX - LAMBDA_MIN);
         const band = (bands.find((b) => lambda >= b.lambda_min && lambda < b.lambda_max) ?? bands[bands.length - 1])?.id;
-        if (frac >= 0 && band !== lastBand) {
+        if ((frac < 0 || frac > 1) && lastStep !== -1) {
+          lastStep = -1;
+          setHeardLambda(undefined);
+        }
+        if (frac >= 0 && frac <= 1 && step !== lastStep) {
+          lastStep = step;
+          setHeardLambda(lambda);
+        }
+        if (frac >= 0 && frac <= 1 && band !== lastBand) {
           lastBand = band;
           hearRef.current(band);
         }
         const head = headRef.current;
+        const dot = headDotRef.current;
         if (head) {
           const x = xOf(lambda);
           head.setAttribute("x1", String(x));
           head.setAttribute("x2", String(x));
           head.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
         }
+        if (dot) {
+          dot.setAttribute("cx", String(xOf(lambda)));
+          dot.style.visibility = frac >= 0 && frac <= 1 ? "visible" : "hidden";
+        }
+      } else {
+        if (headRef.current) headRef.current.style.visibility = "hidden";
+        if (headDotRef.current) headDotRef.current.style.visibility = "hidden";
       }
       p.soundRing.current?.setAttribute("stroke-dasharray", `${clamp01(elapsed / play.total) * 100} 100`);
       raf = requestAnimationFrame(tick);
@@ -284,17 +324,44 @@ export function SpectrumStrip(p: Props) {
   }, [play, stop, abandon, windows, bands, xOf, p.soundRing, p.scanLine]);
 
   const shown = playVisit ?? windowId;
+  const bandsLocked = !!play;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
+  const spectrumReady = windows.filter((w) => p.hasImage(w.id) && playable.includes(w)).map((w) => w.id);
+  const spectrumReadyRef = useRef(spectrumReady);
+  spectrumReadyRef.current = spectrumReady;
+  const motionReadyVisits = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
+  const motionReadyRef = useRef(motionReadyVisits);
+  motionReadyRef.current = motionReadyVisits;
   const canScan = !!windowId && p.hasImage(windowId);
-  const canSpectrum = quality === "ok" && !!windowId && playable.some((w) => w.id === windowId);
-  const canPlay = mode === "scan" ? canScan : canSpectrum;
-  const allReady = mode === "scan" ? scanReady : playable.map((w) => w.id);
+  // Jelaskan syarat spektrum yang belum terpenuhi dengan apa adanya.
+  const spectrumReason = !spectrum
+    ? p.failed
+      ? "Spektrum gagal dimuat."
+      : "Spektrum masih dimuat."
+    : quality === "faint"
+      ? "Spektrum terlalu redup untuk disuarakan dengan andal."
+      : quality === "saturated"
+        ? "Spektrum jenuh dan tidak memiliki nilai yang dapat dipakai."
+        : quality === "empty" || !playable.length
+          ? "Terlalu sedikit pengukuran spektrum yang dapat dipakai."
+          : undefined;
+  const spectrumDisabledReason = [
+    spectrumReason,
+    playable.length && !spectrumReady.length ? "Menunggu citra kunjungan selesai dimuat." : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const motionDisabledReason = !p.motionReady
+    ? "Posisi acuan yang stabil tidak dapat diukur."
+    : !motionReadyVisits.length
+      ? "Belum ada citra kunjungan yang siap diputar."
+      : undefined;
+  const allReady = mode === "scan" ? scanReady : mode === "spectrum" ? spectrumReady : motionReadyVisits;
 
   const toggle = useCallback(() => {
     if (play) stop();
-    else if (p.motionPlaying) p.onMotionStop();
     else setChooser(true);
-  }, [play, p.motionPlaying, p.onMotionStop]);
+  }, [play]);
 
   // L = dengarkan / berhenti.
   useEffect(() => {
@@ -358,13 +425,13 @@ export function SpectrumStrip(p: Props) {
           type="button"
           className="dial"
           onClick={toggle}
-          disabled={!play && !p.motionPlaying && !canPlay}
-          aria-pressed={!!play || p.motionPlaying}
-          aria-label={play || p.motionPlaying ? "Stop the sound" : "Choose what to listen to"}
+          disabled={!play && !canScan && !spectrumReady.length && !(p.motionReady && motionReadyVisits.length)}
+          aria-pressed={!!play}
+          aria-label={play ? "Stop the sound" : "Choose what to listen to"}
         >
-          {play || p.motionPlaying ? <Stop weight="fill" /> : <Play weight="fill" />}
+          {play ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
-        <span className="dial-caption">{play || p.motionPlaying ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
+        <span className="dial-caption">{play ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
       </div>
 
       <div className="strip">
@@ -434,26 +501,35 @@ export function SpectrumStrip(p: Props) {
             )}
             {hover && <circle className="spec-hover" cx={xOf(hover.lambda_um)} cy={y(Math.min(hover.flux_jy, top))} r={5} />}
             <line ref={headRef} className="spec-head" x1={M.left} y1={M.top - 6} x2={M.left} y2={baseline} />
+            <circle ref={headDotRef} className="spec-head-dot" cx={M.left} cy={M.top - 5} r={3.5} />
           </svg>
 
           <div className="segments" role="group" aria-label="Image band, by wavelength">
             {bands.map((b, i) => {
-              const has = p.bandHasFrames(b.id);
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  className="segment"
-                  style={{ left: `${(xOf(b.lambda_min) / W) * 100}%`, width: `${((xOf(b.lambda_max) - xOf(b.lambda_min)) / W) * 100}%` }}
-                  aria-pressed={b.id === p.bandId}
-                  aria-label={`Show the image at ${microns(b.lambda_min, b.lambda_max)}`}
-                  disabled={!has}
-                  title={has ? microns(b.lambda_min, b.lambda_max) : "No image in this band"}
-                  onClick={() => p.onBand(b.id)}
-                >
-                  <span aria-hidden="true">{i + 1}</span>
-                </button>
-              );
+                const has = p.bandHasFrames(b.id);
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    className="segment"
+                    data-heard={
+                      play?.kind === "spectrum" && heardLambda !== undefined &&
+                      heardLambda >= b.lambda_min && heardLambda < b.lambda_max
+                        ? "true"
+                        : undefined
+                    }
+                    data-missing={!has ? "true" : undefined}
+                    data-audio-locked={bandsLocked ? "true" : undefined}
+                    style={{ left: `${(xOf(b.lambda_min) / W) * 100}%`, width: `${((xOf(b.lambda_max) - xOf(b.lambda_min)) / W) * 100}%` }}
+                    aria-pressed={b.id === p.bandId}
+                    aria-label={`Show the image at ${microns(b.lambda_min, b.lambda_max)}`}
+                    disabled={!has || bandsLocked}
+                    title={has ? microns(b.lambda_min, b.lambda_max) : "No image in this band"}
+                    onClick={() => p.onBand(b.id)}
+                  >
+                    <span aria-hidden="true">{i + 1}</span>
+                  </button>
+                );
             })}
           </div>
 
@@ -467,6 +543,9 @@ export function SpectrumStrip(p: Props) {
       </div>
 
       <div className="dock-tail">
+        {play?.kind === "spectrum" && heardLambda !== undefined && (
+          <span className="sound-lambda">λ {heardLambda.toFixed(2)} µm</span>
+        )}
         <button
           type="button"
           className="pill"
@@ -488,29 +567,41 @@ export function SpectrumStrip(p: Props) {
             if (e.target === e.currentTarget) setChooser(false);
           }}
         >
-          <div ref={chooserRef} className="hear" role="dialog" aria-modal="true" aria-label="Choose what to listen to">
+          <div ref={chooserRef} className="hear" role="dialog" aria-modal="true" aria-label="Pilih cara mendengarkan">
+            <header className="hear-head">
+              <div>
+                <h2>Pilih cara mendengarkan</h2>
+                <p>Pilih data yang ingin didengar. Setiap pilihan berbunyi sendiri.</p>
+              </div>
+              <button type="button" className="round hear-close" aria-label="Tutup pemilih suara" onClick={() => setChooser(false)}>
+                <X aria-hidden="true" />
+              </button>
+            </header>
             {(
               [
                 {
                   id: "scan",
-                  name: "Scan the image",
-                  detail: "32 columns east to west. Higher is north, louder is brighter, a ping marks the target.",
+                  name: "Pindai gambar",
+                  detail: "Susuri gambar dari timur ke barat dalam 32 kolom suara.",
                   disabled: !canScan,
-                  why: "No image in this band and visit.",
+                  why: "Gambar untuk band dan kunjungan ini belum tersedia.",
+                  Icon: Scan,
                 },
                 {
                   id: "spectrum",
-                  name: "Play the spectrum",
-                  detail: "48 notes short to long. Higher is brighter, dips are absorption.",
-                  disabled: !canSpectrum,
-                  why: "Not enough usable spectrum in this visit.",
+                  name: "Dengarkan spektrum",
+                  detail: "Dengarkan 48 nada spektrum untuk setiap kunjungan, dari yang pertama hingga terakhir.",
+                  disabled: !!spectrumDisabledReason,
+                  why: spectrumDisabledReason ?? "",
+                  Icon: Waveform,
                 },
                 {
                   id: "motion",
-                  name: "Motion history",
-                  detail: "One note per visit, first to last. Higher is north, same note means holding still.",
-                  disabled: !p.motionReady,
-                  why: "Nothing here could be tracked between visits.",
+                  name: "Dengarkan suara gerak saja",
+                  detail: "Satu nada posisi untuk tiap kunjungan, dari yang pertama hingga terakhir.",
+                  disabled: !!motionDisabledReason,
+                  why: motionDisabledReason ?? "",
+                  Icon: ArrowUpRight,
                 },
               ] as const
             ).map((o) => (
@@ -523,8 +614,12 @@ export function SpectrumStrip(p: Props) {
                 title={o.disabled ? o.why : o.detail}
                 onClick={() => choose(o.id)}
               >
-                <span className="hear-name">{o.name}</span>
-                <span className="hear-detail">{o.disabled ? o.why : o.detail}</span>
+                <span className="hear-icon" aria-hidden="true"><o.Icon weight="regular" /></span>
+                <span className="hear-copy">
+                  <span className="hear-name">{o.name}</span>
+                  <span className="hear-detail">{o.disabled ? o.why : o.detail}</span>
+                </span>
+                <ArrowRight className="hear-arrow" aria-hidden="true" />
               </button>
             ))}
           </div>

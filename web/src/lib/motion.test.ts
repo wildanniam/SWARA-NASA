@@ -3,8 +3,8 @@
 // Juga ter-typecheck oleh `tsc --noEmit`.
 
 import { strict as assert } from "node:assert";
-import { MOTION } from "../sound/mapping";
-import { motionNote, motionPhrase, schedule } from "../sound/sonify";
+import { MOTION, SOUND } from "../sound/mapping";
+import { motionNote, motionPhrase, phrase, schedule } from "../sound/sonify";
 
 // 1. Utara naik, selatan turun, acuan di tengah.
 {
@@ -89,3 +89,49 @@ import { motionNote, motionPhrase, schedule } from "../sound/sonify";
 }
 
 console.log("semua uji melodi lolos");
+
+// 5. Spektrum saja: 48 langkah, timbre utama tetap seperti pemetaan Spectrum,
+// titik jenuh memakai gelombang kasar, dan celah memakai tick Spectrum standar.
+{
+  const bins = Array.from({ length: SOUND.steps }, (_, i) => ({
+    lambda: 0.75 + ((i + 0.5) * (5 - 0.75)) / SOUND.steps,
+    flux: i === 2 ? null : 10 + i,
+    unverified: i === 1,
+  }));
+  const notes = phrase(bins, 60);
+  assert.equal(notes.length, SOUND.steps);
+  assert.equal(notes[0].t, 0);
+  assert.ok(notes[47].t < SOUND.visitSeconds);
+  assert.equal(notes[2].hz, null);
+
+  const oscillators: { type: OscillatorType; frequency: { value: number } }[] = [];
+  const ctx = {
+    currentTime: 0,
+    createOscillator() {
+      const oscillator = {
+        type: "" as OscillatorType,
+        frequency: { value: 0 },
+        connect(node: unknown) { return node; },
+        start() {},
+        stop() {},
+      };
+      oscillators.push(oscillator);
+      return oscillator;
+    },
+    createGain() {
+      const g = { value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} };
+      return { gain: g, connect(node: unknown) { return node; } };
+    },
+    createStereoPanner() { return { pan: { value: 0 }, connect(node: unknown) { return node; } }; },
+  };
+  const sources = schedule(ctx as never, {} as never, notes, 0, SOUND);
+  assert.equal(sources.length, SOUND.steps);
+  assert.deepEqual(
+    oscillators.slice(0, 3).map((oscillator) => oscillator.type),
+    [SOUND.waveform, SOUND.unverifiedWaveform, "sine"],
+  );
+  assert.equal(oscillators[2].frequency.value, SOUND.gapTickHz);
+  console.log("ok: spektrum saja memakai suara Spectrum");
+}
+
+console.log("semua uji spektrum saja lolos");
