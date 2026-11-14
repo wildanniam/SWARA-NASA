@@ -211,7 +211,7 @@ export const MIX = {
 
 // Ambience synthesized locally: low drone, pipe-organ chord, soft strings, sparse piano.
 export const AMBIENCE = {
-  gain: 0.12,
+  gain: 0.2,
   droneHz: [55, 82.41],
   organHz: [110, 164.81, 220],
   stringsHz: [164.81, 220, 329.63],
