@@ -4,7 +4,16 @@ export type PaletteId = "heat" | "gray";
 
 type Stop = [number, number, number, number];
 
-const STOPS: Record<PaletteId, Stop[]> = {
+const STOPS: Record<PaletteId | "star", Stop[]> = {
+  // Latar langit: cahaya bintang yang dingin, supaya beda dari lensa yang hangat.
+  star: [
+    [0, 5, 6, 11],
+    [0.12, 7, 9, 19],
+    [0.4, 30, 38, 86],
+    [0.68, 118, 134, 212],
+    [0.88, 205, 214, 255],
+    [1, 250, 251, 255],
+  ],
   heat: [
     [0, 0, 0, 0],
     [0.18, 44, 9, 12],
@@ -40,6 +49,8 @@ export const LUTS: Record<PaletteId, Uint8ClampedArray> = {
   gray: build(STOPS.gray),
 };
 
+export const STAR_LUT = build(STOPS.star);
+
 // Warna penanda di atas citra: jenuh dan piksel rusak.
-export const FLAG_SATURATED: [number, number, number] = [255, 84, 84];
-export const FLAG_BAD: [number, number, number] = [96, 156, 255];
+export const FLAG_SATURATED: [number, number, number] = [255, 107, 94];
+export const FLAG_BAD: [number, number, number] = [110, 168, 255];

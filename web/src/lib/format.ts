@@ -12,7 +12,15 @@ export function dayMonthYear(iso: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
-export const microns = (min: number, max: number) => `${min.toFixed(2)}–${max.toFixed(2)} µm`;
+export const microns = (min: number, max: number) => `${min.toFixed(2)}-${max.toFixed(2)} µm`;
+
+/** Selisih dua MJD dalam kata-kata: "12 months", "7 months", "3 weeks" */
+export function span(mjdA: number, mjdB: number): string {
+  const days = Math.abs(mjdB - mjdA);
+  if (days < 45) return `${Math.max(1, Math.round(days / 7))} weeks`;
+  const months = Math.round(days / 30.44);
+  return months === 1 ? "1 month" : `${months} months`;
+}
 
 export function coord(ra: number, dec: number): string {
   return `RA ${ra.toFixed(4)}°  Dec ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(4)}°`;

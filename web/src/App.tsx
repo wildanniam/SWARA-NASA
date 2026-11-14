@@ -1,22 +1,40 @@
+import {
+  CaretLeft,
+  CaretRight,
+  CircleHalf,
+  Flag,
+  LinkSimple,
+  MagnifyingGlass,
+  Notebook,
+  Pause,
+  Play,
+  SpeakerHigh,
+  SpeakerSlash,
+} from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SearchForm } from "./components/SearchForm";
-import { SkyStage } from "./components/SkyStage";
-import { SpectrumPanel } from "./components/SpectrumPanel";
+import { Backdrop } from "./components/Backdrop";
+import { GoTo } from "./components/GoTo";
+import { Lens } from "./components/Lens";
+import { Notes } from "./components/Notes";
+import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
 import { CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
 import {
   assetUrl,
   defaultBand,
   findFrame,
+  finding,
   loadIndex,
   loadManifest,
   loadSpectrum,
   referenceMotion,
   shiftAt,
+  trail,
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
-import { coord, coordShort, dayMonthYear, microns, monthYear, shiftWords } from "./lib/format";
+import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
+import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
 import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
@@ -26,7 +44,14 @@ import { motionNote, sonifier } from "./sound/sonify";
 const BLINK_MS = 700;
 const POLL_MS = 1000;
 const POLL_MAX_FAILURES = 3;
-const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Arah di langit dari satu posisi ke posisi lain: x ke timur, y ke utara, panjang 1. */
+function bearingBetween(a: { ra: number; dec: number }, b: { ra: number; dec: number }) {
+  const x = ((((b.ra - a.ra + 540) % 360) - 180) * Math.cos((((a.dec + b.dec) / 2) * Math.PI) / 180));
+  const y = b.dec - a.dec;
+  const length = Math.hypot(x, y);
+  return length ? { x: x / length, y: y / length } : { x: 0, y: 0 };
+}
 
 type Loaded = { id: string; manifest?: Manifest; error?: boolean };
 
@@ -55,6 +80,12 @@ export function App() {
   const [query, setQuery] = useState("");
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string>();
+  const [gotoOpen, setGotoOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // Band yang sedang terdengar saat suara spektrum berjalan; lensa ikut menampilkannya.
+  const [heardBand, setHeardBand] = useState<string>();
+  const soundRing = useRef<SVGCircleElement>(null);
   const images = useImageStore();
 
   const bandFromLink = useRef(LINK.get("band"));
@@ -85,7 +116,7 @@ export function App() {
         setFormError(err.message);
       } else {
         console.error(err);
-        setFormError("The coordinate service is not reachable right now. The examples above still work.");
+        setFormError("The search service is not reachable right now. The examples still work.");
       }
       return false;
     } finally {
@@ -169,7 +200,7 @@ export function App() {
         setLoaded({ id: targetId, manifest });
         setBandId(band);
         setWindowId(first?.id);
-        setPlaying(!reducedMotion());
+        setPlaying(!prefersReducedMotion());
       })
       .catch((err) => {
         if (!ac.signal.aborted) {
@@ -226,11 +257,21 @@ export function App() {
   );
   const target = allTargets.find((t) => t.id === targetId);
 
-  // Daftar target bisa lebih lebar dari layar; pilihan aktif harus tetap terlihat.
-  const navRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    navRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [targetId, allTargets.length]);
+  // Arah pindah dari tempat sebelumnya, untuk gerak latar. Diturunkan saat render
+  // supaya tempat baru dan arahnya sampai ke latar pada saat yang sama.
+  const [route, setRoute] = useState<{ id?: string; ra: number; dec: number; bearing: { x: number; y: number } }>({
+    ra: 0,
+    dec: 0,
+    bearing: { x: 0, y: 0 },
+  });
+  if (target && target.id !== route.id) {
+    setRoute({
+      id: target.id,
+      ra: target.ra,
+      dec: target.dec,
+      bearing: route.id ? bearingBetween(route, target) : { x: 0, y: 0 },
+    });
+  }
 
   const available = useMemo(
     () => (manifest && bandId ? manifest.windows.filter((w) => findFrame(manifest, w.id, bandId)) : []),
@@ -281,7 +322,17 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement;
-      if (el.closest("input, select, textarea")) return;
+      if (el.closest?.("input, select, textarea, [role=dialog]")) return;
+      if (e.key === "/") {
+        e.preventDefault();
+        setFormError(undefined);
+        setGotoOpen(true);
+        return;
+      }
+      if (e.key.toLowerCase() === "n") {
+        setNotesOpen(true);
+        return;
+      }
       if (e.key === " " && !el.closest("button, a")) {
         e.preventDefault();
         setPlaying((v) => !v);
@@ -299,8 +350,11 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [step, chooseBand, manifest]);
 
-  const frame = manifest && windowId && bandId ? findFrame(manifest, windowId, bandId) : undefined;
-  const band = manifest?.bands.find((b) => b.id === bandId);
+  // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
+  const shownBandId =
+    heardBand && manifest && windowId && findFrame(manifest, windowId, heardBand) ? heardBand : bandId;
+  const frame = manifest && windowId && shownBandId ? findFrame(manifest, windowId, shownBandId) : undefined;
+  const band = manifest?.bands.find((b) => b.id === shownBandId);
   const win = manifest?.windows.find((w) => w.id === windowId);
   const imageUrl = frame && targetId ? assetUrl(targetId, custom, frame.image) : undefined;
   const maskUrl = frame && targetId ? assetUrl(targetId, custom, frame.mask) : undefined;
@@ -376,86 +430,198 @@ export function App() {
       ? `SPHEREx infrared image of ${target.name}, ${bandLabel}, ${dateLabel}. ${shift}`
       : "SPHEREx infrared image";
 
+  const found = useMemo(() => (manifest ? finding(manifest) : undefined), [manifest]);
+  const path = useMemo(() => (manifest ? trail(manifest) : []), [manifest]);
+  const contextUrl =
+    manifest?.context && targetId ? assetUrl(targetId, custom, manifest.context.image) : undefined;
+
+  // Pergeseran tiap kunjungan, untuk label di penggaris waktu.
+  const visitNotes = useMemo(() => {
+    const notes: Record<string, string> = {};
+    if (!manifest) return notes;
+    for (const w of manifest.windows) {
+      const s = shiftAt(manifest, w.id);
+      if (s.kind === "reference") notes[w.id] = "start";
+      else if (s.kind === "still") notes[w.id] = "no shift";
+      else if (s.kind === "moved") notes[w.id] = `${Math.hypot(s.east, s.north).toFixed(1)}″`;
+      else if (s.kind === "unmeasured") notes[w.id] = "not measured";
+    }
+    return notes;
+  }, [manifest]);
+
+  const copyLink = useCallback(() => {
+    void navigator.clipboard?.writeText(window.location.href).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    });
+  }, []);
+
+  const openGoTo = () => {
+    setFormError(undefined);
+    setGotoOpen(true);
+  };
+
+  const kind = !target ? "" : job?.label ? SEARCH_LABEL : KIND_LABEL[target.kind];
+  const note = !target
+    ? ""
+    : job?.label
+      ? searchNote(job.label, job.pm_arcsec_yr)
+      : target.kind === "custom"
+        ? CUSTOM_NOTE
+        : TARGET_NOTES[target.id];
+
   return (
     <div className="app">
+      <Backdrop id={target?.id} url={contextUrl} size={manifest?.context?.size_px} bearing={route.bearing} />
+
       <header className="top">
-        <p className="brand">Sky Change Explorer</p>
-        <p className="source">SPHEREx all-sky infrared survey · data from NASA/IPAC IRSA</p>
+        <p className="brand">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="9" cy="11" r="6.5" />
+            <circle className="brand-dot" cx="15.5" cy="4.5" r="2" />
+          </svg>
+          <span>Sky Change Explorer</span>
+        </p>
+        <button type="button" className="goto-trigger" onClick={openGoTo}>
+          <MagnifyingGlass aria-hidden="true" />
+          <span>Go to a place in the sky</span>
+          <kbd aria-hidden="true">/</kbd>
+        </button>
+        <div className="top-actions">
+          <button type="button" className="pill pill-quiet" aria-label="Copy a link to this view" onClick={copyLink}>
+            <LinkSimple aria-hidden="true" />
+            <span aria-live="polite">{copied ? "Link copied" : "Copy link"}</span>
+          </button>
+          <button
+            type="button"
+            className="pill pill-quiet"
+            aria-label="Notes on this view"
+            aria-expanded={notesOpen}
+            onClick={() => setNotesOpen(true)}
+          >
+            <Notebook aria-hidden="true" />
+            <span>Notes</span>
+          </button>
+        </div>
       </header>
 
-      <main className="layout">
-        <section className="stage-col" aria-label="Sky view">
-          <nav className="targets" aria-label="Places in the sky" ref={navRef}>
-            {(["custom", "example"] as const).map((group) => {
-              const list = allTargets.filter((t) => (t.kind === "custom") === (group === "custom"));
-              if (!list.length) return null;
-              return (
-                <div key={group} className="target-group" role="group" aria-label={group === "custom" ? "Yours" : "Examples"}>
-                  <span className="target-label" aria-hidden="true">
-                    {group === "custom" ? "Yours" : "Examples"}
-                  </span>
-                  {list.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className="target"
-                      aria-pressed={t.id === targetId}
-                      onClick={() => selectTarget(t.id)}
-                    >
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </nav>
+      <main className="stage">
+        <section className="identity" aria-label="Where you are looking">
+          {target && (
+            <>
+              <p className="kind">{kind}</p>
+              <h1>{target.name}</h1>
+              <p className="position">{coord(target.ra, target.dec)}</p>
+              <p className="note">{note}</p>
+            </>
+          )}
+        </section>
 
-          <SearchForm
-            value={query}
-            onChange={setQuery}
-            busy={formBusy}
-            error={formError}
-            onSubmit={(text) => void openSky(text)}
-          />
+        <Lens
+          image={image}
+          mask={images.get(maskUrl)}
+          palette={palette}
+          showFlags={showFlags}
+          sizePx={manifest?.frame_px ?? 240}
+          fovArcsec={manifest?.fov_arcsec ?? 120}
+          mark={mark}
+          trail={path}
+          currentId={windowId}
+          dateLabel={dateLabel}
+          bandLabel={bandLabel}
+          description={description}
+          status={status}
+          statusText={statusText}
+          statusHint={pending ? "A new place takes a few minutes the first time. After that it opens straight away." : undefined}
+          progress={progress}
+          onRetry={retry}
+          soundRing={soundRing}
+        >
+          <button
+            type="button"
+            className="satellite"
+            style={{ "--a": "126deg" } as React.CSSProperties}
+            aria-pressed={palette === "gray"}
+            aria-label="Gray scale"
+            data-tip="Gray scale"
+            onClick={() => setPalette((v) => (v === "heat" ? "gray" : "heat"))}
+          >
+            <CircleHalf aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="satellite"
+            style={{ "--a": "146deg" } as React.CSSProperties}
+            aria-pressed={showFlags}
+            aria-label="Mark unreliable pixels"
+            data-tip="Unreliable pixels"
+            onClick={() => setShowFlags((v) => !v)}
+          >
+            <Flag aria-hidden="true" />
+          </button>
+        </Lens>
 
-          <SkyStage
-            image={image}
-            mask={images.get(maskUrl)}
-            palette={palette}
-            showFlags={showFlags}
-            sizePx={manifest?.frame_px ?? 240}
-            fovArcsec={manifest?.fov_arcsec ?? 120}
-            mark={mark}
-            dateLabel={dateLabel}
-            bandLabel={bandLabel}
-            description={description}
-            status={status}
-            statusText={statusText}
-            statusHint={
-              pending
-                ? "A new position takes a few minutes the first time. After that it opens straight away."
-                : undefined
-            }
-            progress={progress}
-            onRetry={retry}
-          />
+        <section className="finding" aria-label="What was measured">
+          {found?.kind === "moved" && (
+            <>
+              <p className="finding-word">Moved</p>
+              <p className="finding-number">
+                <svg viewBox="-12 -12 24 24" aria-hidden="true">
+                  <circle r="10.5" />
+                  <path
+                    d="M0 6.5V-6.5M-3.6 -2.9L0 -6.5L3.6 -2.9"
+                    transform={`rotate(${(Math.atan2(-found.east, found.north) * 180) / Math.PI})`}
+                  />
+                </svg>
+                {found.total.toFixed(1)}″
+              </p>
+              <p className="finding-detail">
+                {shiftWords(found.east, found.north)} in {span(found.fromMjd, found.toMjd)}
+              </p>
+            </>
+          )}
+          {found?.kind === "still" && (
+            <>
+              <p className="finding-word">Holding still</p>
+              <p className="finding-number">&lt; {found.tolerance.toFixed(1)}″</p>
+              <p className="finding-detail">no shift measured across {found.visits} visits</p>
+            </>
+          )}
+          {found?.kind === "none" && (
+            <>
+              <p className="finding-word">Not trackable</p>
+              <p className="finding-detail">
+                {custom
+                  ? "Nothing at the centre could be tracked between visits."
+                  : "The position could not be measured reliably for this target."}
+              </p>
+            </>
+          )}
+          {found && job?.pm_arcsec_yr != null && job.pm_arcsec_yr >= 0.1 && (
+            <p className="finding-catalogue">Catalogue: {job.pm_arcsec_yr.toFixed(1)}″ per year</p>
+          )}
+        </section>
+      </main>
 
-          <div className="transport">
+      <section className="dock" aria-label="Controls">
+        <div className="dock-row">
+          <div className="dock-lead">
             <button
               type="button"
-              className="btn btn-play"
+              className="dial dial-accent"
               onClick={() => setPlaying((v) => !v)}
               disabled={available.length < 2}
               aria-pressed={playing}
+              aria-label={playing ? "Pause the blink" : "Blink between visits"}
             >
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                {playing ? <path d="M4 3h3v10H4zM9 3h3v10H9z" /> : <path d="M4.5 2.5v11l9-5.5z" />}
-              </svg>
-              {playing ? "Pause" : "Blink"}
+              {playing && available.length > 1 ? <Pause weight="fill" /> : <Play weight="fill" />}
             </button>
+            <span className="dial-caption">{playing && available.length > 1 ? "Pause" : "Blink"}</span>
+          </div>
+          <div className="timebar">
             <button
               type="button"
-              className="btn btn-icon"
+              className="round"
               aria-label="Previous visit"
               disabled={available.length < 2}
               onClick={() => {
@@ -463,13 +629,25 @@ export function App() {
                 step(-1);
               }}
             >
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M10.5 3 5.5 8l5 5" />
-              </svg>
+              <CaretLeft aria-hidden="true" />
             </button>
+            {manifest && windowId ? (
+              <Timeline
+                windows={manifest.windows}
+                available={availableIds}
+                current={windowId}
+                notes={visitNotes}
+                onSelect={(id) => {
+                  setPlaying(false);
+                  setWindowId(id);
+                }}
+              />
+            ) : (
+              <div className="timeline" />
+            )}
             <button
               type="button"
-              className="btn btn-icon"
+              className="round"
               aria-label="Next visit"
               disabled={available.length < 2}
               onClick={() => {
@@ -477,157 +655,70 @@ export function App() {
                 step(1);
               }}
             >
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="m5.5 3 5 5-5 5" />
-              </svg>
+              <CaretRight aria-hidden="true" />
             </button>
+          </div>
+          <div className="dock-tail">
             <button
               type="button"
-              className="btn btn-icon btn-toggle"
-              aria-label="Motion sound: one note per visit"
+              className="pill"
               aria-pressed={motionSound && canHearMotion}
               disabled={!canHearMotion}
               title={
                 canHearMotion
-                  ? "Motion sound: one note per visit"
+                  ? "One note per visit: higher is further north"
                   : "Nothing here could be tracked between visits, so there is no motion sound"
               }
               onClick={() => setMotionSound((v) => !v)}
             >
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M2.5 6.2h2.3L8 3.5v9L4.8 9.8H2.5z" />
-                <path d="M10.6 5.6a3.4 3.4 0 0 1 0 4.8M12.6 3.8a6 6 0 0 1 0 8.4" />
-              </svg>
+              {motionSound && canHearMotion ? <SpeakerHigh aria-hidden="true" /> : <SpeakerSlash aria-hidden="true" />}
+              Motion sound
             </button>
-            {manifest && windowId && (
-              <Timeline
-                windows={manifest.windows}
-                available={availableIds}
-                current={windowId}
-                onSelect={(id) => {
-                  setPlaying(false);
-                  setWindowId(id);
-                }}
-              />
-            )}
           </div>
-          <p className="keys">
-            <kbd>Space</kbd> blink · <kbd>←</kbd> <kbd>→</kbd> step through visits · <kbd>1</kbd>–<kbd>6</kbd> band ·{" "}
-            <kbd>L</kbd> listen · <kbd>M</kbd> motion sound
-          </p>
-          {motionSound && canHearMotion && (
-            <p className="hint">
-              Each visit plays one note. Higher means further north, lower means further south, and the sound moves left
-              or right with the picture. The same note means no measurable shift.
-            </p>
+        </div>
+
+        <div className="dock-row dock-light">
+          {manifest ? (
+            <SpectrumStrip
+              spectrum={spectrum?.data}
+              failed={!!spectrum?.error}
+              windows={manifest.windows}
+              windowId={windowId}
+              bands={manifest.bands}
+              bandId={bandId}
+              bandHasFrames={(id) => manifest.frames.some((f) => f.band === id)}
+              onBand={chooseBand}
+              onListen={listen}
+              onHear={setHeardBand}
+              soundRing={soundRing}
+            />
+          ) : (
+            <div className="strip strip-empty" />
           )}
-        </section>
+        </div>
+      </section>
 
-        <aside className="side">
-          {target && (
-            <section className="about">
-              <p className="kind">{job?.label ? SEARCH_LABEL : KIND_LABEL[target.kind]}</p>
-              <h1>{target.name}</h1>
-              <p className="note">
-                {job?.label
-                  ? searchNote(job.label, job.pm_arcsec_yr)
-                  : target.kind === "custom"
-                    ? CUSTOM_NOTE
-                    : TARGET_NOTES[target.id]}
-              </p>
-              {shift && <p className="shift">{shift}</p>}
-              <p className="sr-only" role="status" aria-live="polite">
-                {!playing && win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
-              </p>
-            </section>
-          )}
+      <GoTo
+        open={gotoOpen}
+        onClose={() => setGotoOpen(false)}
+        query={query}
+        onQuery={setQuery}
+        busy={formBusy}
+        error={formError}
+        onSubmit={(text) => void openSky(text).then((ok) => ok && setGotoOpen(false))}
+        examples={targets ?? []}
+        yours={allTargets.filter((t) => t.kind === "custom")}
+        currentId={targetId}
+        onPick={(id) => {
+          selectTarget(id);
+          setGotoOpen(false);
+        }}
+      />
+      <Notes open={notesOpen} onClose={() => setNotesOpen(false)} manifest={manifest} win={win} frame={frame} />
 
-          {manifest && (
-            <>
-              <SpectrumPanel
-                spectrum={spectrum?.data}
-                failed={!!spectrum?.error}
-                windows={manifest.windows}
-                windowId={windowId}
-                band={band}
-                onListen={listen}
-              />
-
-              <section>
-                <h2>Infrared band</h2>
-                <div className="bands" role="group" aria-label="Infrared band, in microns">
-                  {manifest.bands.map((b, i) => {
-                    const has = manifest.frames.some((f) => f.band === b.id);
-                    return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        className="band"
-                        aria-pressed={b.id === bandId}
-                        disabled={!has}
-                        onClick={() => chooseBand(b.id)}
-                      >
-                        <span className="band-range">
-                          {b.lambda_min.toFixed(2)}–{b.lambda_max.toFixed(2)}
-                        </span>
-                        <span className="band-key">{i + 1}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="hint">Wavelength in microns, shortest to longest. Bright stars saturate less in the long bands.</p>
-              </section>
-
-              <section>
-                <h2>Display</h2>
-                <div className="seg" role="group" aria-label="Colour map">
-                  {(["heat", "gray"] as const).map((id) => (
-                    <button key={id} type="button" aria-pressed={palette === id} onClick={() => setPalette(id)}>
-                      {id === "heat" ? "Heat" : "Gray"}
-                    </button>
-                  ))}
-                </div>
-                <label className="check">
-                  <input type="checkbox" checked={showFlags} onChange={(e) => setShowFlags(e.target.checked)} />
-                  <span>Mark unreliable pixels</span>
-                </label>
-                {showFlags && (
-                  <ul className="legend">
-                    <li>
-                      <i className="sw sw-sat" /> Saturated: source too bright
-                    </li>
-                    <li>
-                      <i className="sw sw-bad" /> Bad or missing detector pixel
-                    </li>
-                  </ul>
-                )}
-              </section>
-
-              {win && frame && (
-                <section>
-                  <h2>This view</h2>
-                  <dl className="facts">
-                    <dt>Visit</dt>
-                    <dd>
-                      {dayMonthYear(win.date_start)} to {dayMonthYear(win.date_end)}
-                    </dd>
-                    <dt>Image</dt>
-                    <dd>Median of {frame.n_exposures} exposures</dd>
-                    <dt>Field</dt>
-                    <dd>
-                      {manifest.fov_arcsec / 60}′ across · north up, east left
-                    </dd>
-                    <dt>Centre</dt>
-                    <dd>{coord(manifest.ra, manifest.dec)}</dd>
-                    <dt>Data</dt>
-                    <dd>{manifest.source.n_exposures_used} SPHEREx exposures in total</dd>
-                  </dl>
-                </section>
-              )}
-            </>
-          )}
-        </aside>
-      </main>
+      <p className="sr-only" role="status" aria-live="polite">
+        {!playing && win ? `${dateLabel}, ${bandLabel}. ${shift}` : ""}
+      </p>
     </div>
   );
 }

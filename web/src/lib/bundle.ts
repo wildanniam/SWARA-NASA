@@ -42,6 +42,9 @@ export type Motion = {
   n: number;
 };
 
+/** Citra medan lebar di sekitar posisi; latar langit di viewer. */
+export type Context = { image: string; fov_arcsec: number; size_px: number; band: string; n_exposures: number };
+
 export type Manifest = {
   id: string;
   name: string;
@@ -53,6 +56,7 @@ export type Manifest = {
   bands: Band[];
   frames: Frame[];
   motion: Motion[];
+  context?: Context | null;
   source: { n_exposures_used: number; collections: string[] };
 };
 
@@ -107,6 +111,45 @@ export function shiftAt(m: Manifest, windowId: string): Shift {
   return Math.hypot(cur.d_east_arcsec, cur.d_north_arcsec) < tolerance
     ? { kind: "still", tolerance }
     : { kind: "moved", east: cur.d_east_arcsec, north: cur.d_north_arcsec };
+}
+
+/** Temuan utama untuk satu benda: pergeseran terbesar yang terukur, atau kenapa tidak ada. */
+export type Finding =
+  | { kind: "none" }
+  | { kind: "still"; tolerance: number; visits: number }
+  | { kind: "moved"; east: number; north: number; total: number; fromMjd: number; toMjd: number };
+
+export function finding(m: Manifest): Finding {
+  const ref = referenceMotion(m);
+  const from = m.windows.find((w) => w.id === ref?.window);
+  if (!ref || !from) return { kind: "none" };
+  let best: Extract<Finding, { kind: "moved" }> | undefined;
+  let tolerance = 0;
+  let visits = 0;
+  for (const w of m.windows) {
+    const s = shiftAt(m, w.id);
+    if (s.kind === "moved") {
+      const total = Math.hypot(s.east, s.north);
+      if (!best || total > best.total)
+        best = { kind: "moved", east: s.east, north: s.north, total, fromMjd: from.mjd_mid, toMjd: w.mjd_mid };
+    }
+    if (s.kind === "still") tolerance = Math.max(tolerance, s.tolerance);
+    if (s.kind !== "unmeasured") visits++;
+  }
+  return best ?? { kind: "still", tolerance: tolerance || 1.5, visits };
+}
+
+/** Posisi terukur tiap kunjungan dalam piksel frame, untuk jejak di lensa. */
+export function trail(m: Manifest): { id: string; x: number; y: number }[] {
+  if (!referenceMotion(m)) return [];
+  const scale = m.frame_px / m.fov_arcsec;
+  const c = m.frame_px / 2;
+  const cos = Math.cos((m.dec * Math.PI) / 180);
+  return m.motion.map((p) => ({
+    id: p.window,
+    x: c - (p.ra - m.ra) * 3600 * cos * scale,
+    y: c - (p.dec - m.dec) * 3600 * scale,
+  }));
 }
 
 /** Posisi acuan: posisi terukur di jendela pertama, bila pengukurannya stabil. */

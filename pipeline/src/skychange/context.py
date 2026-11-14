@@ -128,13 +128,18 @@ def build_context(cutouts: list[Cutout], ra: float, dec: float, out: Path, cache
     # Inti bintang yang jenuh tidak punya nilai dan akan tampak sebagai lubang
     # hitam di tengah bintang terang. Piksel kosong yang bertetangga dengan
     # piksel terang diisi terang; piksel kosong di tempat lain tetap gelap.
-    padded = np.pad(image, 2, constant_values=np.nan)
+    # Diulang supaya inti yang lebar terisi dari tepi ke tengah.
     h, w = image.shape
-    around = np.full(image.shape, -np.inf)
-    for dy in range(5):
-        for dx in range(5):
-            around = np.fmax(around, padded[dy : dy + h, dx : dx + w])
-    image = np.where(np.isnan(image) & (around > 0.5 * vmax), vmax, image)
+    for _ in range(12):
+        padded = np.pad(image, 2, constant_values=np.nan)
+        around = np.full(image.shape, -np.inf)
+        for dy in range(5):
+            for dx in range(5):
+                around = np.fmax(around, padded[dy : dy + h, dx : dx + w])
+        fill = np.isnan(image) & (around > 0.5 * vmax)
+        if not fill.any():
+            break
+        image = np.where(fill, vmax, image)
 
     Image.fromarray(fr.stretch(np.nan_to_num(image, nan=0.0), knee, vmax), "L").save(out / "context.png", optimize=True)
     log(f"  konteks: {len(wide)} eksposur D{detector}, {time.time() - t0:.1f}s")

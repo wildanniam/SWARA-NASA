@@ -18,7 +18,7 @@ export const TARGET_NOTES: Record<string, string> = {
   barnard:
     "The star with the fastest apparent motion in our sky. Blink between visits and it steps north, away from the mark, while the faint stars around it stay put.",
   epsindb:
-    "A pair of brown dwarfs about 12 light-years away. They drift south-east by roughly one SPHEREx pixel over 16 months, so the step is small.",
+    "A pair of brown dwarfs about 12 light-years away. They drift south-east by roughly one SPHEREx pixel between the first and last visit, so the step is small.",
   rwaur:
     "A young star that stays in place but changes brightness between visits. The change is strongest in the long-wavelength bands.",
   wise0855:
