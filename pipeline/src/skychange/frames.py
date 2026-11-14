@@ -77,18 +77,23 @@ def stack(cutouts: list[Cutout], ra: np.ndarray, dec: np.ndarray):
     Mengembalikan (citra MJy/sr dengan latar dikurangi, fraksi eksposur yang
     jenuh per piksel, fraksi eksposur yang rusak/hilang per piksel).
     """
-    layers, sat, bad = [], [], []
+    layers, sat, bad, lost = [], [], [], []
     for c in cutouts:
         x, y = c.world_to_cutout(ra, dec)
         im = c.image.astype(float)
         layer = _bilinear(im - np.nanmedian(im), x, y)
         fl = _nearest(c.flags, x, y, 0)
+        saturated = (fl & F.SATURATED) != 0
         layers.append(layer)
-        sat.append((fl & F.SATURATED) != 0)
+        sat.append(saturated)
         bad.append(((fl & F.BAD) != 0) | ~np.isfinite(layer))
+        lost.append(saturated & ~np.isfinite(layer))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)  # piksel tanpa data di semua eksposur -> NaN
         image = np.nanmedian(np.array(layers), axis=0)
+    # Inti bintang yang jenuh tidak punya nilai. Ditandai +inf supaya tampil putih
+    # penuh (lebih terang dari yang bisa diukur), bukan lubang hitam.
+    image = np.where(np.mean(lost, axis=0) > 0.5, np.inf, image)
     return image, np.mean(sat, axis=0), np.mean(bad, axis=0)
 
 
@@ -97,6 +102,6 @@ def stretch(image: np.ndarray, knee: float, vmax: float) -> np.ndarray:
     bintang redup terlihat), terkompresi sampai `vmax` (supaya bintang terang
     tidak menutupi). knee dan vmax sama untuk semua jendela satu band, jadi
     perubahan terang antar waktu tidak hilang karena normalisasi."""
-    v = np.clip(np.nan_to_num(image, nan=0.0), 0, None)
+    v = np.clip(np.nan_to_num(image, nan=0.0, posinf=vmax), 0, None)
     out = np.arcsinh(v / knee) / np.arcsinh(vmax / knee)
     return (np.clip(out, 0, 1) * 255).astype(np.uint8)

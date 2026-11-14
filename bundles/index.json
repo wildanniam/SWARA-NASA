@@ -1,0 +1,39 @@
+{
+ "targets": [
+  {
+   "id": "barnard",
+   "name": "Barnard's Star",
+   "kind": "moving",
+   "ra": 269.44627,
+   "dec": 4.76821
+  },
+  {
+   "id": "wise0855",
+   "name": "WISE 0855-0714",
+   "kind": "moving",
+   "ra": 133.75976,
+   "dec": -7.24219
+  },
+  {
+   "id": "epsindb",
+   "name": "Epsilon Indi B",
+   "kind": "moving",
+   "ra": 331.09664,
+   "dec": -56.80066
+  },
+  {
+   "id": "rwaur",
+   "name": "RW Aurigae",
+   "kind": "variable",
+   "ra": 76.95653,
+   "dec": 30.40144
+  },
+  {
+   "id": "rdra",
+   "name": "R Draconis",
+   "kind": "variable",
+   "ra": 248.16761,
+   "dec": 66.75498
+  }
+ ]
+}

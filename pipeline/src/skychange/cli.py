@@ -3,6 +3,7 @@
   skychange build --id barnard --name "Barnard's Star" --ra 269.4463 --dec 4.7679
   skychange presets            # semua target di presets.json
   skychange presets barnard    # hanya yang disebut
+  skychange index              # tulis ulang bundles/index.json
 """
 
 from __future__ import annotations
@@ -34,6 +35,18 @@ def _summary(result: dict) -> None:
     print(f"  frame: {len(m['frames'])}, gagal unduh: {len(result['failed'])}, waktu: {result['timing']}")
 
 
+def write_index(out: Path) -> Path:
+    """Daftar preset yang bundelnya sudah ada; dibaca viewer saat mulai."""
+    targets = [
+        {k: t[k] for k in ("id", "name", "kind", "ra", "dec")}
+        for t in json.loads(PRESETS.read_text())["targets"]
+        if (out / t["id"] / "manifest.json").exists()
+    ]
+    path = out / "index.json"
+    path.write_text(json.dumps({"targets": targets}, indent=1))
+    return path
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="skychange")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -44,12 +57,17 @@ def main() -> None:
     b.add_argument("--dec", type=float, required=True)
     p = sub.add_parser("presets", help="target di presets.json")
     p.add_argument("ids", nargs="*")
+    i = sub.add_parser("index", help="tulis ulang bundles/index.json")
+    i.add_argument("--out", type=Path, default=ROOT / "bundles")
     for s in (b, p):
         s.add_argument("--fov", type=float, default=120.0, help="lebar medan, detik busur")
         s.add_argument("--out", type=Path, default=ROOT / "bundles")
         s.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
     a = ap.parse_args()
 
+    if a.cmd == "index":
+        print(write_index(a.out))
+        return
     if a.cmd == "build":
         targets = [{"id": a.id, "name": a.name, "ra": a.ra, "dec": a.dec}]
     else:
@@ -59,6 +77,7 @@ def main() -> None:
             _summary(build(t["id"], t["name"], t["ra"], t["dec"], a.out, a.cache, fov_arcsec=a.fov))
         except Exception as err:
             print(f"[{t['id']}] GAGAL: {type(err).__name__}: {err}")
+    write_index(a.out)
 
 
 if __name__ == "__main__":
