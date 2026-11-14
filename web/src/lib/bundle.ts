@@ -69,6 +69,8 @@ export type Manifest = {
   motion: Motion[];
   context?: Context | null;
   wise?: Wise | null;
+  /** Pratinjau selagi bundle dibuat: hanya riwayat WISE dan citra medan lebar. */
+  preview?: boolean;
   source: { n_exposures_used: number; collections: string[] };
 };
 
@@ -88,6 +90,10 @@ export const assetUrl = (targetId: string, custom: boolean, path: string) => `${
 
 export const loadManifest = (id: string, custom: boolean, signal?: AbortSignal) =>
   getJson<Manifest>(assetUrl(id, custom, "manifest.json"), signal);
+
+/** Pratinjau bundle yang masih dibuat; belum tentu ada, jadi kegagalan dianggap biasa. */
+export const loadPreview = (id: string, signal?: AbortSignal) =>
+  getJson<Manifest>(`${assetUrl(id, true, "preview.json")}?t=${Date.now()}`, signal);
 
 export const loadSpectrum = (id: string, custom: boolean, signal?: AbortSignal) =>
   getJson<Spectrum>(assetUrl(id, custom, "spectrum.json"), signal);

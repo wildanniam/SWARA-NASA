@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
+import { CollectingStrip } from "./components/CollectingStrip";
 import { GoTo } from "./components/GoTo";
 import { Lens } from "./components/Lens";
 import { LongTimeline } from "./components/LongTimeline";
@@ -30,6 +31,7 @@ import {
   finding,
   loadIndex,
   loadManifest,
+  loadPreview,
   loadSpectrum,
   referenceMotion,
   shiftAt,
@@ -99,6 +101,8 @@ export function App() {
   // Tempat yang lensanya sudah terbuka; sebelum itu lensa masih tertutup di langit lebar.
   const [landedId, setLandedId] = useState<string>();
   // Pembesaran kerja yang dituju setelah lensa terbuka pada medan terlebarnya.
+  // Tempat yang sedang tampil dari pratinjau (bundle-nya masih dibuat).
+  const previewFor = useRef<string | undefined>(undefined);
   const homeZoom = useRef<number | undefined>(undefined);
   const diveTimer = useRef(0);
   const appRef = useRef<HTMLDivElement>(null);
@@ -222,7 +226,8 @@ export function App() {
   useEffect(() => {
     if (!targetId || !ready) return;
     const ac = new AbortController();
-    setLoaded({ id: targetId });
+    // Pratinjau yang sedang tampil dibiarkan sampai bundle lengkapnya datang.
+    setLoaded((cur) => (cur?.id === targetId && cur.manifest?.preview ? cur : { id: targetId }));
     loadManifest(targetId, custom, ac.signal)
       .then((manifest) => {
         // Band dari tautan hanya dipakai untuk target pertama yang tampil.
@@ -236,6 +241,15 @@ export function App() {
           ...wise.map((f) => assetUrl(targetId, custom, f.image)),
         ]);
         // Kalau ada riwayat WISE, cerita dimulai dari sana, kecuali tautan meminta SPHEREx saja.
+        if (previewFor.current === targetId) {
+          // Orang sudah menonton riwayat WISE tempat ini: bundle lengkap masuk tanpa
+          // mengulang dari awal. Kunjungan SPHEREx menyusul di ujung deretan.
+          previewFor.current = undefined;
+          setLoaded({ id: targetId, manifest });
+          setBandId(band);
+          setWindowId(first?.id);
+          return;
+        }
         const wantedView = viewFromLink.current;
         viewFromLink.current = null;
         const long = wise.length > 0 && wantedView !== "spherex";
@@ -262,6 +276,31 @@ export function App() {
 
   const manifest = loaded?.id === targetId ? loaded?.manifest : undefined;
 
+  // Selagi bundle baru dibuat, tampilkan yang sudah siap: riwayat WISE dalam
+  // beberapa detik, lalu langit lebar. Sisanya menyusul saat bundle lengkap.
+  const previewParts = job && pending ? `${job.wise ? "w" : ""}${job.context ? "c" : ""}` : "";
+  useEffect(() => {
+    if (!targetId || !previewParts) return;
+    const ac = new AbortController();
+    loadPreview(targetId, ac.signal)
+      .then((preview) => {
+        setLoaded((cur) =>
+          cur?.id === targetId && cur.manifest && !cur.manifest.preview ? cur : { id: targetId, manifest: preview },
+        );
+        preload((preview.wise?.frames ?? []).map((f) => assetUrl(targetId, true, f.image)));
+        const first = preview.wise?.frames[0];
+        if (first && previewFor.current !== targetId) {
+          previewFor.current = targetId;
+          setEra("long");
+          setWiseId(first.id);
+          setZoomArcsec(preview.fov_arcsec);
+          setPlaying(!prefersReducedMotion());
+        }
+      })
+      .catch(() => undefined); // belum tertulis atau sudah diganti bundle lengkap: coba lagi nanti
+    return () => ac.abort();
+  }, [targetId, previewParts]);
+
   // Yang sedang tampil dicatat di URL, supaya tautannya membuka pandangan yang sama.
   useEffect(() => {
     if (!targetId || !bandId || !manifest) return;
@@ -278,7 +317,7 @@ export function App() {
 
   // Spektrum menyusul setelah citra; panelnya punya keadaan memuat sendiri.
   useEffect(() => {
-    if (!targetId || !manifest) return;
+    if (!targetId || !manifest || manifest.preview) return;
     const ac = new AbortController();
     setSpec({ id: targetId });
     loadSpectrum(targetId, custom, ac.signal)
@@ -540,6 +579,11 @@ export function App() {
     );
     return () => window.clearTimeout(diveTimer.current);
   }, [landed, manifest]);
+
+  // Berapa eksposur yang sudah terbaca dari berapa. Jumlah totalnya hanya dilaporkan
+  // selama tahap baca; sesudah itu semuanya sudah terbaca.
+  const collected = job?.seen_um?.length ?? 0;
+  const expected = job?.stage === "fetch" ? Math.max(job.total, collected) : collected;
 
   // Teks panggung selama bundle koordinat bebas dibuat, atau saat gagal.
   let statusText: string | undefined;
@@ -832,7 +876,16 @@ export function App() {
         </Lens>
 
         <section className="finding" aria-label="What was measured">
-          {found?.kind === "moved" && (
+          {manifest?.preview && job && (
+            <>
+              <p className="finding-word">Collecting</p>
+              <p className="finding-number">{expected ? `${collected} / ${expected}` : "…"}</p>
+              <p className="finding-detail">
+                SPHEREx exposures read. The measured shift and the spectrum appear when all are in.
+              </p>
+            </>
+          )}
+          {!manifest?.preview && found?.kind === "moved" && (
             <>
               <p className="finding-word">Moved</p>
               <p className="finding-number">
@@ -850,14 +903,14 @@ export function App() {
               </p>
             </>
           )}
-          {found?.kind === "still" && (
+          {!manifest?.preview && found?.kind === "still" && (
             <>
               <p className="finding-word">Holding still</p>
               <p className="finding-number">&lt; {found.tolerance.toFixed(1)}″</p>
               <p className="finding-detail">no shift measured across {found.visits} visits</p>
             </>
           )}
-          {found?.kind === "none" && (
+          {!manifest?.preview && found?.kind === "none" && (
             <>
               <p className="finding-word">Not trackable</p>
               <p className="finding-detail">
@@ -867,7 +920,7 @@ export function App() {
               </p>
             </>
           )}
-          {found && job?.pm_arcsec_yr != null && job.pm_arcsec_yr >= 0.1 && (
+          {(found || manifest?.preview) && job?.pm_arcsec_yr != null && job.pm_arcsec_yr >= 0.1 && (
             <p className="finding-catalogue">Catalogue: {job.pm_arcsec_yr.toFixed(1)}″ per year</p>
           )}
         </section>
@@ -892,7 +945,7 @@ export function App() {
             <span className="dial-caption">{playing && sequence.length > 1 ? "Pause" : long ? "Play" : "Blink"}</span>
           </div>
           <div className="timebar">
-            {wise && (
+            {wise && !manifest?.preview && (
               <div className="era" role="group" aria-label="Time span">
                 <button type="button" aria-pressed={long} onClick={() => chooseEra("long")}>
                   16 years
@@ -971,7 +1024,15 @@ export function App() {
         </div>
 
         <div className="dock-row dock-light">
-          {manifest ? (
+          {job && pending ? (
+            <CollectingStrip
+              bands={manifest?.bands ?? []}
+              seen={job.seen_um ?? []}
+              done={collected}
+              total={expected}
+              stage={job.stage}
+            />
+          ) : manifest && !manifest.preview ? (
             <SpectrumStrip
               spectrum={spectrum?.data}
               failed={!!spectrum?.error}

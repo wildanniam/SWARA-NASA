@@ -116,7 +116,55 @@ def build_context(cutouts: list[Cutout], ra: float, dec: float, out: Path, cache
     if detector is None:
         return None
     chosen = [e for _, e in sorted(by_detector[detector], key=lambda p: -p[0])[:MAX_EXPOSURES]]
+    return _render(detector, chosen, ra, dec, out, cache_root, log, t0)
 
+
+def build_context_early(
+    exposures: list[Exposure], ra: float, dec: float, out: Path, cache_root: Path, cutout_px: int, log=print
+) -> dict | None:
+    """Sama dengan `build_context`, tapi tanpa menunggu cutout: eksposur dipilih dari
+    header saja (satu permintaan kecil per eksposur satu detektor), supaya latar
+    viewer siap beberapa detik setelah pencarian, bukan setelah semua data terbaca.
+    Aturan pilihnya sama: detektor pertama yang punya dua eksposur atau lebih, lalu
+    eksposur yang targetnya paling jauh dari tepi detektor."""
+    t0 = time.time()
+    by_detector: dict[int, list[Exposure]] = {}
+    for e in exposures:
+        by_detector.setdefault(e.detector, []).append(e)
+
+    def depth(exp: Exposure):
+        header = None
+        for _ in range(2):  # satu kali ulang: jaringan sedang ramai oleh unduhan utama
+            try:
+                header = Head(exp.url).header
+                break
+            except Exception:
+                continue
+        if header is None:
+            return None
+        x, y = WCS(header).world_to_pixel_values(ra, dec)
+        x0, y0 = int(round(float(x))) - cutout_px // 2, int(round(float(y))) - cutout_px // 2
+        if x0 + cutout_px <= 0 or y0 + cutout_px <= 0 or x0 >= DETECTOR_PX or y0 >= DETECTOR_PX:
+            return None  # target di luar detektor ini
+        cx, cy = x0 + cutout_px // 2, y0 + cutout_px // 2
+        return (-min(cx, cy, DETECTOR_PX - cx, DETECTOR_PX - cy), float(header["MJD-AVG"]), exp)
+
+    for detector in DETECTOR_ORDER:
+        candidates = by_detector.get(detector, [])
+        if len(candidates) < 2:
+            continue
+        with ThreadPoolExecutor(min(32, len(candidates))) as pool:
+            found = [d for d in pool.map(depth, candidates) if d is not None]
+        if len(found) >= 2:
+            chosen = [d[2] for d in sorted(found, key=lambda d: d[:2])[:MAX_EXPOSURES]]
+            return _render(detector, chosen, ra, dec, out, cache_root, log, t0)
+    log("  konteks: tidak ada detektor dengan dua eksposur yang terbaca dari header")
+    return None
+
+
+def _render(
+    detector: int, chosen: list[Exposure], ra: float, dec: float, out: Path, cache_root: Path, log, t0: float
+) -> dict | None:
     n = _wide_px()
     cache = cache_root / f"context_{ra:.5f}_{dec:+.5f}_{n}px"
     cache.mkdir(parents=True, exist_ok=True)

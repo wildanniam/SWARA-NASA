@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
@@ -21,7 +22,7 @@ from astropy.time import Time
 from PIL import Image
 
 from . import frames as fr
-from .context import build_context
+from .context import build_context, build_context_early
 from .fetch import fetch_all
 from .search import search
 from .spectrum import measure
@@ -66,9 +67,17 @@ def build(
     workers: int = 32,
     log=print,
     progress=None,
+    on_part=None,
+    on_wavelength=None,
 ) -> dict:
     """`progress(stage, done, total)` dipanggil saat tahap berganti dan tiap cutout
-    selesai; tahap: "search", "fetch", "frames", "context", "wise"."""
+    selesai; tahap: "search", "fetch", "frames", "context", "wise".
+
+    Supaya ada yang bisa dilihat sebelum semuanya selesai, riwayat WISE dan citra
+    medan lebar dibuat lebih dulu dan ditulis ke `preview.json` di folder bundle.
+    `on_part("wise" | "context")` dipanggil saat masing-masing siap, dan
+    `on_wavelength(mikron)` tiap satu eksposur terbaca: panjang gelombang yang
+    diamati eksposur itu di posisi target."""
     report = progress or (lambda stage, done, total: None)
     t0 = time.time()
     out = out_root / target_id
@@ -76,13 +85,57 @@ def build(
     # Dua tambahan yang tidak bergantung pada hasil utama dijalankan di samping:
     # riwayat WISE sejak awal, citra medan lebar begitu cutout siap.
     side = ThreadPoolExecutor(2, thread_name_prefix="side")
-    wise_job = side.submit(build_wise, ra, dec, out, fov_arcsec, log=log)
+    preview = {
+        "id": target_id,
+        "name": name,
+        "ra": ra,
+        "dec": dec,
+        "fov_arcsec": fov_arcsec,
+        "frame_px": frame_px,
+        "preview": True,
+        "windows": [],
+        "bands": fr.BANDS,
+        "frames": [],
+        "motion": [],
+        "context": None,
+        "wise": None,
+        "source": {"n_exposures_used": 0, "collections": []},
+    }
+    preview_lock = threading.Lock()
+
+    def part(kind: str, make):
+        """Jalankan satu tambahan; kalau berhasil, catat di preview.json dan kabari."""
+        value = make()
+        if value is not None:
+            with preview_lock:
+                preview[kind] = value
+                tmp = out / "preview.tmp"
+                tmp.write_text(json.dumps(preview, allow_nan=False))
+                tmp.replace(out / "preview.json")
+            if on_part:
+                on_part(kind)
+        return value
+
+    wise_job = side.submit(part, "wise", lambda: build_wise(ra, dec, out, fov_arcsec, log=log))
     report("search", 0, 0)
     exposures = search(ra, dec)
     t_search = time.time() - t0
     log(f"[{target_id}] {len(exposures)} eksposur ditemukan ({t_search:.1f}s)")
     if not exposures:
+        side.shutdown(wait=False, cancel_futures=True)
         raise NoData("Tidak ada data SPHEREx di posisi ini")
+    context_job = side.submit(
+        part,
+        "context",
+        lambda: build_context_early(exposures, ra, dec, out, cache_root, cutout_px(fov_arcsec), log=log),
+    )
+    side.shutdown(wait=False)
+
+    def seen(c) -> None:
+        if on_wavelength:
+            lam = float(c.lam[c.lam.shape[0] // 2, c.lam.shape[1] // 2])
+            if math.isfinite(lam):
+                on_wavelength(lam)
 
     t1 = time.time()
     report("fetch", 0, len(exposures))
@@ -94,6 +147,7 @@ def build(
         cache_root,
         workers,
         progress=lambda done, total: report("fetch", done, total),
+        on_cutout=seen,
     )
     t_fetch = time.time() - t1
     log(f"[{target_id}] {len(cutouts)} cutout siap, {len(failed)} gagal ({t_fetch:.1f}s)")
@@ -101,8 +155,6 @@ def build(
         if len(failed) == len(exposures):
             raise RuntimeError(f"Semua cutout gagal diambil: {failed[0][1]}")
         raise NoData("Posisi ini jatuh di luar semua detektor")
-    context_job = side.submit(build_context, cutouts, ra, dec, out, cache_root, log=log)
-    side.shutdown(wait=False)
     report("frames", 0, 0)
 
     win_idx = fr.split_windows([c.mjd for c in cutouts])
@@ -240,6 +292,14 @@ def build(
     except Exception as err:
         log(f"[{target_id}] konteks gagal: {type(err).__name__}: {err}")
         context = None
+    if context is None:
+        # Jalur awal memilih eksposur dari header saja dan berjalan berebut jaringan
+        # dengan unduhan utama. Kalau ia tidak jadi, coba sekali lagi dari cutout yang
+        # sudah ada, seperti sebelum pratinjau diperkenalkan.
+        try:
+            context = build_context(cutouts, ra, dec, out, cache_root, log=log)
+        except Exception as err:
+            log(f"[{target_id}] konteks gagal lagi: {type(err).__name__}: {err}")
 
     # Riwayat WISE 2010-2024 di medan yang sama. Juga tambahan saja.
     report("wise", 0, 0)
@@ -296,6 +356,7 @@ def build(
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, allow_nan=False))
     (out / "spectrum.json").write_text(json.dumps(spectrum, indent=1, allow_nan=False))
+    (out / "preview.json").unlink(missing_ok=True)  # bundle lengkap menggantikan pratinjau
 
     timing = {"search_s": round(t_search, 1), "fetch_s": round(t_fetch, 1), "total_s": round(time.time() - t0, 1)}
     log(f"[{target_id}] bundle ditulis ke {out} ({timing['total_s']}s total)")

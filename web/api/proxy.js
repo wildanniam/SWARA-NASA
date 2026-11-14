@@ -42,7 +42,8 @@ export default async function handler(req, res) {
   });
   // Berkas bundle yang sudah jadi tidak berubah, jadi boleh disimpan CDN;
   // keadaan pekerjaan harus selalu segar.
-  const cacheable = upstream.ok && path.startsWith("bundles/");
+  // preview.json berubah selagi bundle dibuat, jadi tidak boleh disimpan.
+  const cacheable = upstream.ok && path.startsWith("bundles/") && !path.endsWith("/preview.json");
   res.setHeader("cache-control", cacheable ? "public, max-age=300, s-maxage=3600" : "no-store");
   res.send(Buffer.from(await upstream.arrayBuffer()));
 }

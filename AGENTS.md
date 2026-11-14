@@ -60,10 +60,9 @@ Urutan platform berikutnya:
 1. Peralihan WISE ke SPHEREx yang lebih halus (nada citra disamakan, serah-terima yang terlihat).
 2. Pilihan warna yang dikurasi, tombol Share dan Guide yang menonjol, kartu berbagi.
 3. Input RA dan Dec yang lebih mudah: dua kotak berlabel dan pratinjau "dibaca sebagai".
-4. Pemuatan bertahap untuk tempat baru: riwayat WISE dan langit lebar tampil lebih dulu.
-5. Halaman proyek dan video demo berbahasa Inggris.
+4. Halaman proyek dan video demo berbahasa Inggris.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, dan deploy publik.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, dan pemuatan bertahap untuk tempat baru.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -140,6 +139,8 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **TEMUAN: pemuatan bertahap jalan.** Selagi bundle tempat baru dibuat, server menulis `preview.json` dan keadaan pekerjaan menyebut apa yang sudah siap. Diukur di laptop pada satu tempat baru: riwayat WISE siap dalam 4 detik, citra medan lebar dalam 22 detik, bundle lengkap dalam 87 detik. Di viewer, lensa memutar riwayat WISE mulai sekitar detik ke-13 (termasuk perpindahan dan pencarian), cincinnya menunjukkan progres, dan pita spektrum terisi satu garis per eksposur yang terbaca. Saat bundle lengkap datang, pemutaran tidak diulang: kunjungan SPHEREx menyusul di ujung deretan.
+  - Citra medan lebar sekarang memilih eksposurnya dari header saja supaya bisa jadi lebih awal. Hasilnya sama persis dengan cara lama. Jalur ini berebut jaringan dengan unduhan utama dan sekali tidak jadi saat dua bundle dibuat bersamaan; karena itu kalau gagal, ia dibuat lagi dari cutout di akhir.
 - **TEMUAN: kenapa benda baru lambat, dan perbaikannya.** Diukur di laptop dan di server, keduanya di Indonesia.
   - Sebab: tiap eksposur dibaca dengan sekitar 360 permintaan kecil berurutan (10,7 MB, 21-30 detik sendirian). Hampir semuanya untuk penanda piksel (FLAGS), yang disimpan terkompresi satu baris per petak dan dibaca 64 KB per baris.
   - Perbaikan 1, `remote.py`: susunan berkas tetap, jadi header, baris IMAGE, tabel penunjuk dan baris FLAGS, serta tabel panjang gelombang diminta langsung. Hasilnya identik dengan cara lama pada semua larik (citra, penanda, panjang gelombang, lebar pita, posisi, header) di tiga detektor. Unduhan 291 eksposur: 264 jadi sekitar 45 detik di server.
