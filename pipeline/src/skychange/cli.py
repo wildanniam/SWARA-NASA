@@ -5,6 +5,7 @@
   skychange presets barnard    # hanya yang disebut
   skychange index              # tulis ulang bundles/index.json
   skychange serve              # API koordinat bebas untuk viewer (lihat server.py)
+  skychange context            # tambah citra medan lebar ke bundle yang sudah ada
 """
 
 from __future__ import annotations
@@ -13,7 +14,10 @@ import argparse
 import json
 from pathlib import Path
 
-from .bundle import build
+from .bundle import build, cutout_px
+from .context import build_context
+from .fetch import fetch_all
+from .search import search
 
 ROOT = Path(__file__).resolve().parents[3]  # folder repo
 PRESETS = ROOT / "pipeline" / "presets.json"
@@ -48,6 +52,16 @@ def write_index(out: Path) -> Path:
     return path
 
 
+def add_context(bundle: Path, cache: Path) -> None:
+    """Tambah `context.png` ke bundle yang sudah ada, tanpa membuat ulang frame-nya."""
+    path = bundle / "manifest.json"
+    m = json.loads(path.read_text())
+    cutouts, _ = fetch_all(search(m["ra"], m["dec"]), m["ra"], m["dec"], cutout_px(m["fov_arcsec"]), cache)
+    m["context"] = build_context(cutouts, m["ra"], m["dec"], bundle, cache)
+    path.write_text(json.dumps(m, indent=1, allow_nan=False))
+    print(f"[{bundle.name}] konteks: {m['context']}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="skychange")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -65,6 +79,10 @@ def main() -> None:
     v.add_argument("--port", type=int, default=8000)
     v.add_argument("--bundles", type=Path, default=ROOT / "data" / "bundles", help="bundle koordinat bebas")
     v.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
+    c = sub.add_parser("context", help="tambah citra medan lebar ke bundle yang sudah ada")
+    c.add_argument("ids", nargs="*", help="folder bundle; kosong = semua")
+    c.add_argument("--out", type=Path, default=ROOT / "bundles")
+    c.add_argument("--cache", type=Path, default=ROOT / "data" / "cache")
     for s in (b, p):
         s.add_argument("--fov", type=float, default=120.0, help="lebar medan, detik busur")
         s.add_argument("--out", type=Path, default=ROOT / "bundles")
@@ -73,6 +91,15 @@ def main() -> None:
 
     if a.cmd == "index":
         print(write_index(a.out))
+        return
+    if a.cmd == "context":
+        for bundle in sorted(d for d in a.out.iterdir() if (d / "manifest.json").exists()):
+            if a.ids and bundle.name not in a.ids:
+                continue
+            try:
+                add_context(bundle, a.cache)
+            except Exception as err:
+                print(f"[{bundle.name}] GAGAL: {type(err).__name__}: {err}")
         return
     if a.cmd == "serve":
         import logging

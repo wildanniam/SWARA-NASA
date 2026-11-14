@@ -53,10 +53,17 @@ Bundle koordinat bebas disimpan di `data/bundles/` (tidak ikut git), jadi koordi
 | `spectrum.json` | satu titik per eksposur: panjang gelombang, fluks, penanda |
 | `frames/<jendela>_<band>.png` | citra abu-abu 240x240, utara di atas, timur di kiri |
 | `frames/<jendela>_<band>_mask.png` | 0 = baik, 128 = rusak/hilang, 255 = jenuh |
+| `context.png` | citra medan lebar 40 menit busur di sekitar posisi, 720x720, utara di atas, timur di kiri |
 
 **Jendela waktu** (`w1`, `w2`, ...): SPHEREx melewati satu lokasi kira-kira tiap 6 bulan; eksposur yang terpisah lebih dari 30 hari masuk jendela berbeda.
 
 **Band** (`D1`-`D6`): enam detektor SPHEREx, 0,75-5,0 mikron. Satu frame = median semua eksposur detektor itu dalam satu jendela. Skala terang sama untuk semua jendela dalam satu band, jadi perubahan terang antar waktu itu nyata. Inti bintang yang jenuh dan tidak punya nilai ditampilkan putih penuh; topengnya tetap menandai piksel itu sebagai jenuh.
+
+**Citra medan lebar** (`context.png`, isian `context` di manifest): median 4 eksposur detektor 2 (1,10-1,63 mikron) yang dipotong jauh lebih lebar dari frame blink. Dipakai viewer sebagai latar langit. Ini untuk suasana dan orientasi, bukan untuk diukur: latar tiap eksposur diratakan per baris dan kolom, tidak ada topeng piksel, dan inti bintang jenuh diisi putih. Isian `context` bisa `null` kalau citranya gagal dibuat; bundle tetap sah. Untuk menambahkannya ke bundle lama tanpa membuat ulang frame:
+
+```bash
+uv run skychange context
+```
 
 ## spectrum.json (kontrak untuk sonifikasi)
 

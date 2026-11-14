@@ -20,6 +20,7 @@ from astropy.time import Time
 from PIL import Image
 
 from . import frames as fr
+from .context import build_context
 from .fetch import fetch_all
 from .search import search
 from .spectrum import measure
@@ -60,7 +61,7 @@ def build(
     progress=None,
 ) -> dict:
     """`progress(stage, done, total)` dipanggil saat tahap berganti dan tiap cutout
-    selesai; tahap: "search", "fetch", "frames"."""
+    selesai; tahap: "search", "fetch", "frames", "context"."""
     report = progress or (lambda stage, done, total: None)
     t0 = time.time()
     report("search", 0, 0)
@@ -219,6 +220,14 @@ def build(
                 }
             )
 
+    # Citra medan lebar untuk latar viewer. Tambahan saja: kalau gagal, bundle tetap jadi.
+    report("context", 0, 0)
+    try:
+        context = build_context(cutouts, ra, dec, out, cache_root, log=log)
+    except Exception as err:
+        log(f"[{target_id}] konteks gagal: {type(err).__name__}: {err}")
+        context = None
+
     manifest = {
         "id": target_id,
         "name": name,
@@ -235,6 +244,7 @@ def build(
         "bands": fr.BANDS,
         "frames": frame_list,
         "motion": motion,
+        "context": context,
         "spectrum": "spectrum.json",
         "source": {
             "mission": "SPHEREx",

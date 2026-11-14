@@ -318,5 +318,13 @@
   "n_exposures_used": 545,
   "n_failed": 0,
   "generated_at": "2026-11-13T14:52:04+00:00"
+ },
+ "context": {
+  "image": "context.png",
+  "fov_arcsec": 2400.0,
+  "size_px": 720,
+  "band": "D2",
+  "n_exposures": 4,
+  "coverage": 1.0
  }
 }
