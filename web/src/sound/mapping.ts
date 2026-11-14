@@ -45,3 +45,28 @@ export const SOUND = {
 };
 
 export type SoundSettings = typeof SOUND;
+
+// Motif gerak: tiap kunjungan satu nada pendek dari posisi terukurnya, berbunyi
+// seiring blink. Ukurannya tetap untuk semua benda, jadi gerak yang lebih besar
+// terdengar lebih besar.
+
+export const MOTION = {
+  /** Nada kunjungan acuan dan kunjungan yang tidak bergeser, Hz (329,63 = E4). */
+  baseHz: 329.63,
+  /** Tangga nada, semiton dalam satu oktaf. Satu langkah = `arcsecPerStep` ke utara (naik) atau selatan (turun). */
+  scale: [0, 2, 4, 7, 9],
+  arcsecPerStep: 1,
+  /** Batas langkah ke atas dan ke bawah. */
+  maxSteps: 12,
+  /** Pergeseran timur-barat yang memberi geser stereo penuh, detik busur. Timur di kiri, seperti di gambar. */
+  panArcsec: 10,
+  /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */
+  seconds: 0.4,
+  /** Keras nada, 0-1. */
+  gain: 0.3,
+  /** Kunjungan tanpa pengukuran posisi: ketukan pelan. */
+  tickHz: 1400,
+  tickGain: 0.05,
+};
+
+export type MotionSettings = typeof MOTION;

@@ -14,7 +14,7 @@ import {
   type SpectrumPoint,
 } from "../lib/spectrum";
 import { SOUND } from "../sound/mapping";
-import { phrase, Sonifier } from "../sound/sonify";
+import { phrase, sonifier } from "../sound/sonify";
 
 type Props = {
   spectrum?: Spectrum;
@@ -58,8 +58,6 @@ const FLAG_TEXT: Record<SpectrumPoint["flag"], string> = {
   saturated_core: "saturated, no usable value",
   bad_pixel: "bad detector pixel",
 };
-
-const sonifier = new Sonifier();
 
 export function SpectrumPanel({ spectrum, failed, windows, windowId, band, onListen }: Props) {
   // Selama suara berjalan: kunjungan mana saja yang diputar dan kapan tiap frasa mulai.

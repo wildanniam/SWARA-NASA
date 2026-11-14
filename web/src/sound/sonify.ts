@@ -2,7 +2,7 @@
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
 import type { Bin } from "../lib/spectrum";
-import { SOUND, type SoundSettings } from "./mapping";
+import { MOTION, SOUND, type MotionSettings, type SoundSettings } from "./mapping";
 
 export type Note = {
   /** Detik sejak awal frasa. */
@@ -78,6 +78,19 @@ export function schedule(
   return sources;
 }
 
+/** Pergeseran sejak kunjungan acuan (detik busur) -> satu nada. Utara menaikkan
+ *  nada, selatan menurunkan; timur menggeser ke kiri, barat ke kanan. */
+export function motionNote(east: number, north: number, m: MotionSettings = MOTION): { hz: number; pan: number } {
+  const steps = Math.min(m.maxSteps, Math.max(-m.maxSteps, Math.round(north / m.arcsecPerStep)));
+  const per = m.scale.length;
+  const degree = ((steps % per) + per) % per;
+  const semitones = Math.floor(steps / per) * 12 + m.scale[degree];
+  return {
+    hz: m.baseHz * Math.pow(2, semitones / 12),
+    pan: Math.min(1, Math.max(-1, -east / m.panArcsec)),
+  };
+}
+
 /** Pemutar: satu konteks audio untuk seluruh aplikasi, dibuat saat tombol pertama ditekan. */
 export class Sonifier {
   private ctx?: AudioContext;
@@ -115,8 +128,41 @@ export class Sonifier {
     this.master = undefined;
   }
 
+  /** Suara spektrum sedang berjalan; motif gerak menunggu supaya tidak bertumpuk. */
+  get busy(): boolean {
+    return this.sources.length > 0;
+  }
+
+  /** Satu nada pendek berbunyi lonceng untuk motif gerak; null = ketukan. */
+  blip(note: { hz: number; pan: number } | null, m: MotionSettings = MOTION) {
+    const ctx = (this.ctx ??= new AudioContext());
+    void ctx.resume();
+    const at = ctx.currentTime + 0.01;
+    const dur = note ? m.seconds : 0.02;
+    const env = ctx.createGain();
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = note?.pan ?? 0;
+    env.gain.setValueAtTime(0, at);
+    env.gain.linearRampToValueAtTime(note ? m.gain : m.tickGain, at + 0.006);
+    env.gain.exponentialRampToValueAtTime(0.0005, at + dur);
+    env.connect(pan).connect(ctx.destination);
+    // Nada dasar ditambah oktafnya yang lebih pelan: cukup berbeda dari suara spektrum.
+    for (const [mult, level] of note ? [[1, 1], [2, 0.25]] : [[1, 1]]) {
+      const osc = ctx.createOscillator();
+      const part = ctx.createGain();
+      osc.frequency.value = (note?.hz ?? m.tickHz) * mult;
+      part.gain.value = level;
+      osc.connect(part).connect(env);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+    }
+  }
+
   /** Waktu konteks audio sekarang; penanda di panel mengikuti jam ini, bukan jam layar. */
   now(): number {
     return this.ctx?.currentTime ?? 0;
   }
 }
+
+/** Satu pemutar untuk seluruh aplikasi. */
+export const sonifier = new Sonifier();

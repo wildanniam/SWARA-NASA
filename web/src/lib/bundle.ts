@@ -88,6 +88,27 @@ export function defaultBand(m: Manifest): string {
   return order.find((b) => count(b) === best) ?? m.bands[0].id;
 }
 
+/** Pergeseran satu kunjungan terhadap kunjungan acuan. Dipakai teks dan suara,
+ *  supaya keduanya selalu mengatakan hal yang sama. */
+export type Shift =
+  | { kind: "none" } // posisi benda ini tidak terukur stabil
+  | { kind: "unmeasured" } // kunjungan ini tanpa pengukuran posisi
+  | { kind: "reference" }
+  | { kind: "still"; tolerance: number } // di dalam batas ketelitian
+  | { kind: "moved"; east: number; north: number };
+
+export function shiftAt(m: Manifest, windowId: string): Shift {
+  const ref = referenceMotion(m);
+  if (!ref) return { kind: "none" };
+  const cur = m.motion.find((x) => x.window === windowId);
+  if (!cur) return { kind: "unmeasured" };
+  if (cur.window === ref.window) return { kind: "reference" };
+  const tolerance = Math.max(1.5, 2 * Math.max(cur.scatter_arcsec, ref.scatter_arcsec));
+  return Math.hypot(cur.d_east_arcsec, cur.d_north_arcsec) < tolerance
+    ? { kind: "still", tolerance }
+    : { kind: "moved", east: cur.d_east_arcsec, north: cur.d_north_arcsec };
+}
+
 /** Posisi acuan: posisi terukur di jendela pertama, bila pengukurannya stabil. */
 export function referenceMotion(m: Manifest): Motion | undefined {
   const first = m.motion[0];

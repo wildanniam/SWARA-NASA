@@ -12,6 +12,7 @@ import {
   loadManifest,
   loadSpectrum,
   referenceMotion,
+  shiftAt,
   type Manifest,
   type TargetRef,
 } from "./lib/bundle";
@@ -20,6 +21,7 @@ import { preload, useImageStore } from "./lib/images";
 import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import type { Spectrum } from "./lib/spectrum";
+import { motionNote, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
 const POLL_MS = 1000;
@@ -40,6 +42,7 @@ export function App() {
   const [playing, setPlaying] = useState(false);
   const [palette, setPalette] = useState<PaletteId>("heat");
   const [showFlags, setShowFlags] = useState(false);
+  const [motionSound, setMotionSound] = useState(false);
   // Koordinat bebas yang dibuka di sesi ini, per id; keadaannya dilaporkan API.
   const [jobs, setJobs] = useState<Record<string, SkyJob>>({});
   const [formBusy, setFormBusy] = useState(false);
@@ -234,6 +237,8 @@ export function App() {
         e.preventDefault();
         setPlaying(false);
         step(e.key === "ArrowRight" ? 1 : -1);
+      } else if (e.key.toLowerCase() === "m" && manifest && referenceMotion(manifest)) {
+        setMotionSound((v) => !v);
       } else if (manifest && /^[1-6]$/.test(e.key)) {
         chooseBand(manifest.bands[Number(e.key) - 1]?.id);
       }
@@ -291,24 +296,26 @@ export function App() {
 
   let shift = "";
   if (manifest && win) {
-    const cur = manifest.motion.find((m) => m.window === win.id);
-    if (!ref || !refWindow) {
+    const s = shiftAt(manifest, win.id);
+    const since = refWindow ? monthYear(refWindow.mjd_mid) : "";
+    if (s.kind === "none") {
       shift = custom
         ? "Nothing at the centre could be tracked reliably between visits."
         : "The position could not be measured reliably for this target.";
-    } else if (!cur) {
-      shift = "No position measurement for this visit.";
-    } else if (cur.window === ref.window) {
-      shift = `Reference visit. The mark shows where the object was in ${monthYear(refWindow.mjd_mid)}.`;
-    } else {
-      const total = Math.hypot(cur.d_east_arcsec, cur.d_north_arcsec);
-      const tolerance = Math.max(1.5, 2 * Math.max(cur.scatter_arcsec, ref.scatter_arcsec));
-      shift =
-        total < tolerance
-          ? `No shift measured since ${monthYear(refWindow.mjd_mid)} (within ${tolerance.toFixed(1)}″).`
-          : `Shifted ${shiftWords(cur.d_east_arcsec, cur.d_north_arcsec)} since ${monthYear(refWindow.mjd_mid)}.`;
-    }
+    } else if (s.kind === "unmeasured") shift = "No position measurement for this visit.";
+    else if (s.kind === "reference") shift = `Reference visit. The mark shows where the object was in ${since}.`;
+    else if (s.kind === "still") shift = `No shift measured since ${since} (within ${s.tolerance.toFixed(1)}″).`;
+    else shift = `Shifted ${shiftWords(s.east, s.north)} since ${since}.`;
   }
+
+  // Motif gerak: tiap kunjungan yang tampil membunyikan satu nada dari posisinya.
+  const canHearMotion = !!ref;
+  useEffect(() => {
+    if (!motionSound || !manifest || !windowId || sonifier.busy) return;
+    const s = shiftAt(manifest, windowId);
+    if (s.kind === "none") return;
+    sonifier.blip(s.kind === "unmeasured" ? null : s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0));
+  }, [motionSound, manifest, windowId]);
 
   const dateLabel = win ? monthYear(win.mjd_mid) : "";
   const bandLabel = band ? microns(band.lambda_min, band.lambda_max) : "";
@@ -405,6 +412,24 @@ export function App() {
                 <path d="m5.5 3 5 5-5 5" />
               </svg>
             </button>
+            <button
+              type="button"
+              className="btn btn-icon btn-toggle"
+              aria-label="Motion sound: one note per visit"
+              aria-pressed={motionSound && canHearMotion}
+              disabled={!canHearMotion}
+              title={
+                canHearMotion
+                  ? "Motion sound: one note per visit"
+                  : "Nothing here could be tracked between visits, so there is no motion sound"
+              }
+              onClick={() => setMotionSound((v) => !v)}
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M2.5 6.2h2.3L8 3.5v9L4.8 9.8H2.5z" />
+                <path d="M10.6 5.6a3.4 3.4 0 0 1 0 4.8M12.6 3.8a6 6 0 0 1 0 8.4" />
+              </svg>
+            </button>
             {manifest && windowId && (
               <Timeline
                 windows={manifest.windows}
@@ -419,8 +444,14 @@ export function App() {
           </div>
           <p className="keys">
             <kbd>Space</kbd> blink · <kbd>←</kbd> <kbd>→</kbd> step through visits · <kbd>1</kbd>–<kbd>6</kbd> band ·{" "}
-            <kbd>L</kbd> listen
+            <kbd>L</kbd> listen · <kbd>M</kbd> motion sound
           </p>
+          {motionSound && canHearMotion && (
+            <p className="hint">
+              Each visit plays one note. Higher means further north, lower means further south, and the sound moves left
+              or right with the picture. The same note means no measurable shift.
+            </p>
+          )}
         </section>
 
         <aside className="side">

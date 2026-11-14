@@ -438,6 +438,11 @@ input {
   padding: 0;
 }
 
+.btn-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .btn-icon svg {
   fill: none;
   stroke: currentColor;
