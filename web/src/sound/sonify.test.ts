@@ -3,8 +3,10 @@
 // dan stop-bersih tiap nada bisa diverifikasi.
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import type { Manifest } from "../lib/bundle";
 import { SOUND } from "./mapping";
-import { phrase, schedule, sonifier, type Note } from "./sonify";
+import { motionNote, phrase, schedule, sonifier, motionPhrase, type Note } from "./sonify";
 
 type Call = { method: string; value: number; at: number };
 
@@ -178,5 +180,57 @@ describe("sonifier", () => {
       globalThis.AudioContext = RealAC;
       sonifier.stop();
     }
+  });
+});
+
+function loadManifest(id: string): Manifest {
+  const url = new URL(`../../../bundles/${id}/manifest.json`, import.meta.url);
+  return JSON.parse(readFileSync(url, "utf-8")) as Manifest;
+}
+
+describe("motionPhrase", () => {
+  it("Barnard: nada akhir jelas lebih tinggi dari acuan, jeda seragam", () => {
+    const notes = motionPhrase(loadManifest("barnard"));
+    expect(notes).toHaveLength(3);
+    expect(notes.every((n) => n.hz !== null)).toBe(true);
+    expect(notes.every((n) => n.vol === 1 && !n.lowConf && !n.unverified)).toBe(true);
+    const gaps = [notes[1].t - notes[0].t, notes[2].t - notes[1].t];
+    expect(gaps[0]).toBeCloseTo(gaps[1], 9);
+    expect(notes[0].hz).toBeCloseTo(motionNote(0, 0).hz, 9);
+    expect(notes[2].hz! / notes[0].hz!).toBeGreaterThan(2);
+  });
+
+  it("RW Aurigae yang diam: semua nada sama dengan acuan", () => {
+    const notes = motionPhrase(loadManifest("rwaur"));
+    const ref = motionNote(0, 0);
+    expect(notes).toHaveLength(3);
+    for (const n of notes) {
+      expect(n.hz).toBeCloseTo(ref.hz, 9);
+      expect(n.pan).toBeCloseTo(0, 9);
+    }
+  });
+
+  it("kunjungan tanpa pengukuran menjadi ketukan", () => {
+    const m = {
+      windows: [{ id: "w1" }, { id: "w2" }],
+      motion: [
+        { window: "w1", ra: 0, dec: 0, d_east_arcsec: 0, d_north_arcsec: 0, scatter_arcsec: 0.5, n: 10 },
+      ],
+    } as unknown as Manifest;
+    const notes = motionPhrase(m);
+    expect(notes[0].hz).not.toBeNull();
+    expect(notes[1].hz).toBeNull();
+  });
+
+  it("objek tak-terlacak: semua kunjungan ketukan", () => {
+    const m = {
+      windows: [{ id: "w1" }, { id: "w2" }],
+      motion: [
+        { window: "w1", ra: 0, dec: 0, d_east_arcsec: 0, d_north_arcsec: 0, scatter_arcsec: 5, n: 10 },
+        { window: "w2", ra: 0, dec: 0, d_east_arcsec: 1, d_north_arcsec: 1, scatter_arcsec: 5, n: 10 },
+      ],
+    } as unknown as Manifest;
+    const notes = motionPhrase(m);
+    expect(notes.every((n) => n.hz === null)).toBe(true);
   });
 });

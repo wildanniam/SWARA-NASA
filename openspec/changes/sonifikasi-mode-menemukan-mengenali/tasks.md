@@ -15,8 +15,8 @@
 
 ## 3. Mode Gerak
 
-- [ ] 3.1 Implementasikan `motionPhrase()` dari `shiftAt()` (pitch Dec relatif, pan RA relatif timur-kiri, volume konstan, normalisasi rentang objek, jeda seragam); verifikasi: Barnard's Star nada akhir jelas lebih tinggi; RW Aurigae semua nada sama + teks "tidak bergeser".
-- [ ] 3.2 Implementasikan titik jejak berdenyut sinkron di Lens; verifikasi: putar Gerak — titik kunjungan aktif berdenyut bersama nadanya, diam di objek tak-terlacak.
+- [x] 3.1 Implementasikan `motionPhrase()` dari `shiftAt()` (pitch Dec relatif, pan RA relatif timur-kiri, volume konstan, normalisasi rentang objek, jeda seragam); verifikasi: Barnard's Star nada akhir jelas lebih tinggi; RW Aurigae semua nada sama + teks "tidak bergeser".
+- [x] 3.2 Implementasikan titik jejak berdenyut sinkron di Lens; verifikasi: putar Gerak — titik kunjungan aktif berdenyut bersama nadanya, diam di objek tak-terlacak.
 
 ## 4. Mode Kecerahan
 

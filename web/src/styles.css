@@ -685,6 +685,22 @@ kbd {
   fill: var(--accent);
 }
 
+.trail-dot[data-pulse="true"] {
+  animation: trail-pulse 0.7s ease-out infinite;
+}
+
+@keyframes trail-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .lens-scale {
   position: absolute;
   left: 50%;

@@ -2,6 +2,7 @@
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
 import type { Bin } from "../lib/spectrum";
+import { shiftAt, type Manifest } from "../lib/bundle";
 import { CALIBRATION_HZ, EARCONS, MODE_ANNOUNCE, MOTION, SOUND, type MotionSettings, type SoundSettings } from "./mapping";
 import { modeById, type ModeId } from "./modes";
 
@@ -101,6 +102,32 @@ export function motionNote(east: number, north: number, m: MotionSettings = MOTI
     hz: m.baseHz * Math.pow(2, semitones / 12),
     pan: Math.min(1, Math.max(-1, -east / m.panArcsec)),
   };
+}
+
+/** Satu frasa Gerak: satu nada per kunjungan, ternormalisasi ke rentang
+ *  pergeseran objek itu (bukan rentang global). Acuan dan kunjungan diam
+ *  berbunyi sama persis; kunjungan tanpa pengukuran menjadi ketukan. */
+export function motionPhrase(m: Manifest, mo: MotionSettings = MOTION): Note[] {
+  const shifts = m.windows.map((w) => shiftAt(m, w.id));
+  const maxShift = Math.max(0, ...shifts.map((s) => (s.kind === "moved" ? Math.hypot(s.east, s.north) : 0)));
+  // Skala supaya pergeseran terbesar objek ini mencapai nada tertinggi.
+  const k = maxShift > 0 ? (mo.maxSteps * mo.arcsecPerStep) / maxShift : 1;
+  const step = mo.seconds + mo.phraseGapSeconds;
+  return shifts.map((s, i) => {
+    const at = (hz: number | null, pan = 0): Note => ({
+      t: i * step,
+      dur: mo.seconds,
+      hz,
+      unverified: false,
+      vol: 1,
+      lowConf: false,
+      pan,
+      lambda: 0,
+    });
+    if (s.kind === "none" || s.kind === "unmeasured") return at(null);
+    const n = s.kind === "moved" ? motionNote(s.east * k, s.north * k, mo) : motionNote(0, 0, mo);
+    return at(n.hz, n.pan);
+  });
 }
 
 /** Frasa pengumuman ganti mode: earcon khas lalu kalibrasi rendah-tinggi. */

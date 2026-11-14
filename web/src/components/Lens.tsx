@@ -14,6 +14,8 @@ type Props = {
   /** Posisi terukur tiap kunjungan di piksel frame. */
   trail: { id: string; x: number; y: number }[];
   currentId?: string;
+  /** Kunjungan yang nadanya sedang berbunyi di Mode Gerak; titiknya berdenyut. */
+  pulseId?: string;
   dateLabel: string;
   bandLabel: string;
   description: string;
@@ -61,7 +63,14 @@ export function Lens(p: Props) {
                 {p.trail.slice(1).map((t) => (
                   <g key={t.id}>
                     <circle className="trail-halo" cx={t.x} cy={t.y} r={s * 0.009} />
-                    <circle className="trail-dot" data-current={t.id === p.currentId} cx={t.x} cy={t.y} r={s * 0.009} />
+                    <circle
+                      className="trail-dot"
+                      data-current={t.id === p.currentId}
+                      data-pulse={t.id === p.pulseId}
+                      cx={t.x}
+                      cy={t.y}
+                      r={s * 0.009}
+                    />
                   </g>
                 ))}
               </>

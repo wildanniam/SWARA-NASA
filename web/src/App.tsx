@@ -41,7 +41,7 @@ import type { PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
 import type { Spectrum } from "./lib/spectrum";
 import { modeById, modeForKey, type ModeId } from "./sound/modes";
-import { announceMode, motionNote, sonifier } from "./sound/sonify";
+import { announceMode, motionNote, motionPhrase, sonifier } from "./sound/sonify";
 
 const BLINK_MS = 700;
 const POLL_MS = 1000;
@@ -450,6 +450,17 @@ export function App() {
     sonifier.blip(s.kind === "unmeasured" ? null : s.kind === "moved" ? motionNote(s.east, s.north) : motionNote(0, 0));
   }, [motionSound, manifest, windowId]);
 
+  // Mode Gerak: tiap kunjungan yang tampil membunyikan nadanya dari frasa
+  // ternormalisasi; titik jejak berdenyut mengikuti kunjungan yang sama.
+  const motionNotes = useMemo(() => (manifest ? motionPhrase(manifest) : []), [manifest]);
+  useEffect(() => {
+    if (mode !== "gerak" || !manifest || !windowId || sonifier.busy) return;
+    const i = manifest.windows.findIndex((w) => w.id === windowId);
+    const n = motionNotes[i];
+    if (!n) return;
+    sonifier.blip(n.hz === null ? null : { hz: n.hz, pan: n.pan });
+  }, [mode, manifest, windowId, motionNotes]);
+
   const dateLabel = win ? monthYear(win.mjd_mid) : "";
   const bandLabel = band ? microns(band.lambda_min, band.lambda_max) : "";
   const description =
@@ -554,6 +565,7 @@ export function App() {
           mark={mark}
           trail={path}
           currentId={windowId}
+          pulseId={mode === "gerak" ? windowId : undefined}
           dateLabel={dateLabel}
           bandLabel={bandLabel}
           description={description}

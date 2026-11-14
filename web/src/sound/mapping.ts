@@ -60,6 +60,8 @@ export const MOTION = {
   maxSteps: 12,
   /** Pergeseran timur-barat yang memberi geser stereo penuh, detik busur. Timur di kiri, seperti di gambar. */
   panArcsec: 10,
+  /** Jeda antar nada saat frasa Gerak diputar berurutan, detik. Seragam untuk semua objek. */
+  phraseGapSeconds: 0.25,
   /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */
   seconds: 0.4,
   /** Keras nada, 0-1. */
