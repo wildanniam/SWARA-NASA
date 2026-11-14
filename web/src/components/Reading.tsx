@@ -1,4 +1,4 @@
-import { ArrowsClockwise, Keyboard, ShareNetwork, StarFour, X } from "@phosphor-icons/react";
+import { ArrowsClockwise, GithubLogo, Keyboard, ShareNetwork, StarFour, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { atlasUrl, decDms, raHms, toMap, type Atlas } from "../lib/allsky";
 import { defaultBand, findFrame, type Manifest } from "../lib/bundle";
@@ -876,6 +876,9 @@ function SkyArt({ atlas, band, look, places }: { atlas: Atlas; band: string; loo
   );
 }
 
+/** Kode sumber SWARA. Berlisensi AGPL-3.0-or-later. */
+const SOURCE_URL = "https://github.com/wildanniam/SWARA-NASA";
+
 const SKY_KEYS: [string, string][] = [
   ["+ −", "zoom the map"],
   ["← → ↑ ↓", "move the map"],
@@ -1227,6 +1230,11 @@ export function Reading({ open, onClose, look, atlas, sky, place, canShare, onSh
             <span className="reading-look">{lookName}</span>
           </p>
           <div className="reading-actions">
+            {/* Kode sumber selalu terlihat: AGPL meminta yang memakai lewat jaringan bisa mendapatkannya. */}
+            <a className="pill pill-quiet" href={SOURCE_URL} target="_blank" rel="noreferrer">
+              <GithubLogo aria-hidden="true" />
+              Source · AGPL
+            </a>
             <button type="button" className="pill pill-quiet" aria-expanded={more} onClick={() => setMore((v) => !v)}>
               <Keyboard aria-hidden="true" />
               Keys and sources
@@ -1257,7 +1265,8 @@ export function Reading({ open, onClose, look, atlas, sky, place, canShare, onSh
                 <>
                   <p>
                     SPHEREx all-sky infrared survey, level 2 images from the NASA/IPAC Infrared Science Archive. Names and catalogue motions come
-                    from SIMBAD.
+                    from SIMBAD. Gaia stars are from Gaia DR3 (ESA Gaia mission, Gaia Data Processing and Analysis Consortium), served by the
+                    ESA Gaia Archive.
                   </p>
                   <p>
                     Images from 2010 to 2024 are from NASA's WISE and NEOWISE missions: unWISE time-resolved coadds, served by WiseView from the
