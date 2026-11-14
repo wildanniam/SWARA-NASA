@@ -55,7 +55,7 @@ Satu aturan: **yang bisa ditekan berbentuk bulat penuh** (lingkaran atau pil); *
 | `--hair`, `--hair-strong` | putih kebiruan 14% dan 30% | garis |
 | `--text` | `#f2efe8` | teks utama |
 | `--muted` | `#a3a4b3` | teks pendukung |
-| `--faint` | `#73758a` | tanda skala, teks nonaktif |
+| `--faint` | `#7d7f94` | tanda skala, label kecil |
 | `--accent` | `#ffb454` | satu-satunya aksen: tanda acuan, Blink, pilihan aktif, penunjuk |
 | `--flag-sat`, `--flag-bad` | merah, biru | hanya untuk mutu data |
 

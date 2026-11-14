@@ -159,7 +159,9 @@ export function App() {
     linkOpened.current = true;
     void (async () => {
       const byName = LINK_NAME ? await openSky(LINK_NAME) : false;
-      if (!byName && LINK_HAS_POSITION) await openSky(`${LINK_RA} ${LINK_DEC}`);
+      const opened = byName || (LINK_HAS_POSITION && (await openSky(`${LINK_RA} ${LINK_DEC}`)));
+      // Tautan yang tidak bisa dibuka tidak boleh gagal diam-diam: dialog menampilkan alasannya.
+      if (!opened) setGotoOpen(true);
     })();
   }, [openSky]);
 
@@ -379,6 +381,7 @@ export function App() {
       statusText = "Reading SPHEREx exposures…";
       progress = { done: job.done, total: job.total };
     } else if (job.stage === "frames") statusText = "Aligning the images…";
+    else if (job.stage === "context") statusText = "Mapping the sky around it…";
     else statusText = "Looking for SPHEREx exposures of this spot…";
   }
   const retry = jobFailed
@@ -708,6 +711,7 @@ export function App() {
         onSubmit={(text) => void openSky(text).then((ok) => ok && setGotoOpen(false))}
         examples={targets ?? []}
         yours={allTargets.filter((t) => t.kind === "custom")}
+        building={new Set(Object.values(jobs).filter((j) => j.status !== "ready").map((j) => j.id))}
         currentId={targetId}
         onPick={(id) => {
           selectTarget(id);

@@ -59,18 +59,23 @@ export function Lens(p: Props) {
                 <polyline className="trail-line" points={p.trail.map((t) => `${t.x},${t.y}`).join(" ")} />
                 {/* Kunjungan pertama sudah ditandai tanda silang, jadi titiknya mulai dari yang kedua. */}
                 {p.trail.slice(1).map((t) => (
-                  <circle key={t.id} className="trail-dot" data-current={t.id === p.currentId} cx={t.x} cy={t.y} r={s * 0.009} />
+                  <g key={t.id}>
+                    <circle className="trail-halo" cx={t.x} cy={t.y} r={s * 0.009} />
+                    <circle className="trail-dot" data-current={t.id === p.currentId} cx={t.x} cy={t.y} r={s * 0.009} />
+                  </g>
                 ))}
               </>
             )}
-            {p.mark && (
-              <g className="mark" transform={`translate(${p.mark.x} ${p.mark.y})`}>
-                <line x1={-gap - arm} y1={0} x2={-gap} y2={0} />
-                <line x1={gap} y1={0} x2={gap + arm} y2={0} />
-                <line x1={0} y1={-gap - arm} x2={0} y2={-gap} />
-                <line x1={0} y1={gap} x2={0} y2={gap + arm} />
-              </g>
-            )}
+            {/* Digambar dua kali: garis gelap di bawah supaya tanda ambar tetap terbaca di atas inti bintang yang terang. */}
+            {p.mark &&
+              ["mark mark-halo", "mark"].map((cls) => (
+                <g key={cls} className={cls} transform={`translate(${p.mark!.x} ${p.mark!.y})`}>
+                  <line x1={-gap - arm} y1={0} x2={-gap} y2={0} />
+                  <line x1={gap} y1={0} x2={gap + arm} y2={0} />
+                  <line x1={0} y1={-gap - arm} x2={0} y2={-gap} />
+                  <line x1={0} y1={gap} x2={0} y2={gap + arm} />
+                </g>
+              ))}
           </svg>
           <div className="lens-scale" style={{ width: `${(SCALE_ARCSEC / p.fovArcsec) * 100}%` }} aria-hidden="true">
             <span>{SCALE_ARCSEC}″</span>

@@ -17,6 +17,8 @@ type Props = {
   onSubmit: (query: string) => void;
   examples: TargetRef[];
   yours: TargetRef[];
+  /** Tempat yang bundelnya belum jadi: belum ada citra untuk cuplikan. */
+  building: Set<string>;
   currentId?: string;
   onPick: (id: string) => void;
 };
@@ -24,12 +26,13 @@ type Props = {
 const manifests = new Map<string, Promise<Manifest>>();
 
 /** Cuplikan bundar dari citra asli benda itu: kunjungan pertama di band bawaannya. */
-function Thumb({ target }: { target: TargetRef }) {
+function Thumb({ target, enabled }: { target: TargetRef; enabled: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [shown, setShown] = useState(false);
   const custom = target.kind === "custom";
 
   useEffect(() => {
+    if (!enabled) return;
     let alive = true;
     const key = `${custom ? "api" : "preset"}:${target.id}`;
     let pending = manifests.get(key);
@@ -55,7 +58,7 @@ function Thumb({ target }: { target: TargetRef }) {
     return () => {
       alive = false;
     };
-  }, [target.id, custom]);
+  }, [target.id, custom, enabled]);
 
   return <canvas ref={ref} className="thumb" data-shown={shown} width={96} height={96} aria-hidden="true" />;
 }
@@ -74,7 +77,7 @@ export function GoTo(p: Props) {
   const row = (t: TargetRef, detail: string) => (
     <li key={t.id}>
       <button type="button" className="place" aria-current={t.id === p.currentId} onClick={() => p.onPick(t.id)}>
-        <Thumb target={t} />
+        <Thumb target={t} enabled={!p.building.has(t.id)} />
         <span className="place-name">{t.name}</span>
         <span className="place-detail">{detail}</span>
         <ArrowRight aria-hidden="true" />

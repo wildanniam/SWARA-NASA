@@ -5,7 +5,7 @@ export type SkyJob = {
   ra: number;
   dec: number;
   status: "queued" | "running" | "ready" | "error";
-  stage: "" | "search" | "fetch" | "frames";
+  stage: "" | "search" | "fetch" | "frames" | "context";
   done: number;
   total: number;
   error: "" | "no_data" | "failed";
