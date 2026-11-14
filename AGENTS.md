@@ -138,6 +138,8 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-14
+- **KEPUTUSAN (Wildan): bilah atas diberi karakter ukiran kartu, Guide berganti nama jadi "The cards", dan ada mode fokus layar penuh (F).** Alasannya: bilah lama terasa seperti aplikasi biasa dan "Guide" menjanjikan petunjuk padahal isinya cerita benda. Dok bawah belum diubah. Rinciannya di [web/DESIGN.md](web/DESIGN.md).
+- **TEMUAN: menyelam dari seluruh langit tersendat karena bug penjadwalan, sudah diperbaiki.** Tiap bingkai gerak otomatis menjadwalkan lukisan dua kali, jadi jumlahnya berlipat dua tiap bingkai. Di situs live sebelum: 108 bingkai dalam 6 detik, bingkai terpanjang 1,7 detik; sesudah: 390 bingkai, terpanjang 17,7 ms. Uji kecepatan berikutnya perlu mengukur tiap gerak otomatis, bukan hanya geser.
 - **KEPUTUSAN (Wildan): Guide diganti bacaan tiga kartu, dan tarot serta rasi bintang mulai diterapkan sebagai sistem.** Alasannya: laci Guide terlalu banyak teks dan tidak menjelaskan bendanya. Syaratnya: boleh liar, tetapi tetap nyambung dengan desain kosmik yang sudah ada. Aturannya di [web/DESIGN.md](web/DESIGN.md): alat ukur saat orang mengukur, kartu saat SWARA bercerita.
   - Tombol Guide sekarang membuka tiga kartu yang digambar dari bundle di layar: tempatnya (rasi di atas peta SPHEREx asli), jalannya (tumpukan WISE, satu sinar per pengamatan), cahayanya (spektrum sebagai sinar). Sisi belakang tiap kartu memuat rincian data yang dulu ada di Guide. Di peta seluruh langit isinya satu kartu.
   - Kartu yang tidak terbaca tampil tertelungkup dengan alasannya: Barnard's Star, RW Aurigae, dan R Draconis (terlalu terang untuk spektrum bersih), WISE 0855 (tidak terpisah dari bintang latar).

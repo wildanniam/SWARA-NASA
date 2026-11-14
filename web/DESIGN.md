@@ -122,7 +122,7 @@ Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai
 
 ## Bacaan (pengganti Guide)
 
-Tombol Guide membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartunya diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog. Semua yang digambar dan ditulis dihitung dari bundle dan peta seluruh langit (`web/src/lib/reading.ts`); tidak ada angka yang ditulis tangan.
+Tombol **The cards** (dulu Guide) membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartunya diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog. Semua yang digambar dan ditulis dihitung dari bundle dan peta seluruh langit (`web/src/lib/reading.ts`); tidak ada angka yang ditulis tangan.
 
 - **Anatomi kartu** (sama dengan kartu berbagi, sepertiga ukurannya, 360 x 640 satuan): bingkai garis ganda bersudut cekung, angka Romawi, satu baris pertanyaan, gambar, keterangan gambar, pita julukan, satu kalimat, dua fakta bertanda kecil, tombol. Warna kartu mengikuti look.
 - **I, tempatnya.** Jendela melengkung berisi 44 derajat langit dari peta SPHEREx yang asli, utara di atas, dengan garis rasi di atasnya; rasi yang ditempati benda itu digambar terang dan namanya jadi isi pita. Faktanya: jarak dari pita Bima Sakti (dengan peta seluruh langit mini) dan dari lintang mana ia tidak pernah terbit.
@@ -133,6 +133,11 @@ Tombol Guide membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartu
 - **Tertelungkup.** Kartu yang datanya tidak terbaca (spektrum terlalu sedikit titik bersih, terlalu terang, tidak terpisah dari bintang latar, atau masih dimuat) tampil tertelungkup dengan pita UNREAD dan satu kalimat alasannya. Tidak ada kartu yang diisi gambar kosong.
 - **Bahasa.** Tarot hanya formatnya. Tidak ada kata ramalan, zodiak, atau nasib; rasi yang dipakai adalah rasi IAU.
 - **Layar kecil.** Tiga kartu digeser satu per satu. Tanpa gerak, kartu berganti sisi tanpa berputar.
+
+## Bilah atas dan mode fokus
+
+- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (mengekliknya kembali ke seluruh langit), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
+- **Mode fokus** (tombol pojok atau F): bilah atas dan dok menghilang, lensa membesar, nama di kiri dan angka terukur di kanan tetap ada. Browser diminta masuk layar penuh; kalau ditolak, mode fokus tetap jalan. Esc, F, atau tombol kecil di pojok untuk keluar. Blink tetap dengan Spasi dan panah.
 
 ## Pangkat tombol
 

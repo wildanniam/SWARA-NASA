@@ -900,6 +900,7 @@ const PLACE_KEYS: [string, string][] = [
   ["M", "motion sound"],
   ["/", "go to a place"],
   ["G", "these cards"],
+  ["F", "focus on the object"],
 ];
 
 /** Bacaan: pengganti Guide. Tiap kartu satu gambar dari data di layar dan satu kalimat;
