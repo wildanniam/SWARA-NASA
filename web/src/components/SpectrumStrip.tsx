@@ -1,8 +1,8 @@
-import { ArrowRight, Play, Stop, Waveform, X } from "@phosphor-icons/react";
+import { Play, Stop } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 import type { Band, TimeWindow } from "../lib/bundle";
 import { microns, monthYear } from "../lib/format";
-import { useDialog, useWidth } from "../lib/hooks";
+import { useWidth } from "../lib/hooks";
 import { scanGrid, scanPhrase } from "../lib/scan";
 import { combineSoundLayers, VISIT_PAUSE_SECONDS, VISIT_SLOT_SECONDS, type CombinedVisit } from "../lib/combinedSound";
 import {
@@ -92,8 +92,6 @@ export function SpectrumStrip(p: Props) {
     skipped: { id: string; layers: ("scan" | "spectrum" | "motion")[] }[];
     activeVoices: ("scan" | "spectrum" | "motion")[];
   }>();
-  const [chooser, setChooser] = useState(false);
-  const chooserRef = useDialog<HTMLDivElement>(chooser, () => setChooser(false));
   const readMotionRef = useRef(p.readMotion);
   readMotionRef.current = p.readMotion;
   const [playVisit, setPlayVisit] = useState<string>();
@@ -218,11 +216,6 @@ export function SpectrumStrip(p: Props) {
     }
   }, [binned, playable, top, windows, p.motionReady]);
 
-  const choose = useCallback(() => {
-    setChooser(false);
-    startCombined();
-  }, [startCombined]);
-
   // Benda berganti atau pita hilang: suara berhenti.
   useEffect(() => stop, [p.targetId, stop]);
 
@@ -344,39 +337,13 @@ export function SpectrumStrip(p: Props) {
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
   const spectrumReady = windows.filter((w) => playable.includes(w)).map((w) => w.id);
   const motionReadyVisits = p.motionReady ? windows.map((w) => w.id) : [];
-  const canScan = !!windowId && p.hasImage(windowId);
-  // Jelaskan syarat spektrum yang belum terpenuhi dengan apa adanya.
-  const blockedQualities = windows.map((w) => qualityByVisit.get(w.id));
-  const spectrumReason = !spectrum
-    ? p.failed
-      ? "Spektrum gagal dimuat."
-      : "Spektrum masih dimuat."
-    : !playable.length && blockedQualities.length > 0 && blockedQualities.every((q) => q === "saturated")
-      ? "Spektrum terlalu jenuh untuk dibunyikan dengan andal."
-      : !playable.length && blockedQualities.includes("faint")
-      ? "Spektrum terlalu redup untuk disuarakan dengan andal."
-      : !playable.length
-        ? "Terlalu sedikit pengukuran spektrum yang dapat dipakai."
-        : undefined;
-  const activeLayerNames = [
-    scanReady.length ? "Pindai gambar" : "",
-    spectrumReady.length ? "Spektrum" : "",
-    motionReadyVisits.length ? "Gerak" : "",
-  ].filter(Boolean);
-  const canPlayCombined = activeLayerNames.length > 0;
-  const combinedReason = !canPlayCombined
-    ? [
-        !spectrum ? (p.failed ? "Spektrum gagal dimuat." : "Spektrum masih dimuat.") : spectrumReason,
-        !p.motionReady ? "Posisi gerak tidak dapat diukur." : "",
-        canScan ? "" : "Gambar untuk band ini belum tersedia.",
-      ].filter(Boolean).join(" ")
-    : undefined;
+  const canPlayCombined = scanReady.length > 0 || spectrumReady.length > 0 || motionReadyVisits.length > 0;
   const combinedVisitCount = new Set([...scanReady, ...spectrumReady, ...motionReadyVisits]).size;
 
   const toggle = useCallback(() => {
     if (play) stop();
-    else setChooser(true);
-  }, [play]);
+    else startCombined();
+  }, [play, startCombined, stop]);
 
   // L = dengarkan / berhenti.
   useEffect(() => {
@@ -443,7 +410,7 @@ export function SpectrumStrip(p: Props) {
           onClick={toggle}
           disabled={!play && !canPlayCombined}
           aria-pressed={!!play}
-          aria-label={play ? "Stop the sound" : "Choose what to listen to"}
+          aria-label={play ? "Stop the sound" : "Listen to image, spectrum, and motion"}
         >
           {play ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
@@ -576,55 +543,6 @@ export function SpectrumStrip(p: Props) {
         {announce ?? ""}
       </p>
 
-      {chooser && (
-        <div
-          className="scrim"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setChooser(false);
-          }}
-        >
-          <div ref={chooserRef} className="hear" role="dialog" aria-modal="true" aria-label="Pilih cara mendengarkan">
-            <header className="hear-head">
-              <div>
-                <h2>Pilih cara mendengarkan</h2>
-                <p>Pilih data yang ingin didengar. Setiap pilihan berbunyi sendiri.</p>
-              </div>
-              <button type="button" className="round hear-close" aria-label="Tutup pemilih suara" onClick={() => setChooser(false)}>
-                <X aria-hidden="true" />
-              </button>
-            </header>
-            {(
-              [
-                {
-                  id: "combined",
-                  name: "Dengarkan gabungan",
-                  detail: `Putar bersama gambar (${scanReady.length} visit), spektrum (${spectrumReady.length} visit), dan gerak (${motionReadyVisits.length} visit). Visit yang tidak punya data layak akan dilewati.`,
-                  disabled: !canPlayCombined,
-                  why: combinedReason ?? "",
-                  Icon: Waveform,
-                },
-              ] as const
-            ).map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                className="hear-option"
-                data-autofocus
-                disabled={o.disabled}
-                title={o.disabled ? o.why : o.detail}
-                onClick={choose}
-              >
-                <span className="hear-icon" aria-hidden="true"><o.Icon weight="regular" /></span>
-                <span className="hear-copy">
-                  <span className="hear-name">{o.name}</span>
-                  <span className="hear-detail">{o.disabled ? o.why : o.detail}</span>
-                </span>
-                <ArrowRight className="hear-arrow" aria-hidden="true" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </>
   );
 }
