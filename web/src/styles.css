@@ -196,41 +196,72 @@ kbd {
 }
 
 .brand {
+  justify-self: start;
   margin: 0;
+  padding: 6px 10px 6px 0;
+  border: 0;
+  background: none;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.16em;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.brand svg {
+.brand .logo-mark {
   flex: none;
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.4;
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.brand .brand-dot {
-  fill: var(--accent);
-  stroke: none;
+/* Saat ditunjuk tandanya berkelip: sedikit membesar. Tidak diputar, karena bintang
+   empat sudut yang diputar 45 derajat terbaca sebagai tanda tutup. */
+.brand:hover .logo-mark {
+  transform: scale(1.12);
 }
+
+.brand .logo-word {
+  flex: none;
+  color: var(--text);
+}
+
+/* Garis ukir di bawah bilah atas: memudar di kedua ujung, terputus di tengah oleh pelat cari. */
+.top::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hair-strong) 12%, var(--hair-strong) 30%, transparent 36%, transparent 64%, var(--hair-strong) 70%, var(--hair-strong) 88%, transparent);
+  pointer-events: none;
+}
+
+
 
 .goto-trigger {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: min(380px, 42vw);
-  height: 40px;
+  position: relative;
+  width: min(400px, 42vw);
+  height: 38px;
   padding: 0 9px 0 15px;
-  border: 1px solid var(--hair-strong);
+  /* Pelat cari: garis ganda tipis seperti bingkai kartu, diapit dua bintang empat sudut. */
+  border: 1px solid rgb(255 180 84 / 0.55);
   border-radius: 999px;
-  background: var(--panel);
+  background: rgba(5, 6, 11, 0.5);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.6),
+    inset 0 0 0 3px rgb(255 180 84 / 0.18);
   color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
   transition:
     border-color 150ms,
@@ -238,8 +269,28 @@ kbd {
 }
 
 .goto-trigger:hover {
-  border-color: var(--muted);
+  border-color: var(--accent);
   color: var(--text);
+}
+
+.goto-trigger::before,
+.goto-trigger::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  transform: translateY(-50%);
+}
+
+.goto-trigger::before {
+  left: -24px;
+}
+
+.goto-trigger::after {
+  right: -24px;
 }
 
 .goto-trigger svg {
@@ -259,7 +310,82 @@ kbd {
 .top-actions {
   justify-self: end;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-actions .round {
+  width: 36px;
+  height: 36px;
+  border-color: var(--hair-strong);
+  color: var(--soft);
+}
+
+.top-actions .round:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Pintu ke cerita benda: garis ganda ambar, seperti tombol di dalam kartu. */
+.pill-cards {
+  position: relative;
+  margin-right: 4px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 0 0 2px var(--void),
+    inset 0 0 0 3px rgb(255 180 84 / 0.35);
+}
+
+.pill-cards:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.pill-cards[data-new="true"]::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--void);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ---------- mode fokus ---------- */
+
+/* Bilah atas dan dok menghilang; lensa memakai ruang yang ditinggalkan. */
+.app[data-focus="true"] {
+  --lens: clamp(260px, min(calc((100dvh - 200px) / 1.18), 46vw), 900px);
+}
+
+.app[data-focus="true"] .top,
+.app[data-focus="true"] .dock {
+  display: none;
+}
+
+.focus-exit {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  background: rgba(5, 6, 11, 0.5);
+  opacity: 0.55;
+  transition: opacity 200ms;
+}
+
+.focus-exit:hover,
+.focus-exit:focus-visible {
+  opacity: 1;
 }
 
 /* ---------- yang bisa ditekan: pil, bundar, tombol putar ---------- */
@@ -2932,70 +3058,6 @@ kbd {
   }
 }
 
-/* ---------- laci catatan ---------- */
-
-.scrim-side {
-  z-index: 4;
-  justify-items: end;
-  align-items: stretch;
-  padding: 0;
-  overflow: hidden;
-}
-
-.notes {
-  display: grid;
-  align-content: start;
-  gap: 24px;
-  width: min(410px, 100%);
-  height: 100dvh;
-  padding: 18px 24px 36px;
-  overflow-y: auto;
-  border-left: 1px solid var(--hair-strong);
-  background: var(--panel-solid);
-  animation: slide 240ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slide {
-  from {
-    transform: translateX(24px);
-    opacity: 0;
-  }
-}
-
-.notes-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.notes h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  font-stretch: 125%;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.notes h3 {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.notes p {
-  margin: 0 0 8px;
-  color: var(--soft);
-  font-size: 14px;
-  line-height: 1.55;
-}
-
-.notes p:last-child {
-  margin-bottom: 0;
-}
-
 .facts {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -3029,82 +3091,6 @@ kbd {
   color: var(--soft);
 }
 
-/* Legenda bergambar di Guide: tiap baris satu tanda dari lensa dan artinya. */
-.guide-rows {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--soft);
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-
-.guide-rows li {
-  display: grid;
-  grid-template-columns: 40px 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-.guide-rows svg {
-  width: 40px;
-  height: 40px;
-  fill: none;
-  stroke-linecap: round;
-}
-
-.guide-rows b {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.g-mark,
-.g-trail,
-.g-arc,
-.g-reticle {
-  stroke: var(--accent);
-  stroke-width: 1.6;
-}
-
-.g-trail {
-  stroke-dasharray: 2 3;
-}
-
-.g-dot {
-  fill: var(--panel-solid);
-  stroke: var(--accent);
-  stroke-width: 1.5;
-}
-
-.g-dot-now {
-  fill: var(--accent);
-}
-
-.g-ring {
-  stroke: var(--hair-strong);
-  stroke-width: 1.2;
-}
-
-.g-ramp {
-  width: 40px;
-  height: 14px;
-  margin-top: 4px;
-  border: 1px solid var(--hair-strong);
-  border-radius: 999px;
-}
-
-.legend {
-  display: grid;
-  gap: 5px;
-  margin: 0 0 10px;
-  padding: 0;
-  list-style: none;
-  color: var(--soft);
-  font-size: 13.5px;
-}
-
 .sw {
   display: inline-block;
   width: 10px;
@@ -3121,44 +3107,6 @@ kbd {
   background: var(--flag-bad);
 }
 
-.key {
-  display: inline-block;
-  width: 12px;
-  height: 10px;
-  margin-right: 8px;
-  vertical-align: -1px;
-}
-
-.key-dot {
-  width: 6px;
-  height: 6px;
-  margin: 0 11px 0 3px;
-  border-radius: 50%;
-  background: var(--text);
-  vertical-align: 1px;
-}
-
-.key-line {
-  height: 0;
-  border-top: 1.5px solid #5b5e72;
-  vertical-align: 3px;
-}
-
-.key-ring {
-  width: 7px;
-  height: 7px;
-  margin: 0 10px 0 3px;
-  border: 1.2px solid var(--flag-sat);
-  border-radius: 50%;
-  vertical-align: 0;
-}
-
-.key-tick {
-  width: 0;
-  margin: 0 14px 0 6px;
-  border-left: 1.5px solid var(--flag-bad);
-}
-
 /* ---------- layar kecil ---------- */
 
 @media (max-width: 860px) {
@@ -3172,7 +3120,7 @@ kbd {
     padding: 10px 14px;
   }
 
-  .brand span,
+  .brand .logo-word,
   .goto-trigger kbd,
   .top-actions .pill span {
     display: none;
@@ -3328,4 +3276,1531 @@ kbd {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------- bacaan: kartu pengganti Guide ---------- */
+
+/* Kartu diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog:
+   yang dibaca adalah kartunya. Warna kartu mengikuti look (--c-*), seperti kartu berbagi. */
+.scrim-reading {
+  z-index: 5;
+  align-items: center;
+  padding: 18px 16px;
+  background: rgba(4, 5, 9, 0.9);
+  backdrop-filter: blur(7px);
+}
+
+.reading {
+  /* Lebar satu kartu: dibatasi tinggi layar, dan tiga kartu harus muat berjajar. */
+  --cw: min(360px, calc((100dvh - 232px) * 0.5625), calc((100vw - 96px) / 3));
+  display: grid;
+  gap: 16px;
+  width: min(100%, calc(var(--cw) * 3 + 56px));
+}
+
+.reading-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reading-kind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.reading-kind svg {
+  width: 11px;
+  height: 11px;
+}
+
+.reading h2 {
+  margin: 0;
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.reading-lead {
+  max-width: 62ch;
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.reading-cards {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+
+.reading-cards[data-count="1"] {
+  --cw: min(360px, calc((100dvh - 232px) * 0.5625), calc(100vw - 48px));
+}
+
+.reading-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+}
+
+.reading-ramp {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.reading-ramp i {
+  width: 92px;
+  height: 9px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 999px;
+}
+
+.reading-look {
+  padding-left: 9px;
+  border-left: 1px solid var(--hair-strong);
+  color: var(--soft);
+}
+
+.reading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reading-more {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 32px;
+  padding: 16px 18px;
+  border: 1px solid var(--hair);
+  border-radius: 18px;
+  background: var(--panel-solid);
+  animation: rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reading-more p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Satu kartu. Semua ukuran di dalamnya memakai --u (1/360 lebar kartu), jadi kartu
+   tampil sama di semua ukuran. */
+.tcard {
+  flex: none;
+  width: var(--cw);
+  aspect-ratio: 9 / 16;
+  container-type: inline-size;
+  perspective: 1400px;
+  animation: deal 560ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i) * 90ms + 60ms);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(34px) rotate(calc((var(--i) - 1) * 2.4deg));
+  }
+}
+
+@media (hover: hover) {
+  .tcard:hover {
+    transform: translateY(-5px);
+  }
+}
+
+.tcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(0.3, 0.1, 0.2, 1);
+}
+
+.tcard[data-flipped="true"] .tcard-inner {
+  transform: rotateY(180deg);
+}
+
+.tcard-face {
+  --u: calc(100cqw / 360);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(31 * var(--u)) calc(30 * var(--u)) calc(30 * var(--u));
+  overflow: hidden;
+  border-radius: calc(12 * var(--u));
+  background: linear-gradient(rgb(var(--c-top)), rgb(var(--c-bottom)));
+  color: rgb(var(--c-text));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  backface-visibility: hidden;
+}
+
+.tcard-back {
+  transform: rotateY(180deg);
+}
+
+/* Tanpa gerak, kartu berganti sisi tanpa berputar. */
+@media (prefers-reduced-motion: reduce) {
+  .tcard[data-flipped="true"] .tcard-inner {
+    transform: none;
+  }
+
+  .tcard-back {
+    transform: none;
+  }
+
+  .tcard[data-flipped="true"] .tcard-front,
+  .tcard:not([data-flipped="true"]) .tcard-back {
+    visibility: hidden;
+  }
+}
+
+.tcard-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  pointer-events: none;
+}
+
+.f-gold {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 0.8;
+}
+
+.f-lo {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 0.45;
+}
+
+.f-dots {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 1.05;
+  stroke-linecap: round;
+  stroke-dasharray: 0.01 5.33;
+}
+
+.f-star {
+  fill: rgb(var(--c-gold));
+}
+
+.tcard-head {
+  display: grid;
+  justify-items: center;
+  gap: calc(7 * var(--u));
+  margin-bottom: calc(9 * var(--u));
+}
+
+.tcard-numeral {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  color: rgb(var(--c-hi));
+  font-size: calc(16 * var(--u));
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  /* Jarak antar huruf ikut menggeser angka; ini mengembalikannya ke tengah. */
+  text-indent: 0.2em;
+}
+
+.tcard-numeral i {
+  width: calc(30 * var(--u));
+  height: 1px;
+  background: rgb(var(--c-lo));
+}
+
+.tcard-hook {
+  color: rgb(var(--c-gold));
+  font-family: var(--mono);
+  font-size: max(9.5px, calc(9.6 * var(--u)));
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.tcard-art {
+  position: relative;
+  flex: none;
+  width: calc(300 * var(--u));
+  aspect-ratio: 300 / 270;
+}
+
+.tcard-art > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+}
+
+.art-window {
+  position: absolute;
+  background: rgb(var(--c-bottom));
+  opacity: 0;
+  transition: opacity 260ms;
+}
+
+.art-window[data-shown="true"] {
+  opacity: 1;
+}
+
+.art-round {
+  border-radius: 50%;
+}
+
+.a-hi {
+  stroke: rgb(var(--c-hi));
+  stroke-width: 1.1;
+}
+
+.a-lo {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 0.5;
+}
+
+.a-gold {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 0.7;
+}
+
+.a-dots {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-dasharray: 0.01 4.6;
+}
+
+.a-star {
+  fill: rgb(var(--c-gold));
+}
+
+.a-label {
+  fill: rgb(var(--c-gold));
+  font-family: var(--mono);
+  font-size: 10.4px;
+  font-weight: 500;
+}
+
+.a-halo {
+  paint-order: stroke;
+  stroke: rgb(var(--c-bottom) / 0.8);
+  stroke-width: 3;
+}
+
+.a-figure {
+  stroke: rgb(var(--c-hi));
+  stroke-width: 0.95;
+  stroke-linejoin: round;
+  opacity: 0.92;
+}
+
+.a-figure-far {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 0.5;
+  opacity: 0.4;
+}
+
+.a-here {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 1.2;
+}
+
+.a-here-dot {
+  fill: rgb(var(--c-dot));
+}
+
+.a-pulse {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 0.8;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: here 2.6s ease-out infinite;
+}
+
+@keyframes here {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+.a-mark {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 1;
+  opacity: 0.9;
+}
+
+.a-rays {
+  outline: none;
+}
+
+.a-rays:focus-visible .a-ray,
+.a-rays:focus-visible .a-beam {
+  stroke: rgb(var(--c-hi));
+}
+
+.a-ray {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 1.1;
+  transition: stroke-width 120ms;
+}
+
+.a-tip {
+  fill: rgb(var(--c-top));
+  stroke: rgb(var(--c-gold));
+  stroke-width: 0.7;
+}
+
+[data-spherex="true"] > .a-ray {
+  stroke: rgb(var(--c-hi));
+  stroke-width: 1.5;
+}
+
+[data-spherex="true"] > .a-tip {
+  fill: rgb(var(--c-hi));
+  stroke: none;
+}
+
+[data-on="true"] > .a-ray {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 2.6;
+}
+
+[data-on="true"] > .a-tip {
+  fill: rgb(var(--c-dot));
+  stroke: rgb(var(--c-dot));
+}
+
+.a-beam {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 2.1;
+  stroke-linecap: round;
+}
+
+.a-beam + .a-tip {
+  fill: rgb(var(--c-hi));
+  stroke: none;
+}
+
+[data-on="true"] > .a-beam {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 3.2;
+}
+
+.a-gap {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 0.5;
+}
+
+.a-gap[data-on="true"] {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 1.2;
+}
+
+.a-hit {
+  fill: transparent;
+  stroke: none;
+  cursor: crosshair;
+}
+
+.tcard-caption {
+  min-height: calc(13 * var(--u));
+  margin: calc(6 * var(--u)) 0 calc(8 * var(--u));
+  color: rgb(var(--c-faint));
+  font-family: var(--mono);
+  font-size: max(9px, calc(8.8 * var(--u)));
+  letter-spacing: 0.14em;
+  line-height: 1.3;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.tcard-caption[data-live="true"] {
+  color: rgb(var(--c-hi));
+  /* Bacaan memuat satuan (µm, mJy) yang tidak boleh jadi huruf besar. */
+  text-transform: none;
+}
+
+.tcard-caption .unit {
+  text-transform: none;
+}
+
+.tcard-ribbon {
+  flex: none;
+  width: calc(280 * var(--u));
+}
+
+.r-body {
+  fill: rgb(var(--c-banner));
+  stroke: rgb(var(--c-hi));
+  stroke-width: 0.8;
+}
+
+.r-rule {
+  fill: none;
+  stroke: rgb(var(--c-lo));
+  stroke-width: 0.4;
+}
+
+.tcard-ribbon text {
+  fill: rgb(var(--c-hi));
+  font-family: var(--sans);
+  font-weight: 700;
+  font-stretch: 125%;
+  letter-spacing: 0.16em;
+}
+
+.tcard-ribbon[data-dim="true"] text {
+  fill: rgb(var(--c-lo));
+}
+
+.tcard-ribbon[data-dim="true"] .r-body {
+  stroke: rgb(var(--c-lo));
+}
+
+.tcard-say {
+  margin: calc(11 * var(--u)) 0 0;
+  color: rgb(var(--c-text));
+  font-size: max(11.5px, calc(12.4 * var(--u)));
+  line-height: 1.42;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.tcard-facts {
+  display: grid;
+  gap: calc(8 * var(--u));
+  align-self: stretch;
+  margin: calc(11 * var(--u)) 0 0;
+  padding: calc(10 * var(--u)) 0 0;
+  border-top: 1px solid rgb(var(--c-lo) / 0.5);
+  list-style: none;
+  color: rgb(var(--c-muted));
+  font-size: max(10.5px, calc(10.8 * var(--u)));
+  line-height: 1.4;
+}
+
+.tcard-facts li {
+  display: grid;
+  grid-template-columns: calc(38 * var(--u)) 1fr;
+  gap: calc(10 * var(--u));
+  align-items: center;
+}
+
+.tcard-glyph {
+  display: grid;
+  place-items: center;
+}
+
+.tcard-glyph svg {
+  width: calc(36 * var(--u));
+  height: calc(36 * var(--u));
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.g-lo {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 1;
+}
+
+.g-dash {
+  stroke-dasharray: 1.5 2.5;
+}
+
+.tcard-glyph .g-gold,
+.tcard-glyph .g-trail,
+.tcard-glyph .g-bar {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 1.5;
+}
+
+.tcard-glyph .g-trail {
+  stroke-dasharray: 2 2.6;
+  stroke-width: 1.1;
+}
+
+.tcard-glyph .g-bar {
+  stroke-width: 4;
+  stroke-linecap: butt;
+}
+
+.g-eye {
+  stroke: rgb(var(--c-text));
+  stroke-width: 1.1;
+}
+
+.tcard-glyph .g-dot {
+  fill: rgb(var(--c-top));
+  stroke: rgb(var(--c-gold));
+  stroke-width: 1.2;
+}
+
+.tcard-glyph .g-dot-now {
+  fill: rgb(var(--c-dot));
+  stroke: rgb(var(--c-dot));
+}
+
+/* Peta seluruh langit mini dengan satu titik. */
+.locator {
+  position: relative;
+  display: block;
+  width: calc(38 * var(--u));
+  aspect-ratio: 2;
+}
+
+.locator canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  outline: 1px solid rgb(var(--c-lo));
+}
+
+.locator i {
+  position: absolute;
+  width: calc(6 * var(--u));
+  height: calc(6 * var(--u));
+  border: 1px solid rgb(var(--c-bottom));
+  border-radius: 50%;
+  background: rgb(var(--c-dot));
+  transform: translate(-50%, -50%);
+}
+
+.tcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(6 * var(--u));
+  margin-top: auto;
+  padding-top: calc(8 * var(--u));
+}
+
+.tcard .pill {
+  height: max(28px, calc(30 * var(--u)));
+  padding: 0 calc(13 * var(--u));
+  color: rgb(var(--c-text));
+  font-size: max(11px, calc(11.5 * var(--u)));
+}
+
+.tcard .pill svg {
+  width: calc(13 * var(--u));
+  height: calc(13 * var(--u));
+}
+
+.tcard .pill-quiet {
+  color: rgb(var(--c-muted));
+}
+
+.tcard .pill:focus-visible {
+  outline: 2px solid rgb(var(--c-dot));
+  outline-offset: 2px;
+}
+
+/* Pangkat kedua di dalam kartu: garis ganda tipis, senada dengan bingkai kartu. */
+.pill-etched {
+  border-color: rgb(var(--c-gold, 255 180 84));
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 2px rgb(var(--c-banner, 10 12 20)),
+    inset 0 0 0 3px rgb(var(--c-lo, 142 92 44));
+}
+
+.pill-etched:hover:not(:disabled) {
+  border-color: rgb(var(--c-hi, 255 224 164));
+  background: rgb(var(--c-gold, 255 180 84) / 0.12);
+}
+
+/* Sisi belakang: rincian data. */
+.tcard-data {
+  flex: 1;
+  min-height: 0;
+  align-self: stretch;
+  margin-top: calc(6 * var(--u));
+  padding-top: calc(12 * var(--u));
+  overflow-y: auto;
+  border-top: 1px solid rgb(var(--c-lo) / 0.5);
+  scrollbar-width: thin;
+}
+
+.tcard-data .facts {
+  grid-template-columns: auto 1fr;
+  gap: calc(7 * var(--u)) calc(12 * var(--u));
+  margin-bottom: calc(12 * var(--u));
+  font-size: max(10.5px, calc(11 * var(--u)));
+}
+
+.tcard-data .facts dt {
+  color: rgb(var(--c-gold));
+}
+
+.tcard-data .facts dd {
+  color: rgb(var(--c-text));
+  font-size: max(10px, calc(10.4 * var(--u)));
+  line-height: 1.5;
+}
+
+.facts-row {
+  display: contents;
+}
+
+.tcard-data p {
+  margin: 0 0 calc(8 * var(--u));
+  color: rgb(var(--c-muted));
+  font-size: max(10.5px, calc(11 * var(--u)));
+  line-height: 1.5;
+}
+
+.tcard-data .sw {
+  margin-right: 6px;
+}
+
+/* Kartu tertelungkup: garisnya diredupkan. */
+.tcard[data-down="true"] .tcard-front .f-gold,
+.tcard[data-down="true"] .tcard-front .a-star {
+  opacity: 0.55;
+}
+
+/* Kartu seluruh langit: gambarnya peta itu sendiri. */
+.tcard-art-sky {
+  aspect-ratio: 2;
+  margin: calc(34 * var(--u)) 0 calc(22 * var(--u));
+}
+
+.art-sky {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.s-figure {
+  stroke: rgb(var(--c-gold));
+  stroke-width: 2.4;
+  opacity: 0.5;
+}
+
+.s-rim {
+  stroke: rgb(var(--c-lo));
+  stroke-width: 4;
+}
+
+.s-ring {
+  stroke: rgb(var(--c-dot));
+  stroke-width: 7;
+}
+
+@media (max-width: 860px) {
+  .scrim-reading {
+    align-items: start;
+    padding: 14px 0;
+  }
+
+  .reading {
+    --cw: min(84vw, 360px, calc((100dvh - 150px) * 0.5625));
+    width: 100%;
+  }
+
+  .reading-head,
+  .reading-foot,
+  .reading-more {
+    margin: 0 16px;
+  }
+
+  /* Tiga kartu tidak muat berjajar: digeser satu per satu. */
+  .reading-cards {
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 6px calc((100vw - var(--cw)) / 2) 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .reading-cards[data-count="1"] {
+    --cw: min(84vw, 360px);
+  }
+
+  .tcard {
+    scroll-snap-align: center;
+  }
+
+  .reading-more {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reading-lead {
+    font-size: 13.5px;
+  }
+}
+
+@media (max-width: 860px) {
+  .goto-trigger::before,
+  .goto-trigger::after,
+  .top::after {
+    display: none;
+  }
+
+  .goto-trigger {
+    letter-spacing: 0.06em;
+  }
+
+  .top-actions {
+    gap: 5px;
+  }
+
+  .pill-cards {
+    margin-right: 0;
+    padding: 0 11px;
+  }
+}
+
+/* ---------- dok sebagai meja alat ---------- */
+
+/* Dok bukan kotak panel lagi: skalanya berdiri langsung di atas langit, seperti skala
+   yang terukir di kaca teleskop. Bahasanya sama dengan kartu: garis tipis, garis ganda,
+   bintang empat sudut, angka Romawi (II jalannya, III cahayanya). */
+.dock {
+  margin: 0;
+  padding: 22px 34px 14px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(to top, rgba(5, 6, 11, 0.94) 0%, rgba(5, 6, 11, 0.86) 62%, transparent 100%);
+  gap: 4px;
+}
+
+/* Garis ukir di atas dok, terputus di tengah oleh satu bintang empat sudut. */
+.dock::before,
+.dock::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.dock::before {
+  left: 34px;
+  right: 34px;
+  top: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hair-strong) 10%, var(--hair-strong) 47%, transparent 48.6%, transparent 51.4%, var(--hair-strong) 53%, var(--hair-strong) 90%, transparent);
+}
+
+.dock::after {
+  left: 50%;
+  top: 3px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  transform: translateX(-50%);
+}
+
+/* Dua baris dipisah garis titik tipis, seperti baris titik di bingkai kartu. */
+.dock-row + .dock-row {
+  padding-top: 8px;
+  background: radial-gradient(circle, var(--hair-strong) 0.8px, transparent 1.2px) top left / 6px 2px repeat-x;
+}
+
+/* Kenop: cincin ganda, dan cincin luarnya bergerigi seperti cincin lensa. */
+.dial {
+  width: 44px;
+  height: 44px;
+  background: rgba(5, 6, 11, 0.6);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.9),
+    inset 0 0 0 3px rgb(255 180 84 / 0.28);
+  border-color: rgb(255 180 84 / 0.6);
+  color: var(--accent);
+}
+
+.dial::before {
+  inset: -7px;
+  border: 0;
+  background: repeating-conic-gradient(from -1deg, var(--hair-strong) 0 2deg, transparent 2deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 4px), #000 calc(50% - 4px) 50%, transparent 50%);
+  mask: radial-gradient(circle, transparent 0 calc(50% - 4px), #000 calc(50% - 4px) 50%, transparent 50%);
+}
+
+.dial:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgb(255 180 84 / 0.1);
+}
+
+.dial.dial-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    inset 0 0 0 3px rgb(27 18 4 / 0.35);
+  color: var(--accent-ink);
+}
+
+.dial.dial-accent:hover:not(:disabled) {
+  background: #ffc57a;
+}
+
+.dial-accent::before {
+  background: repeating-conic-gradient(from -1deg, rgb(255 180 84 / 0.55) 0 2deg, transparent 2deg 15deg);
+}
+
+.dial-text {
+  display: grid;
+  gap: 3px;
+}
+
+.dial-kicker {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dial-kicker b {
+  margin-right: 4px;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.12em;
+}
+
+.dock .dial-caption {
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* Sakelar rentang waktu: garis ganda; yang terpilih bergaris ambar, tidak diisi
+   (isi ambar penuh hanya untuk satu tombol utama, yaitu Play). */
+.dock .era {
+  padding: 2px;
+  border-color: rgb(255 180 84 / 0.45);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.9),
+    inset 0 0 0 3px rgb(255 180 84 / 0.14);
+}
+
+.dock .era button {
+  letter-spacing: 0.06em;
+}
+
+.dock .era button[aria-pressed="true"] {
+  background: rgb(255 180 84 / 0.14);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent);
+}
+
+/* Penggaris waktu: tiap pengamatan satu sinar tegak, seperti busur di kartu II.
+   WISE berujung titik berongga, SPHEREx lebih tinggi dan berujung penuh. */
+.dock .timeline-rule {
+  background: linear-gradient(90deg, transparent, var(--hair-strong) 4%, var(--hair-strong) 96%, transparent);
+}
+
+.tick span {
+  position: relative;
+  width: 1.4px;
+  height: 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--muted);
+  transform-origin: 50% 100%;
+}
+
+.tick span::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 5px;
+  height: 5px;
+  border: 1.2px solid var(--muted);
+  border-radius: 50%;
+  background: var(--void);
+  transform: translateX(-50%);
+}
+
+.tick[data-kind="spherex"] span {
+  height: 14px;
+  background: var(--text);
+}
+
+.tick[data-kind="spherex"] span::after {
+  border-color: var(--text);
+  background: var(--text);
+}
+
+.tick:hover span {
+  transform: scaleY(1.2);
+}
+
+.tick:hover span,
+.tick:hover span::after {
+  border-color: var(--text);
+}
+
+/* Yang sedang tampil di lensa: sinar ambar dengan bintang empat sudut di ujungnya. */
+.tick[aria-pressed="true"] span {
+  height: 15px;
+  background: var(--accent);
+  transform: none;
+}
+
+.tick[aria-pressed="true"] span::after {
+  top: -9px;
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 4px rgb(255 180 84 / 0.8));
+}
+
+.dock .era-tag {
+  letter-spacing: 0.2em;
+}
+
+.dock .era-break {
+  border-left-color: rgb(255 180 84 / 0.5);
+}
+
+/* Kunjungan SPHEREx saja: simpulnya bintang empat sudut kecil, terang saat terpilih. */
+.visit-node {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 0;
+  background: var(--muted);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+
+.visit:hover:not(:disabled) .visit-node {
+  background: var(--text);
+}
+
+.visit[aria-pressed="true"] .visit-node {
+  background: var(--accent);
+  filter: drop-shadow(0 0 4px rgb(255 180 84 / 0.8));
+  transform: scale(1.3);
+}
+
+/* Spektrum: garis kunjungan yang tampil berwarna aksen; enam ruas band dibatasi
+   kurung tipis di bawah, seperti skala, dan yang terpilih kurungnya menyala. */
+.dock .spec-line {
+  stroke: var(--accent);
+  opacity: 0.75;
+}
+
+.dock .spec-axis {
+  stroke: var(--hair-strong);
+}
+
+.dock .segment {
+  border-left: 0;
+  background: none;
+}
+
+.dock .segment::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0;
+  height: 5px;
+  border: 1px solid var(--hair-strong);
+  border-top: 0;
+}
+
+.dock .segment:last-child {
+  border-right: 0;
+}
+
+.dock .segment:hover:not(:disabled) {
+  background: linear-gradient(to top, var(--wash), transparent);
+}
+
+.dock .segment[aria-pressed="true"] {
+  background: linear-gradient(to top, rgb(255 180 84 / 0.12), transparent 80%);
+  box-shadow: none;
+}
+
+.dock .segment[aria-pressed="true"]::before {
+  border-color: var(--accent);
+}
+
+.dock .segment[data-heard="true"] {
+  background: linear-gradient(to top, rgb(255 180 84 / 0.26), transparent 90%);
+}
+
+.dock .segment:disabled {
+  background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(205, 214, 255, 0.05) 5px 6px);
+}
+
+/* Tombol di ekor dok: pangkat tenang, huruf mono kecil. */
+.dock-tail .pill {
+  height: 32px;
+  padding: 0 13px;
+  border-color: var(--hair-strong);
+  background: rgba(5, 6, 11, 0.5);
+  color: var(--soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dock-tail .pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dock-tail .pill:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgb(255 180 84 / 0.08);
+}
+
+.dock-tail .pill[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.9),
+    inset 0 0 0 3px rgb(255 180 84 / 0.3);
+}
+
+.dock .round {
+  background: rgba(5, 6, 11, 0.5);
+}
+
+.dock .round:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 860px) {
+  .dock {
+    margin: 0;
+    padding: 20px 14px 14px;
+  }
+
+  .dock::before {
+    left: 14px;
+    right: 14px;
+  }
+}
+
+/* ---------- cahaya langit di luar elips ---------- */
+
+/* Halaman tempat berlatar langit; halaman peta dulu berlatar hitam polos. Ini peta yang
+   sama, diperbesar dan dikaburkan di belakang pelat: pita Bima Sakti merembes sampai ke
+   tepi layar. Tidak ada elemen baru untuk dibaca. Hilang saat peta diperbesar, karena
+   saat itu ia tidak lagi cocok dengan yang tampil. */
+.atlas-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--veil, 1);
+  transition: opacity 500ms ease;
+  -webkit-mask-image: radial-gradient(ellipse 80% 78% at 50% 46%, #000 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 78% at 50% 46%, #000 45%, transparent 100%);
+}
+
+.atlas-glow canvas {
+  position: absolute;
+  aspect-ratio: 2;
+  transform: translate(-50%, -50%) scale(2.1, 2.3);
+  filter: blur(32px) brightness(1.7) saturate(1.1);
+}
+
+.atlas[data-zoomed="true"] .atlas-glow,
+.atlas[data-look="paper"] .atlas-glow {
+  opacity: 0;
+}
+
+@media (max-width: 860px) {
+  .atlas-glow {
+    display: none;
+  }
+}
+
+/* ---------- peta seluruh langit memenuhi layar ---------- */
+
+.atlas-hint {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Di layar lebar halaman ini bukan lagi "gambar lalu kaki halaman": elipsnya sebesar
+   yang muat di layar, dan judul serta kontrol menempati sudut kosongnya (elips selalu
+   menyisakan empat sudut). Estetikanya tetap, hanya tidak ada lagi ruang mati. */
+@media (min-width: 861px) {
+  .atlas {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .atlas-head {
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .atlas-stage {
+    position: absolute;
+    inset: 90px 0 12px;
+  }
+
+  .atlas-plot {
+    width: min(100vw - 28px, calc((100dvh - 102px) * 2));
+  }
+
+  /* Tombol zoom dan keterangan pindah ke sudut atas pelat; sudut bawah untuk judul dan kontrol. */
+  .atlas-zoom {
+    top: 10px;
+    bottom: auto;
+  }
+
+  .atlas-status {
+    top: 10px;
+    bottom: auto;
+  }
+
+  .atlas-foot {
+    position: absolute;
+    inset: auto 30px 22px;
+    z-index: 2;
+    justify-self: stretch;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "intro controls"
+      "tour controls";
+    gap: 14px 24px;
+    width: auto;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .atlas-foot > * {
+    pointer-events: auto;
+  }
+
+  /* Saat diperbesar langit sampai ke sudut; gradasi gelap menjaga teksnya terbaca. */
+  .atlas-foot::before {
+    content: "";
+    position: absolute;
+    inset: -70px -30px -22px;
+    z-index: -1;
+    background: linear-gradient(to top, rgb(5 6 11 / 0.92), rgb(5 6 11 / 0.6) 55%, transparent);
+    opacity: 0;
+    transition: opacity 300ms ease;
+    pointer-events: none;
+  }
+
+  .atlas[data-zoomed="true"] .atlas-foot::before {
+    opacity: var(--veil, 1);
+  }
+
+  .atlas-intro {
+    grid-area: intro;
+    max-width: 300px;
+    text-shadow:
+      0 0 14px var(--void),
+      0 0 4px var(--void);
+  }
+
+  .atlas-intro h1 {
+    font-size: 21px;
+  }
+
+  .atlas-intro p {
+    margin-top: 7px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .atlas-intro .atlas-hint {
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+
+  .atlas-tour {
+    grid-area: tour;
+    justify-self: start;
+  }
+
+  .atlas-controls {
+    grid-area: controls;
+    align-self: end;
+    width: 312px;
+  }
+}
+
+/* ---------- dua isian koordinat di Go to ---------- */
+
+/* RA dan Dec ditulis sendiri-sendiri, seperti menyetel dua sumbu teleskop: label mono
+   berwarna aksen, angka besar di atas satu garis tipis, bukan kotak isian biasa. */
+.coords {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px 18px;
+  padding: 2px 8px 4px;
+}
+
+.coords-or {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 2px 0 4px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.coords-or::before,
+.coords-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+}
+
+.coord {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  cursor: text;
+}
+
+.coord-name {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.coord-name b {
+  margin-right: 6px;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.1em;
+}
+
+.coord input {
+  width: 100%;
+  height: 40px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--hair-strong);
+  border-radius: 0;
+  outline: 0;
+  background: none;
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  transition: border-color 150ms;
+}
+
+.coord input::placeholder {
+  color: var(--faint);
+  opacity: 0.7;
+}
+
+.coord input:focus {
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 var(--accent);
+}
+
+.coord input[aria-invalid="true"] {
+  border-bottom-color: #ff9d8a;
+}
+
+.coord-hint {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.coords .pill {
+  height: 40px;
+  padding: 0 16px;
+  margin-bottom: 19px;
+}
+
+@media (max-width: 560px) {
+  .coords {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .coords .pill {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+}
+
+/* ---------- citra selisih ---------- */
+
+.diff-minus {
+  margin: 0 0.35em;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+/* Kunci warna di keterangan lensa: bara = lebih terang sekarang, pucat = lebih terang dulu. */
+.diff-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.diff-key i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.diff-key i[data-k="now"] {
+  background: #ffb454;
+  box-shadow: 0 0 6px rgb(255 180 84 / 0.7);
+}
+
+.diff-key i[data-k="then"] {
+  margin-left: 10px;
+  background: #96a8e2;
+  box-shadow: 0 0 6px rgb(150 168 226 / 0.6);
+}
+
+.satellite:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---------- overlay Gaia ---------- */
+
+/* Cincin katalog: tipis dan dingin (warna garis sistem), dengan lingkar gelap di bawahnya
+   supaya terbaca di atas bintang terang. Tanda ambar tetap milik pengukuran kita. */
+.gaia-star,
+.gaia-halo,
+.gaia-tail {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.gaia-halo {
+  stroke: rgb(5 6 11 / 0.6);
+  stroke-width: 3;
+}
+
+.gaia-star {
+  stroke: rgb(205 214 255 / 0.85);
+  stroke-width: 1;
+}
+
+/* Jalur menurut katalog untuk bintang yang bergerak cepat. */
+.gaia-tail {
+  stroke: rgb(205 214 255 / 0.7);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.lens[data-look="paper"] .gaia-star,
+.lens[data-look="paper"] .gaia-tail {
+  stroke: rgb(24 30 70 / 0.85);
+}
+
+.lens[data-look="paper"] .gaia-halo {
+  stroke: rgb(244 241 234 / 0.6);
+}
+
+.lens[data-look="paper"][data-difference="true"] .gaia-star,
+.lens[data-look="paper"][data-difference="true"] .gaia-tail {
+  stroke: rgb(205 214 255 / 0.85);
+}
+
+.caption-note {
+  color: rgb(205 214 255 / 0.8);
+}
+
+/* Di layar sempit keterangan lensa boleh turun baris: kunci warna citra selisih dan
+   catatan Gaia mengambil barisnya sendiri, tidak menimpa teks di bawahnya. */
+.lens-caption b,
+.lens-caption span {
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .lens-caption {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0;
+    height: auto;
+    min-height: 22px;
+  }
+}
+
+/* Tautan kode sumber di kaki dialog kartu: setara tombol tenang di sebelahnya. */
+.reading-actions a.pill {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.reading-actions a.pill:hover {
+  color: var(--text);
 }

@@ -444,7 +444,12 @@ export function SpectrumStrip(p: Props) {
         >
           {play ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
-        <span className="dial-caption">{play ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
+        <span className="dial-text">
+          <span className="dial-kicker" aria-hidden="true">
+            <b>III</b> Light
+          </span>
+          <span className="dial-caption">{play ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
+        </span>
       </div>
 
       <div className="strip">

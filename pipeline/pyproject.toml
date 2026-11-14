@@ -2,6 +2,7 @@
 name = "skychange"
 version = "0.1.0"
 description = "SPHEREx sky position -> aligned blink frames and spectrum bundle"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "astropy>=6.1",

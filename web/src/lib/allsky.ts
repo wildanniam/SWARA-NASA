@@ -154,3 +154,40 @@ export function readCoordinates(text: string): Reading | undefined {
     return { error: "RA must be 0 to 360 degrees and Dec −90 to +90 degrees." };
   return { ra, dec };
 }
+
+/** Satu isian koordinat: angka yang terbaca (derajat), kosong, atau alasan kenapa tidak terbaca. */
+export type FieldReading = { value: number } | { error: string } | undefined;
+
+function sexagesimal(text: string): { parts: number[]; negative: boolean } | undefined {
+  const s = text.trim().replace(/−/g, "-");
+  if (!s) return undefined;
+  if (!/^[\d\s+\-.:hmsd°′″'"]+$/i.test(s)) return { parts: [], negative: false };
+  const tokens = [...s.matchAll(/\d+\.?\d*|\.\d+/g)].map((t) => Number(t[0]));
+  return { parts: tokens, negative: /^\s*-/.test(s) };
+}
+
+/** Isian RA: satu angka dibaca derajat; dua atau tiga angka, atau yang ditulis dengan
+ *  h, dibaca jam, menit, detik (kecuali ditulis dengan d atau °). */
+export function readRa(text: string): FieldReading {
+  const r = sexagesimal(text);
+  if (!r) return undefined;
+  const { parts } = r;
+  if (!parts.length || parts.length > 3 || r.negative) return { error: "RA should look like 269.4463 or 17h 57m 48s." };
+  if (parts.slice(1).some((v) => v >= 60)) return { error: "Minutes and seconds of RA must be below 60." };
+  const hours = (parts.length > 1 || /h/i.test(text)) && !/[d°]/i.test(text);
+  const value = (parts[0] + (parts[1] ?? 0) / 60 + (parts[2] ?? 0) / 3600) * (hours ? 15 : 1);
+  if (value < 0 || value > 360) return { error: hours ? "RA runs from 0 to 24 hours." : "RA runs from 0 to 360 degrees." };
+  return { value };
+}
+
+/** Isian Dec: derajat, atau derajat, menit busur, detik busur, dengan tanda. */
+export function readDec(text: string): FieldReading {
+  const r = sexagesimal(text);
+  if (!r) return undefined;
+  const { parts } = r;
+  if (!parts.length || parts.length > 3 || /h/i.test(text)) return { error: "Dec should look like +4.7682 or +04° 46′ 06″." };
+  if (parts.slice(1).some((v) => v >= 60)) return { error: "Arcminutes and arcseconds of Dec must be below 60." };
+  const value = (r.negative ? -1 : 1) * (parts[0] + (parts[1] ?? 0) / 60 + (parts[2] ?? 0) / 3600);
+  if (value < -90 || value > 90) return { error: "Dec runs from −90 to +90 degrees." };
+  return { value };
+}

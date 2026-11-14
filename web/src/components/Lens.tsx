@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { prefersReducedMotion } from "../lib/hooks";
-import { paint, type Rect } from "../lib/paint";
+import { paint, paintDifference, type Linear, type Rect } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
 
 type Props = {
@@ -14,6 +14,11 @@ type Props = {
   tone?: Uint8ClampedArray;
   /** Penghalusan sebelum diwarnai, dalam piksel citra; dipakai untuk citra WISE. */
   soften?: number;
+  /** Citra selisih: `image` dikurangi citra acuan ini (pengamatan pertama teleskop yang sama). */
+  difference?: { reference: HTMLImageElement; scale?: Linear; tone?: Uint8ClampedArray };
+  /** Bintang katalog Gaia di posisinya pada tanggal citra yang tampil, piksel frame.
+   *  `tail` = dari mana bintang cepat itu datang sejak pengamatan pertama. */
+  stars?: { x: number; y: number; g: number; tail?: { x: number; y: number } }[];
   /** Tempat dan teleskop citra yang tampil, "tempat:teleskop". Saat teleskopnya
    *  berganti di tempat yang sama, citra lama larut ke citra baru. */
   source: string;
@@ -57,6 +62,8 @@ type Props = {
   onWheelZoom: (dir: 1 | -1) => void;
   /** Pengganti baris keterangan, misalnya pembacaan koordinat saat berpindah. */
   caption?: ReactNode;
+  /** Catatan tambahan di ujung baris keterangan. */
+  note?: string;
   /** Tombol kecil yang menempel di cincin. */
   children?: ReactNode;
 };
@@ -93,7 +100,9 @@ export function Lens(p: Props) {
       fade.getContext("2d")!.drawImage(canvas, 0, 0);
       fade.style.opacity = "1";
     }
-    paint(canvas, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view, p.tone, p.soften);
+    if (p.difference)
+      paintDifference(canvas, p.image, p.difference.reference, CANVAS_PX, p.view, p.difference.scale, p.difference.tone, p.soften);
+    else paint(canvas, p.image, LUTS[p.palette], CANVAS_PX, p.showFlags ? p.mask : undefined, p.view, p.tone, p.soften);
     if (handover && fade) {
       if (typeof fade.animate === "function") {
         dissolve.current.animation = fade.animate([{ opacity: 1 }, { opacity: 0 }], {
@@ -106,7 +115,7 @@ export function Lens(p: Props) {
       dissolve.current.timer = window.setTimeout(() => dissolve.current.animation?.cancel(), DISSOLVE_MS + 60);
       setCue((n) => n + 1);
     }
-  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source]);
+  }, [p.image, p.mask, p.palette, p.showFlags, p.view, p.tone, p.soften, p.source, p.difference]);
 
   useEffect(() => {
     const state = dissolve.current;
@@ -151,6 +160,7 @@ export function Lens(p: Props) {
       data-status={p.status ?? "ready"}
       data-collapsed={p.collapsed}
       data-look={p.palette}
+      data-difference={!!p.difference}
     >
       <div className="lens-slot" ref={p.slotRef} style={slotStyle}>
         <div className="lens-body" inert={p.collapsed}>
@@ -163,6 +173,22 @@ export function Lens(p: Props) {
                 viewBox={`${p.markView.x} ${p.markView.y} ${p.markView.w} ${p.markView.h}`}
                 aria-hidden="true"
               >
+                {/* Cincin Gaia: tipis dan dingin, supaya tidak tertukar dengan tanda ambar kita. */}
+                {p.stars && (
+                  <g className="gaia">
+                    {p.stars.map((st, i) => {
+                      // Makin terang bintangnya, makin besar cincinnya.
+                      const r = s * (0.0085 + 0.017 * Math.min(1, Math.max(0, (15 - st.g) / 8)));
+                      return (
+                        <g key={i}>
+                          {st.tail && <line className="gaia-tail" x1={st.tail.x} y1={st.tail.y} x2={st.x} y2={st.y} />}
+                          <circle className="gaia-halo" cx={st.x} cy={st.y} r={r} />
+                          <circle className="gaia-star" cx={st.x} cy={st.y} r={r} />
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
                 {moved && (
                   <>
                     <polyline className="trail-line" points={p.trail.map((t) => `${t.x},${t.y}`).join(" ")} />
@@ -296,6 +322,7 @@ export function Lens(p: Props) {
                 {p.bandLabel}
               </span>
               <span>{Math.round(p.viewArcsec / 60)}′ wide</span>
+              {p.note && <span className="caption-note">{p.note}</span>}
             </>
           ))}
       </p>

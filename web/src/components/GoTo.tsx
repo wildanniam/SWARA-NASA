@@ -1,6 +1,6 @@
-import { ArrowRight, MagnifyingGlass, X } from "@phosphor-icons/react";
+import { ArrowRight, Crosshair, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { atlasUrl, constellationAt, decDms, raHms, readCoordinates, toMap, type Atlas } from "../lib/allsky";
+import { atlasUrl, constellationAt, decDms, raHms, readCoordinates, readDec, readRa, toMap, type Atlas } from "../lib/allsky";
 import { KIND_LABEL } from "../content";
 import type { TargetRef } from "../lib/bundle";
 import { coord } from "../lib/format";
@@ -68,7 +68,20 @@ function ReadAs({ atlas, look, ra, dec }: { atlas: Atlas; look: PaletteId; ra: n
 export function GoTo(p: Props) {
   const ref = useDialog<HTMLDivElement>(p.open, p.onClose);
   const [help, setHelp] = useState(false);
+  // Dua isian koordinat: RA dan Dec ditulis sendiri-sendiri, di samping kotak cari.
+  const [raText, setRaText] = useState("");
+  const [decText, setDecText] = useState("");
   if (!p.open) return null;
+
+  const ra = readRa(raText);
+  const dec = readDec(decText);
+  const pointed = ra && "value" in ra && dec && "value" in dec ? { ra: ra.value, dec: dec.value } : undefined;
+  const fieldError = (ra && "error" in ra && ra.error) || (dec && "error" in dec && dec.error) || undefined;
+  const point = (e: FormEvent) => {
+    e.preventDefault();
+    // Dikirim sebagai dua angka derajat, bentuk yang dibaca server tanpa tafsir.
+    if (pointed && !p.busy) p.onSubmit(`${pointed.ra.toFixed(5)} ${pointed.dec.toFixed(5)}`);
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -123,8 +136,61 @@ export function GoTo(p: Props) {
           </p>
         )}
 
+        <p className="goto-hint">
+          Try a name like <b>Wolf 359</b>. It is looked up in the SIMBAD catalogue and moved to where the object is in
+          2026.
+        </p>
+
+        <form className="coords" onSubmit={point} aria-label="Go to coordinates">
+          <p className="coords-or">
+            <span>or set the telescope by coordinates</span>
+          </p>
+          <label className="coord">
+            <span className="coord-name">
+              <b>RA</b> Right ascension
+            </span>
+            <input
+              value={raText}
+              onChange={(e) => setRaText(e.target.value)}
+              placeholder="17h 57m 48s"
+              aria-invalid={!!ra && "error" in ra}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              maxLength={24}
+            />
+            <span className="coord-hint">degrees, or hours h m s</span>
+          </label>
+          <label className="coord">
+            <span className="coord-name">
+              <b>Dec</b> Declination
+            </span>
+            <input
+              value={decText}
+              onChange={(e) => setDecText(e.target.value)}
+              placeholder="+04° 46′ 06″"
+              aria-invalid={!!dec && "error" in dec}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              maxLength={24}
+            />
+            <span className="coord-hint">degrees, −90 to +90</span>
+          </label>
+          <button type="submit" className="pill pill-share" disabled={p.busy || !pointed}>
+            <Crosshair aria-hidden="true" />
+            Point
+          </button>
+        </form>
+        {fieldError && (
+          <p className="goto-error" role="status">
+            {fieldError}
+          </p>
+        )}
+
         {(() => {
-          const reading = readCoordinates(p.query);
+          // Pratinjau "dibaca sebagai": dari dua isian kalau keduanya terbaca, selain itu dari kotak cari.
+          const reading = pointed ?? readCoordinates(p.query);
           if (!reading) return null;
           if ("error" in reading)
             return p.error ? null : (
@@ -136,7 +202,6 @@ export function GoTo(p: Props) {
         })()}
 
         <p className="goto-hint">
-          Try a name like <b>Wolf 359</b>, or a position like <span className="mono">269.4463 +4.7682</span>.{" "}
           <button type="button" className="link" aria-expanded={help} onClick={() => setHelp((v) => !v)}>
             What are RA and Dec?
           </button>
@@ -144,7 +209,7 @@ export function GoTo(p: Props) {
         {help && (
           <p className="goto-explain">
             They are the sky's longitude and latitude. RA runs from 0 to 360° (or 0 to 24 hours), Dec from −90° to
-            +90°. A name is looked up in the SIMBAD catalogue and moved to where the object is in 2026.
+            +90°. The search box above also reads both at once, like <span className="mono">269.4463 +4.7682</span>.
           </p>
         )}
 

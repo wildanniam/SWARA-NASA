@@ -68,4 +68,10 @@ The idea, product direction and decisions are the team's. AI coding assistants w
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Copyright (C) 2026 SWARA team.
+
+SWARA is free software under the [GNU Affero General Public License v3.0](LICENSE) or any later version. If you run a modified version for others over a network, you must offer them its source code. This licence lets the sound engine use [Strudel](https://strudel.cc), which is under the AGPL as well.
+
+Earlier versions of this repository were released under the MIT License.
+
+The data comes from NASA SPHEREx and WISE via IRSA and WiseView, and from ESA Gaia; each keeps its own terms.

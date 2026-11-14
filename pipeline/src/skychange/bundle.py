@@ -24,6 +24,7 @@ from PIL import Image
 from . import frames as fr
 from .context import build_context, build_context_early
 from .fetch import fetch_all
+from .gaia import build_gaia
 from .search import search
 from .spectrum import measure
 from .wise import build_wise
@@ -309,6 +310,13 @@ def build(
         log(f"[{target_id}] WISE gagal: {type(err).__name__}: {err}")
         wise = None
 
+    # Bintang Gaia untuk ditimpakan di lensa. Juga tambahan saja.
+    try:
+        gaia = build_gaia(ra, dec, out, fov_arcsec)
+    except Exception as err:
+        log(f"[{target_id}] Gaia gagal: {type(err).__name__}: {err}")
+        gaia = None
+
     manifest = {
         "id": target_id,
         "name": name,
@@ -327,6 +335,7 @@ def build(
         "motion": motion,
         "context": context,
         "wise": wise,
+        "gaia": gaia,
         "spectrum": "spectrum.json",
         "source": {
             "mission": "SPHEREx",

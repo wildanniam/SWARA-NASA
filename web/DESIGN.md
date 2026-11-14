@@ -14,7 +14,9 @@ Keputusan Wildan, 14 November 2026: **tarot dan rasi bintang** menjadi DNA visua
 
 Cara kita memakainya: tarot memberi **formatnya** (kartu tinggi, jendela melengkung, angka Romawi, pita julukan, sinar), langit memberi **isinya**. Tiap tempat yang di kartu tarot diisi hiasan, di sini diisi data. Emasnya adalah aksen ambar yang sudah ada, dan huruf tidak berubah.
 
-Yang sudah memakai arah ini: kartu berbagi dan peta seluruh langit (lihat di bawah). Yang belum ada dan perlu dibuat setelah pekerjaan fitur: **logo** (sekarang hanya tanda sementara: cincin lensa dan satu titik), lalu penerapan arah ini ke halaman pembuka dan Guide. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
+Yang sudah memakai arah ini: kartu berbagi, peta seluruh langit, dan bacaan tiga kartu yang menggantikan Guide (lihat di bawah). Yang belum: penerapan arah ini ke cuplikan penanda dan hasil Go to.
+
+Dua watak, satu aturan: **alat ukur saat orang mengukur** (lensa, garis waktu, tombol putar, bacaan koordinat), **kartu saat SWARA bercerita** (bacaan, kartu berbagi). Tarot tidak ditempel di semua tempat. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
 
 ## Aturan paling penting
 
@@ -117,6 +119,54 @@ Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang 
 - **Kode QR** gelap di atas ubin terang dengan modul berukuran bilangan bulat piksel, dan mengarah ke tautan pendek tempat itu.
 
 Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai yang dilarang di viewer: gradien latar, satu pendar lembut, dan garis hias di bingkai. Aturan viewer di atas tidak berubah.
+
+## Bacaan (pengganti Guide)
+
+Tombol **The cards** (dulu Guide) membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartunya diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog. Semua yang digambar dan ditulis dihitung dari bundle dan peta seluruh langit (`web/src/lib/reading.ts`); tidak ada angka yang ditulis tangan.
+
+- **Anatomi kartu** (sama dengan kartu berbagi, sepertiga ukurannya, 360 x 640 satuan): bingkai garis ganda bersudut cekung, angka Romawi, satu baris pertanyaan, gambar, keterangan gambar, pita julukan, satu kalimat, dua fakta bertanda kecil, tombol. Warna kartu mengikuti look.
+- **I, tempatnya.** Jendela melengkung berisi 44 derajat langit dari peta SPHEREx yang asli, utara di atas, dengan garis rasi di atasnya; rasi yang ditempati benda itu digambar terang dan namanya jadi isi pita. Faktanya: jarak dari pita Bima Sakti (dengan peta seluruh langit mini) dan dari lintang mana ia tidak pernah terbit.
+- **II, jalannya.** Tumpukan semua citra WISE; busur di atasnya memuat satu sinar per pengamatan pada tanggalnya. Menunjuk satu sinar (atau panah kiri dan kanan) menampilkan citra pengamatan itu. Pitanya julukan dari yang terukur (THE WANDERER, THE STILL ONE, THE RIDDLE). Faktanya: pergeseran terukur dengan diagram tanda dan titik, dan berapa lama ia melintasi lebar Bulan purnama dengan laju itu.
+- **III, cahayanya.** Lensa dengan spektrum sebagai 72 sinar; menunjuk satu sinar membaca panjang gelombang dan terangnya.
+- **0, seluruh langit.** Di peta seluruh langit dialognya berisi satu kartu: peta itu sendiri dan legendanya.
+- **Sisi belakang.** Tiap kartu dibalik untuk rincian datanya (sumber, tanggal, jumlah eksposur, penanda piksel). Depan untuk orang umum, belakang untuk yang ingin memeriksa.
+- **Tertelungkup.** Kartu yang datanya tidak terbaca (spektrum terlalu sedikit titik bersih, terlalu terang, tidak terpisah dari bintang latar, atau masih dimuat) tampil tertelungkup dengan pita UNREAD dan satu kalimat alasannya. Tidak ada kartu yang diisi gambar kosong.
+- **Bahasa.** Tarot hanya formatnya. Tidak ada kata ramalan, zodiak, atau nasib; rasi yang dipakai adalah rasi IAU.
+- **Layar kecil.** Tiga kartu digeser satu per satu. Tanpa gerak, kartu berganti sisi tanpa berputar.
+
+## Citra selisih dan bintang Gaia di lensa
+
+Dua lapis di lensa yang menjawab "apa yang berubah?" dan "katalog bilang apa?". Keduanya tombol di busur bawah cincin lensa (tujuh tombol berjajar tiap 18 derajat) dan bisa dinyalakan bersamaan.
+
+- **Citra selisih** (tombol atau D): citra yang tampil dikurangi pengamatan pertama dari teleskop dan band yang sama. Yang tidak berubah jadi gelap. Yang lebih terang sekarang berwarna **bara** (aksen ambar menuju putih hangat); yang lebih terang dulu berwarna **bayangan pucat** (warna garis sistem). Ini dua warna sistem, bukan peta warna dua arah baru, dan tidak mengikuti look. Keterangan lensa menyebut dua tanggalnya ("Mar 2026 minus Aug 2025") dan membawa kunci warnanya; di pengamatan pertama ia bilang belum ada yang dikurangkan.
+- **Bintang Gaia** (tombol atau A): tiap bintang katalog Gaia DR3 digambar sebagai cincin tipis berwarna dingin di posisinya **pada tanggal citra yang tampil**, jadi cincin bintang yang bergerak ikut bergerak. Cincin lebih besar untuk bintang lebih terang. Bintang yang geraknya lebih dari 0,3 detik busur per tahun diberi garis putus-putus dari posisinya pada pengamatan pertama: jalur menurut katalog, di samping jejak ambar yang kita ukur. Ambar tetap hanya untuk pengukuran kita.
+- Paling banyak 140 cincin digambar (yang paling terang di bagian langit yang tampil), dan keterangan lensa menyebut jumlahnya. Tempat tanpa data Gaia: tombolnya mati dan mengatakan itu.
+
+## Dua isian koordinat
+
+Di Go to, di bawah kotak cari, ada dua isian RA dan Dec yang ditata seperti dua sumbu teleskop: label mono berwarna aksen, angka besar di atas satu garis tipis (bukan kotak isian), dan satu baris petunjuk. Masing-masing membaca derajat atau jam/derajat-menit-detik, mengatakan alasannya kalau tidak terbaca, dan memakai pratinjau "Read as" yang sama dengan kotak cari.
+
+## Bilah atas dan mode fokus
+
+- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (mengekliknya kembali ke seluruh langit), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
+- **Mode fokus** (tombol pojok atau F): bilah atas dan dok menghilang, lensa membesar, nama di kiri dan angka terukur di kanan tetap ada. Browser diminta masuk layar penuh; kalau ditolak, mode fokus tetap jalan. Esc, F, atau tombol kecil di pojok untuk keluar. Blink tetap dengan Spasi dan panah.
+
+## Logo
+
+Dua bagian (`web/src/components/Logo.tsx`; bentuk yang sama ada di `web/public/favicon.svg` dan di kartu berbagi, `lib/card.ts`):
+
+- **Tanda:** cakram ambar dengan bintang empat sudut yang dilubangi, sehingga langit di belakangnya terlihat lewat bintang itu. Dipakai sendirian di tempat sempit: ikon tab, ponsel, avatar.
+- **Nama:** SWARA digambar satu garis berujung bulat, A tanpa palang, dan bintang ambar kecil sebagai palang A pertama.
+- Saat ditunjuk, tandanya sedikit membesar. Jangan diputar: bintang empat sudut yang diputar 45 derajat terbaca sebagai tanda tutup (✕).
+- Dipilih Wildan (14 November 2026) dari enam jenis (wordmark garis, monogram, tanda abstrak, ruang negatif, emblem, wordmark huruf) dan lima variasi tanda.
+
+## Halaman seluruh langit di layar lebar
+
+Elips sebesar yang muat di layar; judul dan kontrol menempati sudut kosong elips (kiri bawah: judul, satu kalimat, petunjuk, tombol tur; kanan bawah: panjang gelombang dan look; kanan atas pelat: zoom). Tidak ada kaki halaman. Ponsel tetap bertumpuk.
+
+## Pangkat tombol
+
+Satu bentuk (bulat penuh), tiga pangkat: **utama** berisi ambar penuh, satu saja per layar (`pill-accent`); **kedua** bergaris ambar (`pill-share`, dan di dalam kartu `pill-etched`: garis ganda tipis senada bingkai kartu); **tenang** hanya teks dan ikon (`pill-quiet`). Tombol bundar berikon tetap kenop alat.
 
 ## Ikon
 
