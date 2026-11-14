@@ -172,7 +172,11 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
     envelope: "pluck",
     attackSeconds: 0.003,
     sustainFraction: 0.16,
-    partials: [{ ratio: 2, gain: 0.08 }],
+    partials: [
+      { ratio: 2, gain: 0.08 },
+      { ratio: 4.2, gain: 0.045 },
+      { ratio: 6.4, gain: 0.022 },
+    ],
   },
   motion: {
     waveform: "sine",
@@ -201,4 +205,18 @@ export const MIX = {
   compressorRatio: 6,
   compressorAttackSeconds: 0.003,
   compressorReleaseSeconds: 0.18,
+  reverbSeconds: 4.2,
+  reverbMix: 0.28,
+};
+
+// Ambience synthesized locally: low drone, pipe-organ chord, soft strings, sparse piano.
+export const AMBIENCE = {
+  gain: 0.12,
+  droneHz: [55, 82.41],
+  organHz: [110, 164.81, 220],
+  stringsHz: [164.81, 220, 329.63],
+  pianoHz: [220, 329.63, 440],
+  pianoIntervalSeconds: 6,
+  buildSeconds: 2.8,
+  releaseSeconds: 2.4,
 };

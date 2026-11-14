@@ -144,7 +144,7 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
     if (!col.peaks.length) {
       notes.push({ t, dur, hz: null, unverified: false, pan: 0, lambda: pos, voice: "scan" });
     } else {
-      for (const p of col.peaks) {
+      for (const [peakIndex, p] of col.peaks.entries()) {
         notes.push({
           t,
           dur,
@@ -156,6 +156,21 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
           lambda: pos,
           voice: "scan",
         });
+        // Bintang yang sangat kontras mendapat dua kilau pendek seperti denting.
+        if (peakIndex < 2 && p.value >= grid.bg + 6 * grid.sigma && p.value / grid.top >= 0.58) {
+          for (let glint = 0; glint < 2; glint++) {
+            notes.push({
+              t: t + 0.07 + glint * 0.12,
+              dur: 0.065,
+              hz: 1760 + glint * 440,
+              vol: 0.16,
+              unverified: false,
+              pan: 0,
+              lambda: pos,
+              voice: "scan",
+            });
+          }
+        }
       }
     }
     // Earcon target selalu berbunyi saat pindai melewati tengah, walau kolomnya kosong.

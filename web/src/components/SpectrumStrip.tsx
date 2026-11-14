@@ -206,15 +206,25 @@ export function SpectrumStrip(p: Props) {
       motionLayers,
       VISIT_PAUSE_SECONDS,
     );
-    if (!plan.visits.length) {
-      setAnnounce("Tidak ada lapisan dengan data yang siap didengar.");
-      return;
-    }
-
     const scanVisits = plan.visits.filter((visit) => visit.layers.scan).map((visit) => visit.id);
     if (scanVisits.length) scanStartRef.current(scanVisits);
-    const start = sonifier.playMixed(plan.notes, plan.activeVoices);
-    setPlay({ start, total: plan.total, visits: plan.visits, skipped: plan.skipped, activeVoices: plan.activeVoices });
+    const ambienceOnly = plan.visits.length === 0;
+    const visits = ambienceOnly
+      ? windows.map((w, i) => ({
+          id: w.id,
+          start: i * (VISIT_SLOT_SECONDS + VISIT_PAUSE_SECONDS),
+          layers: { scan: false, spectrum: false, motion: false },
+        }))
+      : plan.visits;
+    const total = ambienceOnly
+      ? VISIT_SLOT_SECONDS + Math.max(0, visits.length - 1) * (VISIT_SLOT_SECONDS + VISIT_PAUSE_SECONDS)
+      : plan.total;
+    const skipped = ambienceOnly
+      ? windows.map((w) => ({ id: w.id, layers: ["scan", "spectrum", "motion"] as ("scan" | "spectrum" | "motion")[] }))
+      : plan.skipped;
+    const start = sonifier.playMixed(plan.notes, plan.activeVoices, total);
+    setPlay({ start, total, visits, skipped, activeVoices: plan.activeVoices });
+    if (ambienceOnly) setAnnounce("Tidak ada lapisan data yang siap; ambience ruang angkasa diputar.");
     setFresh(false);
     try {
       window.localStorage.setItem(HEARD_KEY, "1");
@@ -282,11 +292,10 @@ export function SpectrumStrip(p: Props) {
         const skippedSummary = i === 0 && skippedVisits.length
           ? ` ${skippedVisits.length} kunjungan tanpa data untuk semua lapisan dilewati.`
           : "";
-        setAnnounce(
-          `Kunjungan ${w ? monthYear(w.mjd_mid) : visit.id}: ${active.join(", ")}.` +
-            (missing.length ? ` Lapisan ${missing.join(", ")} dilewati.` : "") +
-            skippedSummary,
-        );
+        setAnnounce(active.length
+          ? `Kunjungan ${w ? monthYear(w.mjd_mid) : visit.id}: ${active.join(", ")}.` +
+              (missing.length ? ` Lapisan ${missing.join(", ")} dilewati.` : "") + skippedSummary
+          : `Kunjungan ${w ? monthYear(w.mjd_mid) : visit.id}: ambience tenang tanpa data.`);
       }
       const col = local / SCAN.colSeconds;
       const line = p.scanLine.current;
@@ -363,7 +372,7 @@ export function SpectrumStrip(p: Props) {
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);
   const spectrumReady = windows.filter((w) => playable.includes(w)).map((w) => w.id);
   const motionReadyVisits = p.motionReady ? windows.filter((w) => !!p.readMotion(w.id)).map((w) => w.id) : [];
-  const canPlayCombined = scanReady.length > 0 || spectrumReady.length > 0 || motionReadyVisits.length > 0;
+  const canPlayCombined = windows.length > 0;
   const combinedVisitCount = new Set([...scanReady, ...spectrumReady, ...motionReadyVisits]).size;
   const currentLayers = play?.visits.find((visit) => visit.id === playVisit)?.layers;
   const soundLegend = [
