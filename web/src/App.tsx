@@ -1,7 +1,9 @@
 import {
   CaretLeft,
   CaretRight,
-  BookOpenText,
+  Cards,
+  CornersIn,
+  CornersOut,
   Flag,
   MagnifyingGlass,
   MagnifyingGlassMinus,
@@ -153,6 +155,8 @@ export function App() {
   const [formError, setFormError] = useState<string>();
   const [gotoOpen, setGotoOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  // Mode fokus: bilah atas dan dok menghilang, tinggal benda dan keterangannya.
+  const [focus, setFocus] = useState(false);
   const [copied, setCopied] = useState(false);
   // Dialog kartu berbagi.
   const [cardOpen, setCardOpen] = useState(false);
@@ -172,6 +176,23 @@ export function App() {
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
   const images = useImageStore();
+
+  const toggleFocus = useCallback(() => {
+    setFocus((on) => {
+      // Layar penuh sungguhan kalau browser mengizinkan; tanpa itu mode fokus tetap jalan.
+      if (!on) void document.documentElement.requestFullscreen?.().catch(() => undefined);
+      else if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => undefined);
+      return !on;
+    });
+  }, []);
+  // Keluar dari layar penuh lewat Esc milik browser juga mengakhiri mode fokus.
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) setFocus(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
 
   const openGuide = useCallback(() => {
     setNotesOpen(true);
@@ -712,8 +733,13 @@ export function App() {
         setReveal((v) => !v);
         return;
       }
+      if (e.key.toLowerCase() === "f" && !atlas) {
+        toggleFocus();
+        return;
+      }
       if (e.key === "Escape") {
         setWheelOpen(false);
+        if (focus) toggleFocus();
         return;
       }
       if (e.key === " " && !el.closest("button, a")) {
@@ -734,7 +760,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, chooseBand, manifest, zoom, openGuide, atlas]);
+  }, [step, chooseBand, manifest, zoom, openGuide, atlas, focus, toggleFocus]);
 
   // Saat suara spektrum berjalan, lensa menampilkan band yang sedang terdengar.
   const shownBandId =
@@ -1061,7 +1087,7 @@ export function App() {
   }, [atlas, target, targetId, kind, note, manifest, cardInput, custom, cataloguePm, spectrum]);
 
   return (
-    <div className="app" ref={appRef}>
+    <div className="app" ref={appRef} data-focus={focus && !atlas}>
       <Backdrop
         id={target?.id}
         url={contextUrl}
@@ -1076,55 +1102,66 @@ export function App() {
       />
 
       <header className="top">
-        <p className="brand">
+        {/* Tanda SWARA adalah jalan pulang ke seluruh langit. */}
+        <button
+          type="button"
+          className="brand"
+          aria-label={atlas ? "SWARA: the whole sky" : "SWARA: see the whole sky"}
+          onClick={() => (atlas ? skyRef.current?.reset() : enterAtlas())}
+        >
           <svg viewBox="0 0 20 20" aria-hidden="true">
             <circle cx="9" cy="11" r="6.5" />
             <circle className="brand-dot" cx="15.5" cy="4.5" r="2" />
           </svg>
           <span>SWARA</span>
-        </p>
+        </button>
         <button type="button" className="goto-trigger" onClick={openGoTo}>
           <MagnifyingGlass aria-hidden="true" />
           <span>Go to a place in the sky</span>
           <kbd aria-hidden="true">/</kbd>
         </button>
         <div className="top-actions">
-          {/* Di tempat: ke seluruh langit. Di seluruh langit: kembali ke tempat terakhir, kalau ada. */}
-          {!atlas ? (
-            <button type="button" className="pill pill-sky" aria-label="See the whole sky" onClick={enterAtlas}>
-              <StarFour aria-hidden="true" />
-              <span>Whole sky</span>
+          {atlas && target && (
+            <button type="button" className="pill pill-back" aria-label={`Back to ${target.name}`} onClick={backToPlace}>
+              <CaretLeft aria-hidden="true" />
+              <span>{target.name}</span>
             </button>
-          ) : (
-            target && (
-              <button
-                type="button"
-                className="pill pill-back"
-                aria-label={`Back to ${target.name}`}
-                onClick={backToPlace}
-              >
-                <CaretLeft aria-hidden="true" />
-                <span>{target.name}</span>
-              </button>
-            )
           )}
-          <button type="button" className="pill pill-share" aria-label="Share this view" onClick={share}>
-            <ShareNetwork aria-hidden="true" />
-            <span aria-live="polite">{copied ? "Link copied" : "Share"}</span>
-          </button>
           <button
             type="button"
-            className="pill pill-guide"
+            className="pill pill-cards"
             aria-label={atlas ? "The whole sky in one card" : "This place in three cards"}
             aria-expanded={notesOpen}
             data-new={!guideSeen}
             onClick={openGuide}
           >
-            <BookOpenText aria-hidden="true" />
-            <span>Guide</span>
+            <Cards aria-hidden="true" />
+            <span>The cards</span>
           </button>
+          {!atlas && (
+            <button type="button" className="round" aria-label="See the whole sky" title="Whole sky" onClick={enterAtlas}>
+              <StarFour aria-hidden="true" />
+            </button>
+          )}
+          <button type="button" className="round" aria-label={copied ? "Link copied" : "Share this view"} title="Share" onClick={share}>
+            <ShareNetwork aria-hidden="true" />
+          </button>
+          {!atlas && (
+            <button type="button" className="round" aria-label="Focus on the object" title="Focus (F)" onClick={toggleFocus}>
+              <CornersOut aria-hidden="true" />
+            </button>
+          )}
+          <span className="sr-only" aria-live="polite">
+            {copied ? "Link copied" : ""}
+          </span>
         </div>
       </header>
+
+      {focus && !atlas && (
+        <button type="button" className="round focus-exit" aria-label="Leave focus" title="Leave focus (F)" onClick={toggleFocus}>
+          <CornersIn aria-hidden="true" />
+        </button>
+      )}
 
       <main className="stage" inert={atlas}>
         <section className="identity" aria-label="Where you are looking">
