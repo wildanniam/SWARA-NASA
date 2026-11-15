@@ -37,7 +37,8 @@ function preview(query, origin) {
     image = `${target}-${kind}`;
   } else {
     const name = String(one(query.name) ?? "").trim().slice(0, 80);
-    if (name) title = `${name}: a card from the sky`;
+    // Nama ditulis seperti di halaman kartunya: huruf pertama tiap kata besar.
+    if (name) title = `${name.replace(/(^|\s)\p{Ll}/gu, (c) => c.toUpperCase())}: a card from the sky`;
   }
   return { title, description, image: `${origin}/og/${image}.jpg` };
 }
