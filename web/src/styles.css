@@ -328,6 +328,13 @@ kbd {
   color: var(--soft);
 }
 
+/* Tombol tur: di ponsel bilah atas teleskop sudah penuh, jadi tur diulang dari seluruh langit. */
+@media (max-width: 560px) {
+  .top-actions .tour-again[data-scope="true"] {
+    display: none;
+  }
+}
+
 .top-actions .round:hover {
   border-color: var(--accent);
   color: var(--accent);

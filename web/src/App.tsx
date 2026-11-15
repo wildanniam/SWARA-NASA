@@ -14,6 +14,7 @@ import {
   Pause,
   Play,
   ShareNetwork,
+  Question,
   Subtract,
   StarFour,
   SunDim,
@@ -65,6 +66,7 @@ import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skyge
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
 import { motionNote } from "./sound/sonify";
+import { useTour } from "./tour/useTour";
 
 const BLINK_MS = 700;
 // Deretan 16 tahun punya belasan citra, jadi diputar lebih cepat.
@@ -894,43 +896,6 @@ export function App() {
     return () => window.clearTimeout(diveTimer.current);
   }, [landed, manifest]);
 
-  // Sekali per browser, saat lensa pertama kali terbuka: lima tombol cincin memperkenalkan diri
-  // satu per satu lewat keterangannya sendiri. Berhenti begitu orang menyentuh apa pun.
-  const [intro, setIntro] = useState(-1);
-  const lensLive = !atlas && !collapsed && !!image && !status;
-  useEffect(() => {
-    if (!lensLive || prefersReducedMotion() || !window.matchMedia("(hover: hover)").matches) return;
-    try {
-      if (localStorage.getItem("swara:lens-intro")) return;
-    } catch {
-      return;
-    }
-    let k = -1;
-    let timer = 0;
-    const events = ["pointerdown", "keydown", "wheel"] as const;
-    const stop = () => {
-      window.clearTimeout(timer);
-      setIntro(-1);
-      events.forEach((e) => window.removeEventListener(e, stop));
-    };
-    const next = () => {
-      k++;
-      if (k >= INTRO.length) return stop();
-      setIntro(k);
-      timer = window.setTimeout(next, 1700);
-    };
-    timer = window.setTimeout(() => {
-      try {
-        localStorage.setItem("swara:lens-intro", "1");
-      } catch {
-        /* tanpa penyimpanan, perkenalan muncul lagi lain kali */
-      }
-      events.forEach((e) => window.addEventListener(e, stop, { passive: true }));
-      next();
-    }, 2200);
-    return stop;
-  }, [lensLive]);
-
   // Berapa eksposur yang sudah terbaca dari berapa. Jumlah totalnya hanya dilaporkan
   // selama tahap baca; sesudah itu semuanya sudah terbaca.
   const collected = job?.seen_um?.length ?? 0;
@@ -1138,7 +1103,62 @@ export function App() {
   }, [gaiaStars, markView]);
 
   const found = useMemo(() => (manifest ? finding(manifest) : undefined), [manifest]);
+
   const blendedHere = !custom && !!targetId && !!BLENDED[targetId];
+
+  // Tur berpemandu: dua langkah di seluruh langit, lalu enam di teleskop (web/src/tour/).
+  const lensLive = !atlas && !collapsed && !!image && !status;
+  const tour = useTour({
+    atlas,
+    skyReady: atlas && !!atlasData && !atlasFx && !!targets?.some((t) => t.id === TOUR_ID),
+    scopeReady: lensLive && !!manifest && !manifest.preview,
+    blocked: gotoOpen || notesOpen || cardOpen || focus,
+    place: target ? { name: target.name, long, moved: found?.kind === "moved" && !blendedHere } : undefined,
+    star: `.sky-marker[data-id="${TOUR_ID}"]`,
+    onPrepare: () => {
+      if (atlas) skyRef.current?.reset();
+      else setSky(false);
+    },
+    onTravel: () => pickFromAtlas(TOUR_ID),
+  });
+
+  // Sekali per browser, saat lensa pertama kali terbuka: lima tombol cincin memperkenalkan diri
+  // satu per satu lewat keterangannya sendiri. Berhenti begitu orang menyentuh apa pun.
+  // Menunggu sampai tur selesai atau dilewati, supaya keduanya tidak berebut perhatian.
+  const [intro, setIntro] = useState(-1);
+  useEffect(() => {
+    if (!lensLive || tour.busy || prefersReducedMotion() || !window.matchMedia("(hover: hover)").matches) return;
+    try {
+      if (localStorage.getItem("swara:lens-intro")) return;
+    } catch {
+      return;
+    }
+    let k = -1;
+    let timer = 0;
+    const events = ["pointerdown", "keydown", "wheel"] as const;
+    const stop = () => {
+      window.clearTimeout(timer);
+      setIntro(-1);
+      events.forEach((e) => window.removeEventListener(e, stop));
+    };
+    const next = () => {
+      k++;
+      if (k >= INTRO.length) return stop();
+      setIntro(k);
+      timer = window.setTimeout(next, 1700);
+    };
+    timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem("swara:lens-intro", "1");
+      } catch {
+        /* tanpa penyimpanan, perkenalan muncul lagi lain kali */
+      }
+      events.forEach((e) => window.addEventListener(e, stop, { passive: true }));
+      next();
+    }, 2200);
+    return stop;
+  }, [lensLive, tour.busy]);
+
   const path = useMemo(() => (manifest ? trail(manifest) : []), [manifest]);
   const contextUrl =
     manifest?.context && targetId ? assetUrl(targetId, custom, manifest.context.image) : undefined;
@@ -1351,6 +1371,9 @@ export function App() {
           >
             <Cards aria-hidden="true" />
             <span>Story</span>
+          </button>
+          <button type="button" className="round tour-again" data-scope={!atlas} aria-label="Take the tour" title="Tour" onClick={tour.start}>
+            <Question aria-hidden="true" />
           </button>
           {!atlas && (
             <button type="button" className="round" aria-label="See the whole sky" title="Whole sky" onClick={enterAtlas}>
