@@ -134,6 +134,14 @@ Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai
 - **Teks di samping** satu kalimat tentang yang terukur (sama kata dengan `verdict.ts`), satu catatan kecil, lalu tombol. Benda yang tidak terpisah dari bintang latar ditulis "Hidden behind a background star".
 - **Keadaan:** selagi dimuat kartu tertelungkup dan cincin berputar lebih cepat; bundle yang belum selesai dibuat dan tautan yang rusak punya kalimat dan tombolnya sendiri.
 - **Gerak dikurangi:** kartu langsung terbuka, tanpa kemiringan, cincin diam, tanpa debu dan percikan.
+- **Kartu menunggu diketuk.** Browser hanya mengizinkan suara sesudah orang menyentuh halaman, jadi kartu pertama tertelungkup sampai diketuk ("Tap to turn it over", atau "Click" dengan mouse). Kalau 4 detik tidak disentuh, ia membalik sendiri tanpa suara; sentuhan pertama sesudahnya membuka suara.
+- **Suara** (`web/src/card/cardSound.ts`, Web Audio, tanpa berkas audio):
+  - desir udara selama kartu berputar;
+  - dentum rendah dan lonceng saat muka kartu terlihat. Nada lonceng dari data kartunya, dengan pemetaan sonifikasi aplikasi: kartu gerak satu nada per kunjungan dari pergeseran terukurnya, kartu cahaya delapan irisan spektrum (terang jadi tinggi nada, panjang gelombang pendek di kiri), kartu tempat bintang-bintang rasinya dari kiri ke kanan (makin tinggi di langit makin tinggi nadanya);
+  - satu denting per percikan bintang: kiri-kanan dari letaknya, tinggi nada dari lajunya;
+  - latar dari ambience sonifikasi (drone, organ, string, piano), sekitar 15 dB di bawah efek.
+  - Tombol suara selalu terlihat di bilah atas, dan pilihannya diingat browser. Suara berhenti saat tab tidak terlihat. Tidak ada suara saat kursor digerakkan.
+  - Level dan rasanya usulan awal; penyetelan akhir wewenang Alif.
 
 **Pratinjau tautan.** WhatsApp dan layanan lain membaca tag Open Graph tanpa menjalankan JavaScript, jadi `/card` dilayani `web/api/card.js`, yang mengisi tag itu ke `index.html`. Kartu contoh mendapat gambarnya sendiri: tangkapan layar halaman kartunya pada 1200 x 630 (`web/public/og/`, dibuat `web/scripts/og-cards.cjs`; jalankan ulang kalau bundle contoh atau tampilan kartu berubah). Tempat di luar contoh mendapat kartu tertelungkup dan namanya di judul, karena gambarnya tidak bisa dilukis di server.
 

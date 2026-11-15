@@ -1,4 +1,4 @@
-import { ArrowRight, DownloadSimple, LinkSimple } from "@phosphor-icons/react";
+import { ArrowRight, DownloadSimple, LinkSimple, SpeakerSimpleHigh, SpeakerSimpleSlash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { LogoMark, MARK_STAR, Wordmark } from "../components/Logo";
 import { CARD_H, CARD_TITLE, CARD_W, cardKinds, drawCard, SKINS, type CardKind, type RGB } from "../lib/card";
@@ -8,6 +8,7 @@ import { isPalette, LUTS, type PaletteId } from "../lib/palette";
 import { paintPatch, patchAt, patchPoint, placeFacts } from "../lib/reading";
 import { verdict } from "../lib/verdict";
 import { APP_PATH } from "../route";
+import { cardChimes, cardSound } from "./cardSound";
 import "./card.css";
 
 // Halaman satu kartu: tujuan tautan berbagi. Isinya hanya kartu itu, melayang di langit
@@ -34,6 +35,8 @@ const WANTED = kindFromSlug(QUERY.get("card"));
 
 const NUMERAL = ["I", "II", "III"];
 const TURN_MS = 520;
+/** Kartu menunggu diketuk selama ini; sesudahnya ia membalik sendiri, tanpa suara. */
+const WAIT_MS = 4000;
 const css = (c: RGB) => `${c[0]} ${c[1]} ${c[2]}`;
 
 type Status = "loading" | "ready" | "notready" | "error";
@@ -88,6 +91,10 @@ export function CardPage() {
   const [turn, setTurn] = useState(1);
   const [arrived, setArrived] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** Kartu sudah dilukis dan tertelungkup, menunggu diketuk. */
+  const [waiting, setWaiting] = useState(false);
+  const [soundOn, setSoundOn] = useState(cardSound.on);
+  const waitTimer = useRef(0);
   const busy = useRef(false);
 
   const kinds = useMemo(() => (load ? cardKinds(load.input) : []), [load]);
@@ -120,21 +127,17 @@ export function CardPage() {
     if (!load || !kind || !canvas || !first.current) return;
     first.current = false;
     let alive = true;
-    let timer = 0;
     drawCard(canvas, kind, load.input)
       .then(() => {
         if (!alive) return;
         setStatus("ready");
         document.title = `${load.input.name}: a card from the sky · SWARA`;
-        const calm = prefersReducedMotion();
-        timer = window.setTimeout(
-          () => {
-            setTurn(2);
-            setArrived(true);
-            if (!calm) window.setTimeout(() => burstRef.current(), TURN_MS * 0.55);
-          },
-          calm ? 0 : 900,
-        );
+        // Gerak dikurangi: kartu langsung terbuka. Selain itu ia menunggu diketuk, karena
+        // browser hanya mengizinkan suara sesudah orang menyentuh halaman.
+        if (prefersReducedMotion()) {
+          setTurn(2);
+          setArrived(true);
+        } else setWaiting(true);
       })
       .catch((err) => {
         console.error(err);
@@ -142,9 +145,43 @@ export function CardPage() {
       });
     return () => {
       alive = false;
-      window.clearTimeout(timer);
     };
   }, [load, kind]);
+
+  // Membalik kartu pertama: diketuk (dengan suara) atau sendiri setelah WAIT_MS (tanpa suara).
+  const reveal = useCallback(
+    (byUser: boolean) => {
+      if (!waiting || !load || !kind) return;
+      window.clearTimeout(waitTimer.current);
+      setWaiting(false);
+      if (byUser) cardSound.unlock();
+      cardSound.whoosh(0.62);
+      setTurn(2);
+      setArrived(true);
+      const chimes = cardChimes(kind, load.input);
+      window.setTimeout(() => {
+        burstRef.current();
+        cardSound.reveal(chimes);
+      }, TURN_MS * 0.55);
+    },
+    [waiting, load, kind],
+  );
+  useEffect(() => {
+    if (!waiting) return;
+    waitTimer.current = window.setTimeout(() => reveal(false), WAIT_MS);
+    return () => window.clearTimeout(waitTimer.current);
+  }, [waiting, reveal]);
+
+  // Sentuhan atau tombol pertama di mana pun membuka suara (dan latarnya).
+  useEffect(() => {
+    const open = () => cardSound.unlock();
+    window.addEventListener("pointerdown", open);
+    window.addEventListener("keydown", open);
+    return () => {
+      window.removeEventListener("pointerdown", open);
+      window.removeEventListener("keydown", open);
+    };
+  }, []);
 
   // Ganti kartu: balik ke punggung, lukis kartu berikutnya, balik lagi.
   const show = useCallback(
@@ -153,6 +190,7 @@ export function CardPage() {
       if (!load || !canvas || busy.current || next === kind || status !== "ready") return;
       busy.current = true;
       const calm = prefersReducedMotion();
+      cardSound.whoosh(calm ? 0.4 : 1.1, 0, 0.75);
       setTurn((t) => t + 1);
       window.setTimeout(
         () => {
@@ -161,7 +199,14 @@ export function CardPage() {
             .then(() => {
               setKind(next);
               setTurn((t) => t + 1);
-              if (!calm) window.setTimeout(() => burstRef.current(), TURN_MS * 0.55);
+              const chimes = cardChimes(next, load.input);
+              window.setTimeout(
+                () => {
+                  burstRef.current();
+                  cardSound.reveal(chimes);
+                },
+                calm ? 0 : TURN_MS * 0.55,
+              );
               window.setTimeout(() => (busy.current = false), TURN_MS);
             });
         },
@@ -276,6 +321,8 @@ export function CardPage() {
         const speed = 40 + Math.random() * 150;
         sparks.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 0.7 + Math.random() * 0.9, age: 0, r: 2.5 + Math.random() * 5 });
       }
+      // Tiap bintang berbunyi di tempatnya: kiri-kanan dari letaknya, tinggi nada dari lajunya.
+      cardSound.sparkle(sparks.slice(-46).map((s) => ({ x: (s.x / w) * 2 - 1, speed: (Math.hypot(s.vx, s.vy) - 40) / 150 })));
     };
 
     let tx = 0;
@@ -385,6 +432,11 @@ export function CardPage() {
       window.setTimeout(() => URL.revokeObjectURL(url), 4000);
     }, "image/png");
   };
+  const toggleSound = () => {
+    const on = !soundOn;
+    cardSound.setOn(on);
+    setSoundOn(on);
+  };
   const copy = () => {
     void navigator.clipboard?.writeText(window.location.href).then(() => {
       setCopied(true);
@@ -405,7 +457,7 @@ export function CardPage() {
   } as CSSProperties;
 
   return (
-    <div ref={rootRef} className="cp" style={vars} data-status={status} data-arrived={arrived}>
+    <div ref={rootRef} className="cp" style={vars} data-status={status} data-arrived={arrived} data-waiting={waiting}>
       <div className="cp-sky" aria-hidden="true">
         <canvas ref={skyRef} className="cp-sky-map" data-on={!!sky} />
         <canvas ref={linesRef} className="cp-sky-lines" data-on={!!sky} />
@@ -417,10 +469,16 @@ export function CardPage() {
           <LogoMark size={24} />
           <Wordmark height={15} />
         </a>
-        <a className="cp-top-link" href={APP_PATH}>
-          Open the sky
-          <ArrowRight weight="bold" aria-hidden="true" />
-        </a>
+        <div className="cp-top-right">
+          <button type="button" className="cp-sound" aria-pressed={soundOn} onClick={toggleSound} title={soundOn ? "Turn sound off" : "Turn sound on"}>
+            {soundOn ? <SpeakerSimpleHigh aria-hidden="true" /> : <SpeakerSimpleSlash aria-hidden="true" />}
+            <span>{soundOn ? "Sound on" : "Sound off"}</span>
+          </button>
+          <a className="cp-top-link" href={APP_PATH}>
+            Open the sky
+            <ArrowRight weight="bold" aria-hidden="true" />
+          </a>
+        </div>
       </header>
 
       <main className="cp-main">
@@ -477,17 +535,23 @@ export function CardPage() {
               <button
                 type="button"
                 className="cp-hit"
-                onClick={nextCard}
-                disabled={status !== "ready" || kinds.length < 2}
+                onClick={() => (waiting ? reveal(true) : nextCard())}
+                disabled={status !== "ready" || (!waiting && kinds.length < 2)}
                 aria-label={
-                  load && kind
-                    ? `Card ${NUMERAL[at]} of ${load.input.name}: ${CARD_TITLE[kind].toLowerCase()}.${kinds.length > 1 ? " Press to turn to the next card." : ""}`
-                    : "A card is being drawn"
+                  waiting
+                    ? "Turn the card over"
+                    : load && kind
+                      ? `Card ${NUMERAL[at]} of ${load.input.name}: ${CARD_TITLE[kind].toLowerCase()}.${kinds.length > 1 ? " Press to turn to the next card." : ""}`
+                      : "A card is being drawn"
                 }
               />
             </div>
           </div>
           <i className="cp-shadow" aria-hidden="true" />
+          <span className="cp-cue" aria-hidden="true">
+            <span className="cp-touch">Tap</span>
+            <span className="cp-mouse">Click</span> to turn it over
+          </span>
         </div>
 
         <div className="cp-side">
@@ -522,7 +586,16 @@ export function CardPage() {
               </div>
             </div>
           )}
-          {status === "ready" && load && kind && text && (
+          {waiting && (
+            <div key="waiting" className="cp-text" data-in="true">
+              <span className="cp-kicker">A card from the sky</span>
+              <h1>Turn it over.</h1>
+              <p className="cp-note">It was drawn from real NASA data. <span className="cp-touch">Tap</span>
+                <span className="cp-mouse">Click</span> the card to see what it holds.
+              </p>
+            </div>
+          )}
+          {status === "ready" && !waiting && load && kind && text && (
             <div className="cp-text" data-in={arrived}>
               <span key={`k-${kind}`} className="cp-kicker cp-swap">
                 A card from the sky · {text.kicker}
