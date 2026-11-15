@@ -1,5 +1,12 @@
 
-<h1 align="center">SWARA</h1>
+<h1 align="center">
+  <a href="https://swara.space">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/brand/swara-logo-dark.svg" />
+      <img src="docs/brand/swara-logo-light.svg" width="300" alt="SWARA" />
+    </picture>
+  </a>
+</h1>
 
 <p align="center">
   <strong>Sky Watch with Audio &amp; Real-time Access</strong><br />
@@ -7,7 +14,8 @@
 </p>
 
 <p align="center">
-  <a href="https://swara.space/sky"><strong>Open the sky viewer</strong></a> ·
+  <a href="https://swara.space"><strong>swara.space</strong></a> ·
+  <a href="https://swara.space/sky">Open the sky viewer</a> ·
   <a href="https://swara.space/sky?target=barnard">Explore Barnard's Star</a> ·
   <a href="https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/">NASA Space Apps Challenge</a>
 </p>
@@ -46,7 +54,8 @@ SWARA turns a small patch of that archive into an approachable, shareable experi
 - **Pick a place in the sky.** Search for an object, enter right ascension and declination, or click the all-sky map. Five prepared examples open instantly; a new position can be built from the public archives in about one to one and a half minutes when the services are available.
 - **Watch the sky over time.** Browse 13–18 WISE images from 2010–2024, followed by the available SPHEREx visits from 2025–2026. The images are aligned so a nearby star's motion is easier to follow.
 - **Inspect SPHEREx visits.** The viewer groups exposures into visits and makes one median image per detector and visit. Blink between visits, inspect the difference from the first visit, and flag saturated or bad pixels.
-- **Explore the spectrum.** SPHEREx samples different wavelengths across its exposures. SWARA plots those measurements across approximately 0.75–5 microns and can sonify them: wavelength maps to time and brightness maps to pitch. The sound is a representation of measured data, not a recording of sound in space.
+- **Explore the spectrum.** SPHEREx samples different wavelengths across its exposures. SWARA plots those measurements across approximately 0.75–5 microns.
+- **Listen to the data.** One play button sonifies each visit in three layers: an image scan from west to east (stars further north sound higher), the spectrum (wavelength maps to time, brightness to pitch), and the measured motion (a bell whose pitch follows north–south and whose stereo position follows east–west). The lens draws each note as it sounds: a ring around the star being played, a ray at the wavelength being played, and a pulse at the measured position. The sound is a representation of measured data, not a recording of sound in space.
 - **Add context.** View Gaia DR3 stars at the date of each image, use the telescope-style zoom, choose a color look, and follow the guided tour.
 - **Share an exploration.** Sky positions can be opened from a URL, and share cards summarize an object's measured motion or light.
 
@@ -152,7 +161,19 @@ uv sync
 uv run skychange serve
 ```
 
-The viewer's development server forwards `/api` requests to the local API. See [pipeline/README.md](pipeline/README.md) for the API, coordinate formats, bundle structure, and data pipeline details.
+The viewer's development server forwards `/api` requests to the local API on port 8000. `uv sync` installs Python 3.12 for the project if it is not already available. New positions are written to `data/`, which is not tracked by git.
+
+To check a production build of the viewer, run `npm run build` in `web/`.
+
+Optional API settings, read from environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SWARA_COLLECTIONS` | `spherex_dr1,spherex_qr3` | SPHEREx collections to search, in priority order. Add a new data release here without changing code. |
+| `SWARA_MAX_BUILDS` | `2` | How many new positions can be built at the same time. |
+| `SWARA_API_KEY` | not set | When set, every request must send this key in the `X-Swara-Key` header. Used when the API is reachable from the internet behind the site's proxy. |
+
+See [pipeline/README.md](pipeline/README.md) for the API, coordinate formats, bundle structure, and data pipeline details.
 
 ## Repository layout
 
