@@ -2044,7 +2044,7 @@ a.lp-btn-primary,
   display: grid;
   grid-template-columns: 1fr 560px;
   gap: 40px;
-  align-items: center;
+  align-items: start;
   min-height: 560px;
   margin-top: 50px;
 }
@@ -2162,8 +2162,8 @@ a.lp-btn-primary,
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  height: 560px;
-  padding: 0 40px 36px;
+  min-height: 560px;
+  padding: 384px 40px 36px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 26px;
@@ -2890,4 +2890,47 @@ a.lp-btn-primary,
   .lp-pick {
     zoom: 0.72;
   }
+}
+
+/* ---------- lima contoh: kenapa lima ini ---------- */
+
+.lp-lede {
+  max-width: 640px;
+  margin: 18px 0 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--soft);
+}
+
+/* Di panggung: apa yang diuji benda ini dan kenapa ia istimewa, di antara lensa dan angkanya. */
+.lp-stage-why {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.lp-stage-why span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--soft);
+}
+
+.lp-stage-why em {
+  font-style: normal;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lp-stage-why p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
 }

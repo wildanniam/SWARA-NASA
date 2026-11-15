@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { TARGET_NOTES } from "../content";
+import { TARGET_NOTES, TARGET_WHY, TEST_COUNT } from "../content";
 import { atlasUrl, constellationAt, decDms, raHms, type Atlas } from "../lib/allsky";
 import { monthYear } from "../lib/format";
 import { orderFor, visibleTiles, type TileId } from "../lib/hips";
@@ -150,16 +150,27 @@ const lineOfRa = (ra: number, dec0 = -89, dec1 = 89, step = 1): V3[] => {
 };
 
 /** Cuplikan satu tempat sebagai kartu kecil: jendela melengkung berisi citra aslinya,
- *  julukannya, dan angka yang terukur di sana. */
+ *  julukannya, kenapa benda itu istimewa, apa yang diujinya, lalu angka yang terukur di sana:
+ *  pertanyaannya dulu, jawabannya sesudahnya. */
 function PlacePeek({ marker, look, pinned, onGo }: { marker: SkyMarker; look: PaletteId; pinned: boolean; onGo: () => void }) {
   const v = useVerdict(marker.id, marker.yours, marker.built);
-  const note = marker.yours ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
+  const why = marker.yours ? undefined : TARGET_WHY[marker.id];
+  const note = marker.yours || why ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
   return (
-    <div className="sky-peek" data-pinned={pinned} data-ra={marker.ra} data-dec={marker.dec} data-keep="true">
+    <div className="sky-peek" data-pinned={pinned} data-why={!!why} data-ra={marker.ra} data-dec={marker.dec} data-keep="true">
       <PlaceThumb id={marker.id} custom={marker.yours} enabled={marker.built} look={look} size={168} arch />
       <div className="sky-peek-text">
         <small>{v?.epithet ?? (marker.yours ? "Your place" : marker.detail)}</small>
         <b>{marker.name}</b>
+        {why && <p className="sky-peek-why">{why.why}</p>}
+        {why && (
+          <span className="sky-peek-test">
+            <em>
+              Test {why.n} of {TEST_COUNT}
+            </em>
+            {why.test}
+          </span>
+        )}
         {v && (
           <span className="sky-peek-measured">
             <i>{v.big}</i>

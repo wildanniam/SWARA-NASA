@@ -32,7 +32,7 @@ import { SkyMap, type Handoff, type SkyMapHandle, type SkyMarker } from "./compo
 import { SlewReadout, type Slew } from "./components/SlewReadout";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
-import { BLENDED, CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
+import { BLENDED, CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES, TARGET_WHY } from "./content";
 import {
   assetUrl,
   defaultBand,
@@ -477,7 +477,7 @@ export function App() {
       ...(targets ?? []).map((t) => ({
         id: t.id,
         name: t.name,
-        detail: KIND_DETAIL[t.kind],
+        detail: TARGET_WHY[t.id]?.tag ?? KIND_DETAIL[t.kind],
         ra: t.ra,
         dec: t.dec,
         yours: false,

@@ -32,3 +32,53 @@ export const TARGET_NOTES: Record<string, string> = {
   rdra:
     "A giant pulsating star, too bright for SPHEREx: its core is saturated in every band, so this view shows the limits of the data rather than a clean measurement.",
 };
+
+/** Kenapa lima benda contoh ini dipilih. Challenge NASA menyebut kelimanya sebagai target uji,
+ *  dan tiap benda menguji hal yang berbeda. Dipakai penanda dan cuplikan di peta seluruh langit
+ *  serta bagian contoh di landing page, supaya kata-katanya selalu sama.
+ *  Faktanya (jarak, tahun, periode) dari pustaka umum; perlu ditinjau tim konten. */
+export type Why = {
+  /** Urutan di daftar contoh, 1 sampai 5. */
+  n: number;
+  /** Di bawah nama penanda di peta: benda ini apa, dalam beberapa kata. */
+  tag: string;
+  /** Yang diujinya, dalam beberapa kata. */
+  test: string;
+  /** Satu atau dua kalimat: kenapa benda ini istimewa. */
+  why: string;
+};
+
+export const TEST_COUNT = 5;
+
+export const TARGET_WHY: Record<string, Why> = {
+  barnard: {
+    n: 1,
+    tag: "fastest star in our sky",
+    test: "fast motion",
+    why: "No star crosses our sky faster, and only the Alpha Centauri system lies closer to the Sun. It is about 6 light-years away.",
+  },
+  wise0855: {
+    n: 2,
+    tag: "coldest brown dwarf known",
+    test: "a faint, cold world",
+    why: "The coldest brown dwarf known, colder than ice and about 7 light-years away. It was found in 2014 because a faint dot moved between WISE images.",
+  },
+  epsindb: {
+    n: 3,
+    tag: "a pair of brown dwarfs",
+    test: "a small step and a spectrum",
+    why: "Two brown dwarfs, too small to shine like stars, about 12 light-years away. They glow in infrared, the light SPHEREx sees.",
+  },
+  rwaur: {
+    n: 4,
+    tag: "a young star that dims",
+    test: "changing brightness, not motion",
+    why: "A young star still gathering gas and dust, known for fading deeply and without warning.",
+  },
+  rdra: {
+    n: 5,
+    tag: "a pulsing giant star",
+    test: "where the data runs out",
+    why: "An old giant star that swells and shrinks, brightening and fading about every eight months. It is bright enough to overwhelm SPHEREx.",
+  },
+};

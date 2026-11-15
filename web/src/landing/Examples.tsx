@@ -1,6 +1,7 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { paint, type Rect } from "../lib/paint";
+import { TARGET_WHY, TEST_COUNT } from "../content";
 import { placeHref } from "../route";
 import { EMBER, gaiaLine, imageOf, type Example } from "./data";
 import { reveal, useInView, useTween } from "./hooks";
@@ -102,6 +103,7 @@ export function Examples({ examples }: { examples?: Example[] }) {
   const value = useTween(ex?.value ?? 0, 900);
   const measured = ex ? ex.value !== undefined || ex.epithet === "The Still One" : false;
   const gaiaText = ex ? gaia[ex.ref.id] : undefined;
+  const why = ex ? TARGET_WHY[ex.ref.id] : undefined;
 
   return (
     <section ref={sectionRef} id="examples" className="lp-sec lp-examples" aria-labelledby="examples-title">
@@ -111,6 +113,10 @@ export function Examples({ examples }: { examples?: Example[] }) {
       <h2 ref={reveal} id="examples-title" className="lp-h2 lp-rise">
         Five places, already measured.
       </h2>
+      <p ref={reveal} className="lp-lede lp-rise">
+        NASA's challenge named these five as its test targets. Each one tests something different: fast motion, a small step, a world
+        almost too faint to see, a star whose light changes, and one too bright to measure.
+      </p>
       <div className="lp-pick" data-ready={!!examples}>
         <ol ref={listRef} className="lp-rows" aria-label="Examples">
           {star && (
@@ -152,7 +158,7 @@ export function Examples({ examples }: { examples?: Example[] }) {
 
         {/* Pembaca layar mendengar satu ringkasan per pilihan, bukan angka yang sedang menghitung. */}
         <p className="sr-only" aria-live="polite">
-          {ex ? `${ex.ref.name}, ${ex.epithet}: ${ex.big}, ${ex.line}.${gaiaText ? ` ${gaiaText}.` : ""}` : ""}
+          {ex ? `${ex.ref.name}. ${why ? `${why.why} Test ${why.n} of ${TEST_COUNT}: ${why.test}. ` : ""}${ex.epithet}: ${ex.big}, ${ex.line}.${gaiaText ? ` ${gaiaText}.` : ""}` : ""}
         </p>
         <div ref={reveal} className="lp-stage lp-rise">
           <i className="lp-br lp-br-tl" aria-hidden="true" />
@@ -165,6 +171,17 @@ export function Examples({ examples }: { examples?: Example[] }) {
             ))}
             <i className="lp-stage-ring" />
           </div>
+          {ex && why && (
+            <div key={`w-${ex.ref.id}`} className="lp-stage-why lp-swap">
+              <span>
+                <em>
+                  Test {why.n} of {TEST_COUNT}
+                </em>
+                {why.test}
+              </span>
+              <p>{why.why}</p>
+            </div>
+          )}
           {ex && (
             <div className="lp-stage-foot">
               <div className="lp-stage-read">
