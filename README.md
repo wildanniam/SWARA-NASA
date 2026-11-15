@@ -1,8 +1,3 @@
-<p align="center">
-  <a href="https://swara-nasa.vercel.app/sky">
-    <img src="https://cdn.jsdelivr.net/gh/wildanniam/swara-assets@bf6c48264ce003c768282e0e91032a5364d0b3f5/images/swara-cover.jpg" width="100%" alt="SWARA — Sky Watch with Audio and Real-time Access, exploring infrared sky data from SPHEREx and WISE" />
-  </a>
-</p>
 
 <h1 align="center">SWARA</h1>
 
