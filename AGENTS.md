@@ -139,6 +139,8 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-15
+- **KEPUTUSAN (Wildan): dialog Draw a card ikut warna kartunya; kartunya sendiri tidak berubah.** Sebabnya: di look selain Ember kartunya hijau atau biru, sedangkan bingkai dan tombol dialog tetap ambar, jadi terasa tidak nyambung. Paper memakai warna Ember. Rincian di [web/DESIGN.md](web/DESIGN.md), "Kartu berbagi".
+  - Diuji di Chromium headless: dialog di keenam look pada Barnard's Star (1440 x 900), tombol utama saat ditunjuk, tanpa galat konsol, build. Belum diuji: ponsel asli, Safari, Firefox.
 - **KEPUTUSAN (Wildan): tata letak cuplikan penanda dan panggung contoh dirapikan.** Masukannya: angka busur terlalu besar dibanding keterangan di sampingnya, tombol dan kartu terasa menggantung di pinggir. Cuplikan sekarang dua baris dengan kaki selebar kartu (angka 22 px, keterangan 12,5 px), label penanda menepi selagi kartunya terbuka. Di landing page daftar contoh setinggi panggung, angka 56 px dengan keterangan 14 px, dan tombol selebar kartu saat bertumpuk.
   - **TEMUAN: di ponsel cuplikan dan kartu bidikan menimpa judul peta sejak sebelum perubahan ini.** Sebabnya baris peta tidak ikut memanjang (`min-height: 0` pada `.atlas-stage`), dan garis dalam kartu lepas ke bingkai peta karena kartunya tidak berposisi. Keduanya diperbaiki.
   - Diuji di Chromium headless: kelima cuplikan dan kartu bidikan di 1440 x 900, cuplikan, kartu bidikan, dan "Look closer" di ponsel 390 px, bagian contoh di 1440, 1100, dan 390 px, dialog Go to, tampilan teleskop Barnard's Star di desktop dan ponsel, build. Belum diuji: ponsel asli, Safari, Firefox.
