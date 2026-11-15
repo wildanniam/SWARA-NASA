@@ -127,6 +127,47 @@
   fill: #ffb454;
 }
 
+.cp-top-right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+/* Tombol suara: kecil, tetapi selalu terlihat. Banyak orang membuka tautan di tempat umum. */
+.cp-sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgb(var(--gold) / 0.35);
+  border-radius: 999px;
+  background: rgb(5 6 11 / 0.4);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--soft);
+  cursor: pointer;
+  transition:
+    border-color 0.25s,
+    color 0.25s;
+}
+
+.cp-sound:hover {
+  border-color: rgb(var(--gold));
+  color: rgb(var(--gold));
+}
+
+.cp-sound[aria-pressed="false"] {
+  color: var(--faint);
+}
+
+.cp-sound svg {
+  width: 15px;
+  height: 15px;
+}
+
 .cp-top-link {
   display: inline-flex;
   align-items: center;
@@ -202,6 +243,7 @@
 }
 
 .cp[data-arrived="true"] .cp-rings,
+.cp[data-waiting="true"] .cp-rings,
 .cp[data-status="loading"] .cp-rings {
   opacity: 1;
 }
@@ -355,6 +397,70 @@
 
 .cp-hit:disabled {
   cursor: default;
+}
+
+/* Menunggu diketuk: kartu bernapas pelan, dan mendekat saat ditunjuk. */
+.cp[data-waiting="true"] .cp-card {
+  animation: cp-call 2.4s ease-in-out infinite;
+}
+
+.cp[data-waiting="true"] .cp-back {
+  box-shadow:
+    0 0 0 1px rgb(var(--gold) / 0.8),
+    0 0 60px -4px rgb(var(--glow) / 0.75),
+    0 34px 70px -24px rgb(0 0 0 / 0.9);
+}
+
+.cp[data-waiting="true"] .cp-card:has(.cp-hit:hover) {
+  animation-play-state: paused;
+  scale: 1.03;
+}
+
+.cp-card {
+  transition: scale 0.4s var(--ease);
+}
+
+@keyframes cp-call {
+  50% {
+    scale: 1.015;
+    filter: brightness(1.12);
+  }
+}
+
+.cp-cue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--ch) * -0.035);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.24em;
+  text-align: center;
+  text-transform: uppercase;
+  color: rgb(var(--gold));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+/* "Tap" di layar sentuh, "Click" dengan mouse. */
+.cp-mouse {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cp-mouse {
+    display: inline;
+  }
+
+  .cp-touch {
+    display: none;
+  }
+}
+
+.cp[data-waiting="true"] .cp-cue {
+  opacity: 1;
+  animation: cp-breathe 2.4s ease-in-out infinite;
 }
 
 .cp-shadow {
@@ -656,6 +762,24 @@
     font-size: clamp(28px, 8.4vw, 42px);
   }
 
+  .cp-sound span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .cp-sound {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .cp-top-right {
+    gap: 14px;
+  }
+
   .cp h1[data-long="true"] {
     font-size: clamp(20px, 6vw, 30px);
   }
@@ -707,8 +831,9 @@
   .cp-ring-a,
   .cp-ring-b,
   .cp-swap,
-  .cp-wait {
-    animation: none;
+  .cp-wait,
+  .cp-card {
+    animation: none !important;
   }
 
   .cp-sky canvas,
