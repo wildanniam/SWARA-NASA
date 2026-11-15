@@ -1,4 +1,5 @@
-// Tiga halaman dalam satu situs: landing page di "/", aplikasi di "/sky", satu kartu di "/card".
+// Empat halaman dalam satu situs: landing page di "/", aplikasi di "/sky", satu kartu di "/card",
+// dan penjelasan misi SPHEREx di "/spherex".
 // Tautan lama ke satu tempat ("/?target=barnard", "/?ra=…&dec=…") tetap membuka aplikasi,
 // karena kartu berbagi dan kode QR yang sudah tersebar memakai bentuk itu.
 
@@ -8,6 +9,11 @@ export const APP_PATH = "/sky";
 export const CARD_PATH = "/card";
 
 export const isCardRoute = (loc: Location = window.location) => loc.pathname.replace(/\/+$/, "") === CARD_PATH;
+
+/** Halaman penjelasan misi SPHEREx, dibuka dari bilah atas aplikasi. */
+export const SPHEREX_PATH = "/spherex";
+
+export const isSpherexRoute = (loc: Location = window.location) => loc.pathname.replace(/\/+$/, "") === SPHEREX_PATH;
 
 /** Parameter yang hanya dipakai aplikasi; salah satunya ada berarti tautan ke aplikasi. */
 const APP_KEYS = ["target", "ra", "dec", "name", "band", "look", "view"];

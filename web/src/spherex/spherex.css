@@ -1,0 +1,1029 @@
+/* Halaman "/spherex". Hanya dimuat di halaman ini; kelasnya berawalan sx- supaya tidak
+   bertabrakan dengan aplikasi atau landing page. Token dan watak mengikuti web/DESIGN.md:
+   gelap, satu aksen ambar, Archivo dan IBM Plex Mono, pelat bergaris ganda, bintang empat sudut. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  background: #05060b;
+}
+
+.sx {
+  --void: #05060b;
+  --card: #090a0f;
+  --text: #f2efe8;
+  --soft: #b9bac6;
+  --muted: #8d8fa3;
+  --hair: rgba(255, 255, 255, 0.1);
+  --hair-strong: rgba(205, 214, 255, 0.3);
+  --accent: #ffb454;
+  --accent-ink: #1b1204;
+  --pale: #cdd6ff;
+  --sans: "Archivo Variable", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --gut: clamp(16px, 5vw, 56px);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --star: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  min-width: 320px;
+  overflow-x: clip;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sx a {
+  color: inherit;
+}
+
+.sx :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.sx ::selection {
+  background: rgba(255, 180, 84, 0.32);
+}
+
+.sx b {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ---------- muncul ---------- */
+
+@keyframes sx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sx [data-rise] {
+  opacity: 0;
+}
+
+.sx [data-rise][data-in] {
+  opacity: 1;
+  animation: sx-rise 0.9s var(--ease) backwards;
+}
+
+.sx-in {
+  animation: sx-rise 1s var(--ease) var(--d, 0s) backwards;
+}
+
+/* ---------- navigasi ---------- */
+
+.sx-nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 60px;
+  padding: 0 var(--gut);
+  border-bottom: 1px solid transparent;
+  background: linear-gradient(180deg, rgba(5, 6, 11, 0.9), rgba(5, 6, 11, 0));
+  transition:
+    background 0.3s,
+    border-color 0.3s;
+}
+
+.sx-nav[data-scrolled="true"] {
+  border-bottom-color: var(--hair);
+  background: rgba(5, 6, 11, 0.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.sx-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.sx-pill,
+.sx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 180 84 / 0.55);
+  border-radius: 999px;
+  background: rgba(5, 6, 11, 0.55);
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 6, 11, 0.6),
+    inset 0 0 0 3px rgb(255 180 84 / 0.18);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 150ms,
+    color 150ms,
+    background 150ms;
+}
+
+.sx-pill:hover,
+.sx-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sx-pill svg,
+.sx-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.sx-btn {
+  height: 46px;
+  padding: 0 22px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.sx-btn:hover {
+  background: #ffc77c;
+  color: var(--accent-ink);
+}
+
+/* ---------- hero: peta seluruh langit SPHEREx yang asli ---------- */
+
+@keyframes sx-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.035);
+  }
+}
+
+@keyframes sx-map-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+.sx-hero {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-height: min(100svh, 920px);
+  padding: 96px var(--gut) 64px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sx-hero-map {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Peta larut ke latar bintang di bawah hero, tanpa tepi keras. */
+  -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent);
+  mask-image: linear-gradient(180deg, #000 62%, transparent);
+}
+
+/* Elips peta dipusatkan; tirai gelap di kiri supaya teks terbaca (tirai, bukan hiasan). */
+.sx-hero-map img {
+  position: absolute;
+  top: 52%;
+  left: 66%;
+  width: max(760px, 78vw);
+  height: auto;
+  opacity: 0.85;
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%);
+  animation:
+    sx-map-in 2.4s var(--ease) both,
+    sx-breathe 26s ease-in-out 2.4s infinite;
+}
+
+.sx-hero-map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(5, 6, 11, 0.94) 0%, rgba(5, 6, 11, 0.6) 40%, rgba(5, 6, 11, 0) 70%);
+}
+
+.sx-hero-copy {
+  max-width: 620px;
+}
+
+.sx-kick {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.sx-kick::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+  clip-path: var(--star);
+}
+
+.sx h1 {
+  margin: 18px 0 0;
+  font-size: clamp(44px, 7.4vw, 92px);
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: -0.01em;
+  line-height: 0.98;
+}
+
+.sx-x {
+  display: inline-block;
+  font-size: 0.55em;
+  vertical-align: 0.75em;
+}
+
+.sx-lede {
+  max-width: 520px;
+  margin: 22px 0 0;
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.5;
+  color: var(--soft);
+}
+
+.sx-stats {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: start;
+  gap: 0;
+  margin: 36px 0 0;
+  border: 1px solid var(--hair);
+  border-radius: 18px;
+  background: rgba(5, 6, 11, 0.55);
+  box-shadow:
+    inset 0 0 0 3px rgba(5, 6, 11, 0.6),
+    inset 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.sx-stats div {
+  padding: 14px 20px;
+}
+
+.sx-stats div + div {
+  border-left: 1px solid var(--hair);
+}
+
+.sx-stats dt,
+.sx-facts dt,
+.sx-bands span,
+.sx-hero-cap,
+.sx-fig figcaption,
+.sx-cap {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sx-stats dd {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.sx-hero-cap {
+  position: absolute;
+  right: var(--gut);
+  bottom: 22px;
+  max-width: 440px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-align: right;
+  text-transform: none;
+}
+
+/* ---------- bagian ---------- */
+
+.sx main {
+  position: relative;
+}
+
+.sx-sec {
+  scroll-margin-top: 24px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(72px, 11vw, 128px) var(--gut) 0;
+}
+
+.sx-head {
+  position: relative;
+  max-width: 720px;
+  margin-bottom: clamp(28px, 4vw, 48px);
+}
+
+.sx-num {
+  display: block;
+  margin-bottom: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--faint, #7d7f94);
+}
+
+.sx h2 {
+  margin: 14px 0 0;
+  font-size: clamp(30px, 4vw, 50px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  background: linear-gradient(180deg, #fff 30%, #a9a6a0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sx h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sx-split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+}
+
+.sx-split + .sx-split {
+  margin-top: clamp(40px, 6vw, 72px);
+}
+
+.sx-split-wide {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+}
+
+.sx-split-flip > :first-child {
+  order: 2;
+}
+
+.sx-copy p {
+  margin: 0 0 16px;
+  max-width: 460px;
+  color: var(--soft);
+}
+
+.sx-copy .sx-small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- gambar: pelat bergaris ganda, warna asli ---------- */
+
+.sx-fig {
+  margin: 0;
+}
+
+.sx-plate {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow:
+    inset 0 0 0 4px var(--void),
+    inset 0 0 0 5px rgba(255, 180, 84, 0.2);
+  padding: 5px;
+}
+
+.sx-plate img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 13px;
+  transform: scale(1.04);
+  transition: transform 1.6s var(--ease);
+}
+
+/* Gerak ringan: gambar sedikit mendekat saat masuk layar, dan sedikit lagi saat ditunjuk. */
+.sx-fig[data-in] .sx-plate img {
+  transform: scale(1);
+}
+
+@media (hover: hover) {
+  .sx-fig:hover .sx-plate img {
+    transform: scale(1.025);
+  }
+}
+
+/* Diagram berlatar putih tetap putih (warna asli), dibingkai pelat gelap. */
+.sx-fig-light .sx-plate {
+  background: #fff;
+}
+
+.sx-fig figcaption,
+.sx-cap {
+  margin: 10px 4px 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
+.sx-fig-wide {
+  margin-top: clamp(28px, 4vw, 44px);
+}
+
+/* ---------- diagram ---------- */
+
+.sx-diagram-wrap {
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  background: radial-gradient(80% 70% at 30% 20%, rgba(255, 180, 84, 0.06), transparent 70%), rgba(9, 10, 15, 0.88);
+  box-shadow:
+    inset 0 0 0 4px var(--void),
+    inset 0 0 0 5px rgba(255, 180, 84, 0.16);
+  padding: clamp(14px, 2.4vw, 28px);
+}
+
+.sx-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Teks diagram: besar dan mono, terbaca juga saat SVG mengecil di ponsel. */
+.sx-t {
+  font-family: var(--mono);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  fill: #f2efe8;
+}
+
+.sx-t-dim {
+  fill: #a3a4b3;
+  letter-spacing: 0.12em;
+}
+
+.sx-t-acc {
+  fill: #ffb454;
+  letter-spacing: 0.08em;
+}
+
+.sx-t-ink {
+  fill: #05060b;
+  font-weight: 500;
+  font-size: 20px;
+}
+
+.sx-axis {
+  stroke: rgba(205, 214, 255, 0.55);
+  stroke-width: 1.5;
+}
+
+.sx-curve {
+  fill: none;
+  stroke: #ffb454;
+  stroke-width: 2;
+  stroke-opacity: 0.55;
+  stroke-linejoin: round;
+}
+
+.sx-link {
+  stroke: #ffb454;
+  stroke-width: 1.6;
+  stroke-opacity: 0.75;
+}
+
+.sx-dot {
+  fill: #ffb454;
+  stroke: #05060b;
+  stroke-width: 3;
+}
+
+.sx-star {
+  transition:
+    transform 0.9s var(--ease),
+    opacity 0.5s;
+}
+
+@keyframes sx-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sx-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Penghubung muncul dulu (sebab), lalu titiknya (akibat), lalu kurvanya tersambung. */
+.sx-shot-new .sx-link {
+  animation: sx-fade 0.5s var(--ease) 0.4s backwards;
+}
+
+.sx-curve[data-fresh="true"] {
+  animation: sx-fade 0.6s var(--ease) 1.3s backwards;
+}
+
+.sx-shot-new circle,
+.sx-shot-new text {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sx-pop 0.5s var(--ease) 1s backwards;
+}
+
+/* Cahaya mengalir di berkas: garis putus yang bergerak pelan, berhenti kalau gerak dikurangi. */
+@keyframes sx-flow {
+  to {
+    stroke-dashoffset: -60;
+  }
+}
+
+.sx-flow-dash {
+  stroke-width: 2.5;
+  stroke-dasharray: 6 24;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+  animation: sx-flow 1.6s linear infinite;
+}
+
+.sx-diagram[data-still="true"] .sx-flow-dash {
+  display: none;
+}
+
+/* ---------- latar bintang ---------- */
+
+.sx-stars {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.sx > header,
+.sx > main,
+.sx > footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- bagian bagian ---------- */
+
+.sx-parts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: part;
+}
+
+.sx-parts li {
+  position: relative;
+  padding: 18px 0 18px 44px;
+  border-top: 1px solid var(--hair);
+  counter-increment: part;
+}
+
+.sx-parts li:last-child {
+  border-bottom: 1px solid var(--hair);
+}
+
+.sx-parts li::before {
+  content: counter(part, upper-roman);
+  position: absolute;
+  left: 0;
+  top: 19px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.sx-parts p,
+.sx-flow p {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--soft);
+}
+
+/* ---------- alur data ---------- */
+
+.sx-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 34px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sx-flow li {
+  position: relative;
+  padding: 20px;
+  border: 1px solid var(--hair);
+  border-radius: 18px;
+  background: var(--card);
+}
+
+/* Panah di antara langkah: garis dengan ujung runcing, menunjuk ke langkah berikutnya. */
+.sx-flow li + li::before {
+  content: "";
+  position: absolute;
+  top: 34px;
+  left: -29px;
+  width: 22px;
+  height: 1.5px;
+  background: var(--accent);
+}
+
+.sx-flow li + li::after {
+  content: "";
+  position: absolute;
+  top: 30px;
+  left: -10px;
+  border: 5px solid transparent;
+  border-left: 7px solid var(--accent);
+  border-right: 0;
+}
+
+.sx-flow-n {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 14px;
+  border: 1px solid rgb(255 180 84 / 0.55);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+}
+
+/* ---------- SWARA: enam band ---------- */
+
+.sx-bands {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sx-bands li {
+  display: grid;
+  gap: 4px;
+}
+
+.sx-band-img {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--hair-strong);
+  border-radius: 50%;
+  background: #000;
+}
+
+/* Potongan tengah peta: pusat Bima Sakti. Citra abu-abu apa adanya. */
+.sx-band-img img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400%;
+  max-width: none;
+  height: auto;
+  transform: translate(-50%, -50%);
+}
+
+[data-in] .sx-bands li {
+  animation: sx-rise 0.8s var(--ease) calc(var(--k) * 0.08s) backwards;
+}
+
+.sx-bands b {
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.sx-bands span {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.sx-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 40px;
+  margin: clamp(32px, 5vw, 56px) 0 0;
+}
+
+.sx-facts div {
+  padding: 20px 0;
+  border-top: 1px solid var(--hair);
+}
+
+.sx-facts dt {
+  color: var(--accent);
+}
+
+.sx-facts dd {
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 15px;
+}
+
+.sx-cta {
+  margin-top: 36px;
+}
+
+/* ---------- sumber ---------- */
+
+.sx-sources ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sx-sources li {
+  padding: 14px 0;
+  border-top: 1px solid var(--hair);
+}
+
+.sx-sources a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.sx-sources a:hover {
+  color: var(--accent);
+}
+
+.sx-sources a svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.sx-sources small {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sx-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1180px;
+  margin: clamp(72px, 10vw, 112px) auto 0;
+  padding: 24px var(--gut) 36px;
+  border-top: 1px solid var(--hair);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- layar kecil ---------- */
+
+@media (max-width: 860px) {
+  .sx-split,
+  .sx-split-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sx-split-flip > :first-child {
+    order: 0;
+  }
+
+  .sx-flow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+
+  /* Panah menunjuk ke bawah saat langkah bertumpuk. */
+  .sx-flow li + li::before {
+    top: -22px;
+    left: 34px;
+    width: 1.5px;
+    height: 16px;
+  }
+
+  .sx-flow li + li::after {
+    top: -8px;
+    left: 30px;
+    border: 5px solid transparent;
+    border-top: 7px solid var(--accent);
+    border-bottom: 0;
+  }
+
+  .sx-bands {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 22px;
+  }
+
+  .sx-facts,
+  .sx-sources ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sx-hero-map img {
+    left: 50%;
+    top: 70%;
+    width: max(560px, 150vw);
+  }
+
+  .sx-hero-map::after {
+    background: linear-gradient(180deg, rgba(5, 6, 11, 0.6) 0%, rgba(5, 6, 11, 0.85) 45%, rgba(5, 6, 11, 0.5) 100%);
+  }
+
+  .sx-hero-cap {
+    position: static;
+    margin-top: 28px;
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .sx-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sx-stats div:nth-child(3) {
+    border-left: 0;
+  }
+
+  .sx-stats div:nth-child(n + 3) {
+    border-top: 1px solid var(--hair);
+  }
+
+  .sx-pill span {
+    display: none;
+  }
+
+  .sx-pill {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx *,
+  .sx *::before,
+  .sx *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .sx [data-rise] {
+    opacity: 1;
+  }
+
+  .sx-hero-map img {
+    opacity: 0.85;
+  }
+
+  .sx-plate img {
+    transform: none;
+  }
+}
+
+/* Penanda bernomor di atas gambar: lingkaran ambar dan labelnya, tidak menutup citra. */
+@keyframes sx-mark-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.sx-mark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+[data-in] .sx-mark {
+  animation: sx-mark-in 0.7s var(--ease) calc(0.9s + var(--k) * 0.25s) backwards;
+}
+
+.sx-mark i {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: rgba(5, 6, 11, 0.7);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-style: normal;
+  color: var(--accent);
+}
+
+.sx-mark em {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(5, 6, 11, 0.72);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .sx-mark em {
+    display: none;
+  }
+}
+
+/* Saat dibalik, kolom lebar tetap milik diagram. */
+.sx-split-wide.sx-split-flip {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+@media (max-width: 860px) {
+  .sx-split-wide.sx-split-flip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Di ponsel SVG mengecil sekitar 0,6 kali, jadi hurufnya dibesarkan supaya tetap terbaca. */
+@media (max-width: 560px) {
+  .sx-t {
+    font-size: 19px;
+  }
+
+  .sx-t-ink {
+    font-size: 22px;
+  }
+}

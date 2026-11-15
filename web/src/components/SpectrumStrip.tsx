@@ -259,7 +259,7 @@ export function SpectrumStrip(p: Props) {
       : plan.skipped;
     const start = sonifier.playMixed(plan.notes, plan.activeVoices, total);
     setPlay({ start, total, visits, skipped, activeVoices: plan.activeVoices, pings, rays: spectrumLayers });
-    if (ambienceOnly) setAnnounce("No data layer is ready, so only the space ambience is playing.");
+    if (ambienceOnly) setAnnounce("No data is ready to play here, so only a quiet space ambience is playing.");
     setFresh(false);
     try {
       window.localStorage.setItem(HEARD_KEY, "1");
@@ -332,7 +332,7 @@ export function SpectrumStrip(p: Props) {
         ].filter(Boolean);
         const skippedVisits = play.skipped.filter((entry) => !play.visits.some((q) => q.id === entry.id));
         const skippedSummary = i === 0 && skippedVisits.length
-          ? ` ${skippedVisits.length} visit${skippedVisits.length === 1 ? "" : "s"} with no data in any layer skipped.`
+          ? ` Skipped ${skippedVisits.length} ${skippedVisits.length === 1 ? "visit" : "visits"} with nothing to play.`
           : "";
         setAnnounce(active.length
           ? `Visit ${w ? monthYear(w.mjd_mid) : visit.id}: ${active.join(", ")}.` +
@@ -360,7 +360,7 @@ export function SpectrumStrip(p: Props) {
       }
       if (visit.layers.scan && col >= SCAN.columns / 2 && centerTold !== visit.id) {
         centerTold = visit.id;
-        setAnnounce("The target is at the centre of the image.");
+        setAnnounce("The scan is at the target, in the middle of the image.");
       }
 
       if (visit.layers.spectrum) {
