@@ -1,8 +1,10 @@
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "@phosphor-icons/react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LogoMark, Wordmark } from "../components/Logo";
 import { APP_PATH } from "../route";
+import { LvfDiagram, SplitDiagram } from "./diagrams";
 import "./spherex.css";
+import { StarField } from "./StarField";
 
 // Halaman "/spherex": penjelasan misi SPHEREx untuk orang umum. Semua angka di sini harus
 // sama dengan sumber di bagian Sources dan dengan fakta data di AGENTS.md. Citra yang
@@ -146,202 +148,6 @@ function Figure(props: { src: string; alt: string; credit: string; w: number; h:
   );
 }
 
-// ---------- diagram ----------
-
-/** Penanda panah: ujungnya runcing dan selalu searah garis, jadi arah terbaca jelas. */
-function ArrowDefs({ id }: { id: string }) {
-  return (
-    <defs>
-      <marker id={id} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
-      </marker>
-    </defs>
-  );
-}
-
-/** Filter variabel linier: panjang gelombang berubah di sepanjang detektor. Langit digeser
- *  di antara eksposur, jadi satu bintang jatuh di warna yang berbeda tiap kali. */
-function LvfDiagram() {
-  const strips = 12;
-  return (
-    <svg className="sx-diagram" viewBox="0 0 640 330" role="img" aria-labelledby="lvf-t lvf-d">
-      <title id="lvf-t">How a linear variable filter builds a spectrum</title>
-      <desc id="lvf-d">
-        A detector whose filter passes a different wavelength at each height. Between exposures the telescope points slightly
-        further along, so the same star lands on a new wavelength each time. Three exposures give three points of its spectrum.
-      </desc>
-      <ArrowDefs id="lvf-arrow" />
-      <defs>
-        <linearGradient id="lvf-grad" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#cdd6ff" stopOpacity="0.5" />
-          <stop offset="1" stopColor="#ffb454" stopOpacity="0.75" />
-        </linearGradient>
-      </defs>
-      {/* detektor */}
-      <g transform="translate(40 34)">
-        <rect width="190" height="250" rx="4" fill="url(#lvf-grad)" opacity="0.32" />
-        {Array.from({ length: strips }, (_, i) => (
-          <line key={i} x1="0" x2="190" y1={(250 / strips) * i} y2={(250 / strips) * i} stroke="#05060b" strokeOpacity="0.55" />
-        ))}
-        <rect width="190" height="250" rx="4" fill="none" stroke="rgba(205,214,255,0.4)" />
-        <text className="sx-svg-mono" x="-8" y="246" textAnchor="end">
-          short
-        </text>
-        <text className="sx-svg-mono" x="-8" y="10" textAnchor="end">
-          long
-        </text>
-        {/* bintang yang sama di tiga eksposur */}
-        {[
-          { y: 200, k: 1 },
-          { y: 125, k: 2 },
-          { y: 50, k: 3 },
-        ].map(({ y, k }) => (
-          <g key={k} className="sx-lvf-star" style={{ ["--k" as string]: k }}>
-            <circle cx="95" cy={y} r="7" fill="#f2efe8" />
-            <circle cx="95" cy={y} r="13" fill="none" stroke="#ffb454" strokeOpacity="0.7" />
-            <text className="sx-svg-mono sx-svg-dim" x="118" y={y + 4}>
-              exp. {k}
-            </text>
-          </g>
-        ))}
-        {/* arah langit bergeser antar eksposur */}
-        <line x1="210" y1="200" x2="210" y2="56" stroke="#ffb454" strokeWidth="1.5" markerEnd="url(#lvf-arrow)" color="#ffb454" />
-        <text className="sx-svg-mono sx-svg-accent" x="222" y="132">
-          star steps
-        </text>
-        <text className="sx-svg-mono sx-svg-accent" x="222" y="148">
-          across filter
-        </text>
-      </g>
-      {/* spektrum yang terbentuk */}
-      <g transform="translate(380 34)">
-        <line
-          x1="0"
-          y1="250"
-          x2="230"
-          y2="250"
-          stroke="rgba(205,214,255,0.4)"
-          markerEnd="url(#lvf-arrow)"
-          color="rgba(205,214,255,0.6)"
-        />
-        <line
-          x1="0"
-          y1="250"
-          x2="0"
-          y2="16"
-          stroke="rgba(205,214,255,0.4)"
-          markerEnd="url(#lvf-arrow)"
-          color="rgba(205,214,255,0.6)"
-        />
-        <text className="sx-svg-mono sx-svg-dim" x="230" y="276" textAnchor="end">
-          wavelength
-        </text>
-        <text className="sx-svg-mono sx-svg-dim" x="10" y="14">
-          brightness
-        </text>
-        {[
-          { x: 50, y: 150, k: 1 },
-          { x: 120, y: 95, k: 2 },
-          { x: 190, y: 170, k: 3 },
-        ].map(({ x, y, k }) => (
-          <g key={k} className="sx-lvf-point" style={{ ["--k" as string]: k }}>
-            <circle cx={x} cy={y} r="6" fill="#ffb454" />
-            <text className="sx-svg-mono" x={x} y={y - 14} textAnchor="middle">
-              {k}
-            </text>
-          </g>
-        ))}
-      </g>
-      <line
-        x1="300"
-        y1="100"
-        x2="362"
-        y2="100"
-        stroke="#f2efe8"
-        strokeOpacity="0.7"
-        strokeWidth="1.5"
-        markerEnd="url(#lvf-arrow)"
-        color="#f2efe8"
-      />
-    </svg>
-  );
-}
-
-/** Jalur cahaya: teleskop, pemisah dikroik, lalu dua bidang fokus berisi tiga detektor. */
-function SplitDiagram() {
-  const det = (x: number, y: number, label: string) => (
-    <g key={label}>
-      <rect x={x} y={y} width="58" height="58" rx="3" fill="rgba(205,214,255,0.06)" stroke="rgba(205,214,255,0.4)" />
-      <text className="sx-svg-mono" x={x + 29} y={y + 34} textAnchor="middle">
-        {label}
-      </text>
-    </g>
-  );
-  return (
-    <svg className="sx-diagram" viewBox="0 0 640 300" role="img" aria-labelledby="split-t split-d">
-      <title id="split-t">Light path to the six detectors</title>
-      <desc id="split-d">
-        Light from the telescope reaches a dichroic beam splitter. Shorter wavelengths, 0.75 to 2.42 microns, go to one focal
-        plane with bands 1 to 3. Longer wavelengths, 2.42 to 5.0 microns, go to the other with bands 4 to 6.
-      </desc>
-      <ArrowDefs id="split-arrow" />
-      <text className="sx-svg-mono sx-svg-dim" x="20" y="146">
-        telescope
-      </text>
-      <line
-        x1="20"
-        y1="160"
-        x2="232"
-        y2="160"
-        stroke="#f2efe8"
-        strokeOpacity="0.75"
-        strokeWidth="1.5"
-        markerEnd="url(#split-arrow)"
-        color="#f2efe8"
-      />
-      {/* pemisah dikroik */}
-      <line x1="222" y1="196" x2="282" y2="124" stroke="#ffb454" strokeWidth="3" />
-      <text className="sx-svg-mono sx-svg-accent" x="252" y="228" textAnchor="middle">
-        dichroic
-      </text>
-      <line
-        x1="258"
-        y1="150"
-        x2="380"
-        y2="76"
-        stroke="#cdd6ff"
-        strokeOpacity="0.8"
-        strokeWidth="1.5"
-        markerEnd="url(#split-arrow)"
-        color="#cdd6ff"
-      />
-      <line
-        x1="258"
-        y1="170"
-        x2="380"
-        y2="244"
-        stroke="#ffb454"
-        strokeOpacity="0.9"
-        strokeWidth="1.5"
-        markerEnd="url(#split-arrow)"
-        color="#ffb454"
-      />
-      {det(394, 20, "1")}
-      {det(458, 20, "2")}
-      {det(522, 20, "3")}
-      <text className="sx-svg-mono" x="394" y="100">
-        0.75 to 2.42 µm
-      </text>
-      {det(394, 214, "4")}
-      {det(458, 214, "5")}
-      {det(522, 214, "6")}
-      <text className="sx-svg-mono" x="394" y="204">
-        2.42 to 5.0 µm
-      </text>
-    </svg>
-  );
-}
-
 // ---------- halaman ----------
 
 export function SpherexPage() {
@@ -354,9 +160,20 @@ export function SpherexPage() {
     document.title = "What is SPHEREx? · SWARA";
   }, []);
 
+  // Bilah atas mendapat latar gelap begitu halaman digulir, supaya judul bagian tidak
+  // pernah bersisian dengan logo.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 24);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+
   return (
     <div className="sx" ref={root}>
-      <nav className="sx-nav" aria-label="SWARA">
+      <StarField />
+      <nav className="sx-nav" aria-label="SWARA" data-scrolled={scrolled}>
         <a className="sx-brand" href="/" aria-label="SWARA: home">
           <LogoMark size={22} />
           <Wordmark height={15} />
@@ -557,8 +374,7 @@ export function SpherexPage() {
             ))}
           </ul>
           <p className="sx-cap" data-rise>
-            The same sky in SWARA's six bands, from real SPHEREx all-sky maps.
-            NASA/JPL-Caltech/IPAC, SPHEREx DR1 via IRSA.
+            The same sky in SWARA's six bands, from real SPHEREx all-sky maps. NASA/JPL-Caltech/IPAC, SPHEREx DR1 via IRSA.
           </p>
           <dl className="sx-facts" data-rise>
             <div>
