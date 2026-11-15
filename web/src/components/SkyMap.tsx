@@ -1021,8 +1021,8 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
         <p className="atlas-kicker">
           <span>
             {atlas
-              ? `SPHEREx all-sky map · ${monthYear(atlas.source.mjd_start)} to ${monthYear(atlas.source.mjd_end)}`
-              : "SPHEREx all-sky map"}
+              ? `SPHEREx all-sky map · seen from Earth · ${monthYear(atlas.source.mjd_start)} to ${monthYear(atlas.source.mjd_end)}`
+              : "SPHEREx all-sky map · seen from Earth"}
             <span ref={fieldRef} />
           </span>
         </p>
@@ -1056,7 +1056,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
               ref={canvasRef}
               className="atlas-canvas"
               role="img"
-              aria-label={`The whole sky as SPHEREx saw it at ${lambda}: our galaxy runs across the middle.`}
+              aria-label={`The whole sky seen from Earth, as SPHEREx saw it at ${lambda}: our galaxy runs across the middle.`}
             />
             <canvas ref={overlayRef} className="atlas-overlay" aria-hidden="true" />
 
@@ -1186,7 +1186,11 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
       <footer className="atlas-foot">
         <div className="atlas-intro">
           <h1>The whole sky</h1>
-          <p>Every point of light is SPHEREx data, here at {lambda || "one wavelength"}. Our galaxy runs across the middle.</p>
+          {/* Pertanyaan yang selalu muncul: "Bumi di mana?" Peta ini pandangan dari Bumi ke luar. */}
+          <p>
+            The sky seen from Earth, looking out in every direction, so Earth, the Sun and the Moon are not on this map. Every point of
+            light is SPHEREx data, here at {lambda || "one wavelength"}. Our galaxy runs across the middle.
+          </p>
           <p className="atlas-hint">
             {!gl ? "Choose a spot to look closer" : touch ? "Pinch to zoom · drag to move · tap to aim" : "Scroll to zoom · drag to move · click to aim"}
           </p>

@@ -55,7 +55,7 @@ function skySteps(o: RunOptions): DriveStep[] {
       popover: {
         title: "This is the whole sky",
         description:
-          "Every point of light here is real data from SPHEREx, a NASA space telescope that sees infrared light, which our eyes cannot. The bright band is our own galaxy, seen from inside.",
+          "You are looking out from Earth in every direction, so Earth, the Sun and the Moon are not on this map. Every point of light is real data from SPHEREx, a NASA space telescope that sees infrared light, which our eyes cannot. The bright band is our own galaxy, seen from inside.",
         nextBtnText: "Show me around",
       },
       data: { pad: 0, radius: 0, dim: 0.5 } satisfies Stage,

@@ -139,6 +139,8 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-15
+- **KEPUTUSAN (Wildan): peta seluruh langit menulis "seen from Earth".** Sebabnya: orang selalu bertanya di mana Bumi, Matahari, dan Bulan. Peta itu pandangan dari Bumi ke segala arah, jadi ketiganya tidak ada di peta; Bumi tidak ditandai sebagai titik. Teksnya di judul pelat, kalimat di bawah judul peta, langkah pertama tur, dan kartu 0 di Story. Penanda Matahari dan Bulan "hari ini" belum dibuat.
+  - Diuji di Chromium headless: peta, langkah pertama tur, dan kartu Story di 1440 x 900; peta di 1366 x 768 dan ponsel 390 px; tanpa geser horizontal; build lolos. Belum diuji: ponsel asli, Safari, Firefox.
 - **KEPUTUSAN (Wildan): alamat publik pindah ke https://swara.space.** `www` dialihkan ke sana, dan swara-nasa.vercel.app tetap jalan supaya tautan dan QR yang sudah tersebar tidak rusak. Pratinjau tautan memakai domain baru (PR #63). Materi submission perlu memakai alamat baru.
 - **KEPUTUSAN (Wildan): suara digambar di lensa, mengikuti engine Alif di PR #55 (PR #60).** Sebabnya: saat diputar, layar hanya menampilkan cincin yang terisi dari utara kembali ke utara dan garis pindai, jadi tidak terlihat apa yang sedang terdengar. Syaratnya: tetap minimalis dan nyambung dengan tampilan sekarang. Rincian di [web/DESIGN.md](web/DESIGN.md), tabel gerak.
   - Pindai: cincin tipis putih di bintang yang sedang dibunyikan; bintang yang berkilau mendapat cincin kedua. Spektrum: sinar ambar ke dalam dari cincin pada sudut panjang gelombangnya (0,75 µm kiri sampai 5 µm kanan), panjang = fluks, mahkota kunjungan sebelumnya jadi bayangan abu. Gerak: denyut di posisi terukur saat lonceng berbunyi. Busur cincin sekarang jarum per kunjungan.
