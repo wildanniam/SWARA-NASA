@@ -1088,6 +1088,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
                   key={m.id}
                   type="button"
                   className="sky-marker"
+                  data-id={m.id}
                   data-yours={m.yours}
                   data-current={m.current}
                   data-ra={m.ra}

@@ -159,6 +159,22 @@ Tombol **Story** (dulu Guide, lalu The cards) membuka dialog di tengah layar ber
 - **Bahasa.** Tarot hanya formatnya. Tidak ada kata ramalan, zodiak, atau nasib; rasi yang dipakai adalah rasi IAU.
 - **Layar kecil.** Tiga kartu digeser satu per satu. Tanpa gerak, kartu berganti sisi tanpa berputar.
 
+## Tur
+
+Orang tanpa latar astronomi menyukai SWARA setelah dijelaskan, tetapi bingung sebelum itu (wawancara Wildan, 15 November 2026). Tur membawa penjelasan itu ke layar: delapan langkah, sekitar semenit. Kodenya di `web/src/tour/`. Sorotan, letak pelat, dan fokus papan ketik dikerjakan driver.js (dimuat hanya saat tur berjalan); semua yang terlihat milik SWARA.
+
+- **Dua bab.** Seluruh langit (2 langkah: apa peta ini, lalu mulai dari bintang yang bergerak), lalu teleskop (6 langkah: lensa, garis waktu, angka terukur, cahaya dan suara, Story, Go to). Bab pertama berakhir dengan perbuatan: mengeklik Barnard's Star, atau "Take me there", mengarahkan teleskop ke sana, dan bab kedua mulai setelah lensa terbuka. Yang datang lewat tautan ke satu tempat langsung mendapat bab teleskop, dengan teks yang menyesuaikan bendanya (ada riwayat WISE atau tidak, bergeser atau tidak).
+- **Pelat tur** memakai gaya pelat. Kepalanya nomor langkah dan satu garis yang memudar; kakinya skala langkah (satu tanda per langkah, seperti garis waktu), Back yang tenang, dan satu tombol utama. Nomornya angka biasa, bukan Romawi: II dan III sudah dipakai dok untuk Path dan Light. Langkah pembuka adalah pelat besar di tengah dengan bintang empat sudut di garis atasnya, dan layar di belakangnya lebih terang (redup 50%, langkah lain 74%) supaya langitnya tetap terlihat.
+- **Cincin sorot.** Tepi sorotan digambar sebagai cincin ambar bergaris ganda yang mengikuti bentuk elemennya: lingkaran untuk lensa (selebar cincin skalanya), pil untuk tombol, sudut 18 px untuk panel. Antar langkah bentuknya berubah bersama perpindahan sorotan. Pada langkah yang meminta klik, satu cincin melebar dan memudar berulang.
+- **Garis penunjuk.** Pengganti panah segitiga: satu garis tipis berujung titik dari pelat ke cincin, seperti garis keterangan pada gambar alat.
+- **Yang menepi selama tur:** teks identitas dan temuan di samping lensa (kecuali saat disorot), label kisi dan benda di peta, cuplikan penanda, dan bacaan koordinat. Tidak ada potongan teks yang mengintip di samping pelat.
+- **Letak pelat.** Di samping atau di bawah yang disorot. Di jendela yang sempit dan tinggi lensa memakan hampir semua ruang, jadi pelat pindah ke sudut kanan bawah, yang tidak tertutup lingkaran. Di ponsel pelat selebar layar.
+- **Kendali.** Enter atau panah kanan melanjutkan, panah kiri mundur, Esc atau tombol silang melewati. Klik di luar sorotan tidak menutup tur, supaya tidak hilang karena tidak sengaja. Tombol pintas aplikasi diam selama tur. Di langkah garis waktu dan cahaya, tombol di dalam sorotan tetap bisa dipakai; di langkah terakhir, mengeklik kotak cari menutup tur dan membuka Go to.
+- **Sekali per browser**, dilewati atau selesai. Tombol bundar bertanda tanya di bilah atas mengulanginya: dari seluruh langit tur penuh, dari teleskop bab teleskop saja. Di ponsel tombol itu hanya ada di seluruh langit, karena bilah atas teleskop sudah penuh. Tur menunggu kalau ada dialog terbuka, dan tidak muncul sendiri kalau penyimpanan browser diblokir.
+- **Perkenalan kenop lensa** menunggu sampai tur selesai atau dilewati.
+- **Gerak dikurangi:** sorotan berpindah langsung, tanpa cincin berdenyut.
+- **Teks** berbahasa Inggris, satu sampai tiga kalimat per langkah, tanpa istilah yang tidak dijelaskan, semuanya di `web/src/tour/tour.ts`.
+
 ## Citra selisih dan bintang Gaia di lensa
 
 Dua lapis di lensa yang menjawab "apa yang berubah?" dan "katalog bilang apa?". Keduanya tombol di busur bawah cincin lensa (tujuh tombol berjajar tiap 18 derajat) dan bisa dinyalakan bersamaan.
@@ -173,7 +189,7 @@ Di Go to, di bawah kotak cari, ada dua isian RA dan Dec yang ditata seperti dua 
 
 ## Bilah atas dan mode fokus
 
-- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (jalan pulang satu tingkat sekali: dari teleskop ke seluruh langit, dari seluruh langit ke landing page), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **Story**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
+- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (jalan pulang satu tingkat sekali: dari teleskop ke seluruh langit, dari seluruh langit ke landing page), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **Story**; Tour, Whole sky, Share, dan Focus adalah tombol bundar berikon.
 - **Mode fokus** (tombol pojok atau F): bilah atas dan dok menghilang, lensa membesar, nama di kiri dan angka terukur di kanan tetap ada. Browser diminta masuk layar penuh; kalau ditolak, mode fokus tetap jalan. Esc, F, atau tombol kecil di pojok untuk keluar. Blink tetap dengan Spasi dan panah.
 
 ## Logo
@@ -187,7 +203,7 @@ Dua bagian (`web/src/components/Logo.tsx`; bentuk yang sama ada di `web/public/f
 
 ## Halaman seluruh langit di layar lebar
 
-Elips sebesar yang muat di layar; judul dan kontrol menempati sudut kosong elips (kiri bawah: judul, satu kalimat, petunjuk, tombol tur; kanan bawah: panjang gelombang dan look; kanan atas pelat: zoom). Tidak ada kaki halaman. Ponsel tetap bertumpuk.
+Elips sebesar yang muat di layar; judul dan kontrol menempati sudut kosong elips (kiri bawah: judul, satu kalimat, petunjuk, tombol "Show me a moving star"; kanan bawah: panjang gelombang dan look; kanan atas pelat: zoom). Tidak ada kaki halaman. Ponsel tetap bertumpuk.
 
 ## Landing page
 
@@ -238,7 +254,8 @@ Tiap gerak punya alasan:
 | Cincin Gaia mengunci dari besar ke ukurannya satu per satu, lalu memudar saat dimatikan | katalog sedang dicocokkan ke bintang di citra |
 | Menunjuk lensa: bacaan RA/Dec dan jarak dari tanda di samping kursor, jarum ambar di cincin menunjuk arahnya, N dan E menyala | lensa adalah alat ukur; tiap titiknya punya koordinat (rumusnya sama dengan `sky_grid` di pipeline) |
 | Kenop di cincin sedikit masuk saat ditekan dan bercahaya saat menyala | kenop alat, bukan tombol halaman |
-| Lima kenop menyala bergantian dengan keterangannya, sekali per browser saat lensa pertama terbuka | alatnya memperkenalkan diri; berhenti begitu orang menyentuh apa pun, dan tidak muncul dengan gerak dikurangi atau di layar sentuh |
+| Lima kenop menyala bergantian dengan keterangannya, sekali per browser saat lensa pertama terbuka | alatnya memperkenalkan diri; menunggu tur selesai, berhenti begitu orang menyentuh apa pun, dan tidak muncul dengan gerak dikurangi atau di layar sentuh |
+| Sorotan tur berpindah dan berubah bentuk dari satu alat ke alat berikutnya | perhatian dipindahkan, bukan dipotong: orang melihat di mana alat berikutnya berada |
 
 Dengan `prefers-reduced-motion`: tidak ada geser, perpindahan, atau gerak pembesaran; lensa langsung terbuka pada pembesaran kerjanya, dan blink tidak mulai sendiri.
 

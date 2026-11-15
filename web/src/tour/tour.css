@@ -1,0 +1,498 @@
+/* Tur berpemandu. driver.js memberi sorotan dan letak; tampilannya memakai bahasa pelat SWARA
+   (web/DESIGN.md, "Tur"): pelat bergaris ganda, cincin ambar, garis penunjuk, skala langkah. */
+
+/* Redup tirai berganti pelan antar langkah (langkah pembuka lebih terang, supaya langitnya terlihat). */
+.driver-overlay path {
+  transition: opacity 420ms ease;
+}
+
+/* Selama tur, cuplikan penanda dan bacaan koordinat di peta tidak ikut muncul di bawah tirai,
+   dan label kisi serta benda di peta menepi supaya tidak menimpa garis penunjuk. */
+body.driver-active .sky-peek,
+body.driver-active .sky-readout {
+  display: none;
+}
+
+.atlas-labels {
+  transition: opacity 320ms ease;
+}
+
+body.driver-active .atlas-labels {
+  opacity: 0;
+}
+
+/* Di teleskop, teks di kiri dan kanan lensa menepi selama tur, kecuali yang sedang disorot:
+   yang tersisa hanya langit, lensa, dan pelat tur, tanpa potongan teks yang mengintip. */
+.stage .identity,
+.stage .finding {
+  transition: opacity 320ms ease;
+}
+
+body.driver-active .stage .identity,
+body.driver-active .stage .finding:not(.driver-active-element) {
+  opacity: 0;
+}
+
+/* ---------- cincin sorot ---------- */
+
+.tour-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10001;
+  border: 1px solid rgb(255 180 84 / 0.8);
+  border-radius: var(--r, 18px);
+  pointer-events: none;
+  animation: tour-fade 420ms ease both;
+}
+
+.tour-ring[hidden] {
+  display: none;
+}
+
+/* Garis kedua di luar, seperti bingkai pelat. */
+.tour-ring::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1px solid rgb(255 180 84 / 0.2);
+  border-radius: calc(var(--r, 18px) + 6px);
+}
+
+/* Langkah yang meminta klik: satu cincin melebar dan memudar, berulang. */
+.tour-ring[data-act="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(255 180 84 / 0.75);
+  border-radius: calc(var(--r, 18px) + 20px);
+  animation: tour-ping 2.2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+@keyframes tour-ping {
+  0% {
+    inset: 0;
+    opacity: 0.8;
+  }
+  70%,
+  100% {
+    inset: -20px;
+    opacity: 0;
+  }
+}
+
+@keyframes tour-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- pelat ---------- */
+
+.driver-popover.swara-tour {
+  width: min(344px, calc(100vw - 28px));
+  min-width: 0;
+  max-width: none;
+  padding: 20px 22px 18px;
+  border: 1px solid rgb(255 180 84 / 0.4);
+  border-radius: 18px;
+  background: radial-gradient(130% 70% at 50% 0%, #1c130e 0%, #0e0c10 48%, #08080c 100%);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.55),
+    0 28px 70px rgb(0 0 0 / 0.6);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.driver-popover.swara-tour::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgb(255 180 84 / 0.14);
+  border-radius: 13px;
+  pointer-events: none;
+}
+
+.driver-fade .driver-popover.swara-tour {
+  animation: tour-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Kepala: nomor langkah, lalu satu garis yang memudar ke arah tombol tutup. */
+.swara-tour .tour-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+  margin: -4px 38px 10px 0;
+}
+
+.swara-tour .tour-numeral {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+
+.swara-tour .tour-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(255 180 84 / 0.36), rgb(255 180 84 / 0));
+}
+
+.swara-tour .tour-kicker {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.driver-popover.swara-tour .driver-popover-title {
+  font-size: 16.5px;
+  font-weight: 650;
+  font-stretch: 125%;
+  letter-spacing: 0.05em;
+  line-height: 1.28;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.driver-popover.swara-tour .driver-popover-title + .driver-popover-description {
+  margin-top: 9px;
+}
+
+.driver-popover.swara-tour .driver-popover-description {
+  color: var(--soft);
+  font-size: 14.5px;
+  line-height: 1.58;
+  text-wrap: pretty;
+}
+
+/* ---------- kaki: skala langkah dan tombol ---------- */
+
+.driver-popover.swara-tour .driver-popover-footer {
+  gap: 14px;
+  margin-top: 18px;
+}
+
+/* Skala: satu tanda per langkah, seperti tanda di garis waktu. */
+.driver-popover.swara-tour .driver-popover-progress-text {
+  display: flex !important;
+  flex: none;
+  align-items: flex-end;
+  gap: 6px;
+  height: 13px;
+}
+
+.swara-tour .driver-popover-progress-text i {
+  width: 1px;
+  height: 6px;
+  background: var(--hair-strong);
+}
+
+.swara-tour .driver-popover-progress-text i[data-state="past"] {
+  background: rgb(255 180 84 / 0.6);
+}
+
+.swara-tour .driver-popover-progress-text i[data-state="now"] {
+  width: 2px;
+  height: 13px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.driver-popover.swara-tour .driver-popover-navigation-btns {
+  align-items: center;
+  gap: 4px;
+}
+
+.driver-popover.swara-tour .driver-popover-footer-btn,
+.swara-tour .tour-later {
+  all: unset;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 34px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms,
+    transform 120ms;
+}
+
+.driver-popover.swara-tour .driver-popover-navigation-btns button + button {
+  margin-left: 0;
+}
+
+.driver-popover.swara-tour .driver-popover-footer-btn:hover,
+.swara-tour .tour-later:hover {
+  color: var(--text);
+}
+
+.driver-popover.swara-tour .driver-popover-footer-btn:active,
+.swara-tour .tour-later:active {
+  transform: scale(0.96);
+}
+
+.driver-popover.swara-tour .driver-popover-footer-btn:focus-visible,
+.swara-tour .tour-later:focus-visible,
+.driver-popover.swara-tour .driver-popover-close-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Tombol utama selalu memegang fokus saat langkah tampil (Enter melanjutkan), jadi tanda
+   fokusnya satu garis tipis: garis kedua di luar tombol, seperti cincin sorot. */
+.driver-popover.swara-tour .driver-popover-next-btn:focus-visible {
+  outline: 1px solid rgb(255 180 84 / 0.85);
+  outline-offset: 3px;
+}
+
+/* Pangkat utama: isi ambar dengan garis gelap tipis di dalamnya, sama dengan `pill-accent`. */
+.driver-popover.swara-tour .driver-popover-next-btn {
+  order: 2;
+  margin-left: 4px;
+  padding: 0 18px;
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    inset 0 0 0 3px rgb(27 18 4 / 0.32);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.driver-popover.swara-tour .driver-popover-next-btn:hover {
+  border-color: #ffc57a;
+  background: #ffc57a;
+  box-shadow:
+    inset 0 0 0 2px #ffc57a,
+    inset 0 0 0 3px rgb(27 18 4 / 0.32);
+  color: var(--accent-ink);
+}
+
+/* Di langkah pertama tidak ada jalan mundur. */
+.driver-popover.swara-tour .driver-popover-btn-disabled {
+  display: none !important;
+}
+
+/* Tombol tutup: kenop bundar kecil dengan silang dari dua garis. */
+.driver-popover.swara-tour .driver-popover-close-btn {
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--hair);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 0;
+  transition:
+    border-color 150ms,
+    color 150ms;
+}
+
+.driver-popover.swara-tour .driver-popover-close-btn::before,
+.driver-popover.swara-tour .driver-popover-close-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.driver-popover.swara-tour .driver-popover-close-btn::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.driver-popover.swara-tour .driver-popover-close-btn:hover {
+  border-color: rgb(255 180 84 / 0.8);
+  color: var(--accent);
+}
+
+/* ---------- garis penunjuk ---------- */
+
+/* Pengganti panah segitiga: satu garis tipis dari pelat ke cincin sorot, berujung titik,
+   seperti garis keterangan pada gambar alat. Kotaknya 12 px supaya driver.js menaruhnya
+   tepat di tengah elemen. */
+.swara-tour .driver-popover-arrow {
+  width: 12px;
+  height: 12px;
+  border: 0;
+}
+
+.swara-tour .driver-popover-arrow::before,
+.swara-tour .driver-popover-arrow::after {
+  content: "";
+  position: absolute;
+}
+
+.swara-tour .driver-popover-arrow::before {
+  background: rgb(255 180 84 / 0.75);
+}
+
+.swara-tour .driver-popover-arrow::after {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Pelat di kiri elemen: garis ke kanan. */
+.swara-tour .driver-popover-arrow-side-left::before {
+  left: 0;
+  top: 50%;
+  width: var(--tour-gap);
+  height: 1px;
+}
+
+.swara-tour .driver-popover-arrow-side-left::after {
+  left: calc(var(--tour-gap) - 2px);
+  top: calc(50% - 2px);
+}
+
+/* Pelat di kanan elemen: garis ke kiri. */
+.swara-tour .driver-popover-arrow-side-right::before {
+  right: 0;
+  top: 50%;
+  width: var(--tour-gap);
+  height: 1px;
+}
+
+.swara-tour .driver-popover-arrow-side-right::after {
+  right: calc(var(--tour-gap) - 2px);
+  top: calc(50% - 2px);
+}
+
+/* Pelat di atas elemen: garis ke bawah. */
+.swara-tour .driver-popover-arrow-side-top::before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: var(--tour-gap);
+}
+
+.swara-tour .driver-popover-arrow-side-top::after {
+  left: calc(50% - 2px);
+  top: calc(var(--tour-gap) - 2px);
+}
+
+/* Pelat di bawah elemen: garis ke atas. */
+.swara-tour .driver-popover-arrow-side-bottom::before {
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: var(--tour-gap);
+}
+
+.swara-tour .driver-popover-arrow-side-bottom::after {
+  left: calc(50% - 2px);
+  bottom: calc(var(--tour-gap) - 2px);
+}
+
+/* Pelat di sudut layar (lihat `corner` di tour.ts): letak dari driver.js ditimpa, tanpa garis penunjuk. */
+.driver-popover.swara-tour.tour-corner {
+  left: auto !important;
+  top: auto !important;
+  right: 8px !important;
+  bottom: 8px !important;
+}
+
+.swara-tour.tour-corner .driver-popover-arrow {
+  display: none;
+}
+
+/* ---------- langkah pembuka ---------- */
+
+/* Pelat besar di tengah layar: membawa bintang empat sudut yang memutus garis atasnya,
+   seperti dua dialog besar. */
+.driver-popover.swara-tour.swara-tour-hello {
+  width: min(430px, calc(100vw - 28px));
+  padding: 30px 30px 24px;
+}
+
+.driver-popover.swara-tour.swara-tour-hello::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 30px;
+  height: 13px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23ffb454' d='M10 0l2 8 8 2-8 2-2 8-2-8-8-2 8-2z'/%3E%3C/svg%3E")
+      center / 13px 13px no-repeat,
+    linear-gradient(transparent 0 42%, #17100d 42% 100%);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.swara-tour-hello .tour-head {
+  margin-bottom: 14px;
+}
+
+.driver-popover.swara-tour.swara-tour-hello .driver-popover-title {
+  font-size: 23px;
+  letter-spacing: 0.04em;
+}
+
+.driver-popover.swara-tour.swara-tour-hello .driver-popover-description {
+  font-size: 15px;
+}
+
+.driver-popover.swara-tour.swara-tour-hello .driver-popover-footer {
+  margin-top: 24px;
+}
+
+@media (max-width: 560px) {
+  /* Selebar layar, supaya tidak ada potongan teks yang mengintip di kiri dan kanannya. */
+  .driver-popover.swara-tour,
+  .driver-popover.swara-tour.swara-tour-hello {
+    width: calc(100vw - 24px);
+  }
+
+  .driver-popover.swara-tour {
+    padding: 18px 18px 16px;
+  }
+
+  .driver-popover.swara-tour.swara-tour-hello {
+    padding: 26px 22px 20px;
+  }
+
+  .driver-popover.swara-tour.swara-tour-hello .driver-popover-title {
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-ring,
+  .tour-ring[data-act="true"]::after {
+    animation: none;
+  }
+
+  .tour-ring[data-act="true"]::after {
+    display: none;
+  }
+
+  .driver-overlay path {
+    transition: none;
+  }
+}
