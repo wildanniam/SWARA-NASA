@@ -37,7 +37,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 
 | Permintaan wajib | Status |
 |---|---|
-| Web tool yang terbuka untuk publik | Ada: https://swara-nasa.vercel.app (landing page), aplikasinya di https://swara-nasa.vercel.app/sky |
+| Web tool yang terbuka untuk publik | Ada: https://swara.space (landing page), aplikasinya di https://swara.space/sky |
 | Pengguna memasukkan koordinat (RA dan Dec) | Ada: dua isian berlabel RA dan Dec (derajat atau jam/derajat-menit-detik), satu kotak untuk nama benda atau koordinat, pratinjau "dibaca sebagai" di peta, atau klik titik mana pun di peta seluruh langit |
 | Deretan citra patch itu "seperti video kecil" | Ada: 13-18 citra WISE lalu 3-4 kunjungan SPHEREx diputar berurutan; blink antar kunjungan SPHEREx |
 | Diuji pada Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | Sudah; lihat hasil per target |
@@ -65,7 +65,9 @@ Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 det
 
 ## Deploy
 
-Situs publik: https://swara-nasa.vercel.app (landing page). Aplikasinya di `/sky`; tautan lama `/?target=...` dan `/?ra=...` tetap membuka aplikasi.
+Situs publik: https://swara.space (landing page). Aplikasinya di `/sky`; tautan lama `/?target=...` dan `/?ra=...` tetap membuka aplikasi. `www.swara.space` dialihkan ke `swara.space`, dan alamat lama https://swara-nasa.vercel.app tetap jalan.
+
+- **Domain** `swara.space` dibeli di GoDaddy (akun teman Wildan) dan name server-nya tetap di GoDaddy. DNS: dua record A `@` ke `216.198.79.1` dan `64.29.17.1` (nilai dari `vercel domains verify swara.space`). Kalau sertifikat HTTPS tidak terbit sendiri: `vercel certs issue swara.space www.swara.space`.
 
 - **Frontend** di Vercel, proyek `swara-nasa`. Dibangun di mesin sendiri lalu diunggah, karena build membutuhkan `bundles/` di luar folder `web/`. Dari `web/`:
   ```
@@ -137,6 +139,7 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-15
+- **KEPUTUSAN (Wildan): alamat publik pindah ke https://swara.space.** `www` dialihkan ke sana, dan swara-nasa.vercel.app tetap jalan supaya tautan dan QR yang sudah tersebar tidak rusak. Pratinjau tautan memakai domain baru (PR #63). Materi submission perlu memakai alamat baru.
 - **KEPUTUSAN (Wildan): suara digambar di lensa, mengikuti engine Alif di PR #55 (PR #60).** Sebabnya: saat diputar, layar hanya menampilkan cincin yang terisi dari utara kembali ke utara dan garis pindai, jadi tidak terlihat apa yang sedang terdengar. Syaratnya: tetap minimalis dan nyambung dengan tampilan sekarang. Rincian di [web/DESIGN.md](web/DESIGN.md), tabel gerak.
   - Pindai: cincin tipis putih di bintang yang sedang dibunyikan; bintang yang berkilau mendapat cincin kedua. Spektrum: sinar ambar ke dalam dari cincin pada sudut panjang gelombangnya (0,75 µm kiri sampai 5 µm kanan), panjang = fluks, mahkota kunjungan sebelumnya jadi bayangan abu. Gerak: denyut di posisi terukur saat lonceng berbunyi. Busur cincin sekarang jarum per kunjungan.
   - `web/src/sound/` tidak diubah; gambar membaca jadwal nada yang sama dan mengikuti jam audio.
