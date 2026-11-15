@@ -6,17 +6,20 @@
 
 import qrcode from "qrcode-generator";
 import { MARK_STAR, WORD_PATHS, WORD_STAR } from "../components/Logo";
+import { decDms, raHms, type Atlas } from "./allsky";
 import { finding, type Manifest } from "./bundle";
 import { microns, monthYear, shiftWords, span } from "./format";
 import { LUTS, type PaletteId } from "./palette";
+import { paintPatch, patchAt, patchPoint, placeFacts } from "./reading";
+import type { Gray } from "./skyimage";
 import { LAMBDA_MAX, LAMBDA_MIN, type SpectrumPoint } from "./spectrum";
 
 export const CARD_W = 1080;
 export const CARD_H = 1920;
 const CX = CARD_W / 2;
 
-export type CardKind = "wanderer" | "voice";
-export const CARD_TITLE: Record<CardKind, string> = { wanderer: "Its motion", voice: "Its light" };
+export type CardKind = "wanderer" | "voice" | "place";
+export const CARD_TITLE: Record<CardKind, string> = { wanderer: "Its motion", voice: "Its light", place: "Its place" };
 
 export type CardInput = {
   name: string;
@@ -39,6 +42,8 @@ export type CardInput = {
   blended?: string;
   /** Gerak diri menurut katalog, detik busur per tahun; hanya ada untuk nama yang dicari. */
   cataloguePm?: number | null;
+  /** Peta seluruh langit SPHEREx dan manifestnya, untuk kartu tempat. */
+  sky?: { atlas: Atlas; gray: Gray };
   today: Date;
 };
 
@@ -493,7 +498,7 @@ export function measured(input: Pick<CardInput, "manifest" | "blended" | "catalo
 }
 
 // ---------- I. Geraknya ----------
-function wanderer(ctx: Ctx, sk: Skin, input: CardInput, index: string) {
+function wanderer(ctx: Ctx, sk: Skin, input: CardInput, index: string, numeral: string) {
   const m = input.manifest;
   const ax = 210;
   const ay = 370;
@@ -530,7 +535,7 @@ function wanderer(ctx: Ctx, sk: Skin, input: CardInput, index: string) {
   }
 
   border(ctx, sk);
-  head(ctx, sk, "I", "LOOK WHAT I FOUND IN THE SKY");
+  head(ctx, sk, numeral, "LOOK WHAT I FOUND IN THE SKY");
 
   // Busur waktu: satu sinar per pengamatan, pada tanggalnya yang sebenarnya.
   const looks = [
@@ -631,7 +636,7 @@ export function slices(points: SpectrumPoint[]): Slice[] {
   });
 }
 
-function voice(ctx: Ctx, sk: Skin, input: CardInput, index: string) {
+function voice(ctx: Ctx, sk: Skin, input: CardInput, index: string, numeral: string) {
   const m = input.manifest;
   const cy = 700;
   const R = 178;
@@ -654,7 +659,7 @@ function voice(ctx: Ctx, sk: Skin, input: CardInput, index: string) {
   }
 
   border(ctx, sk);
-  head(ctx, sk, "II", "THIS IS WHAT ITS LIGHT LOOKS LIKE");
+  head(ctx, sk, numeral, "THIS IS WHAT ITS LIGHT LOOKS LIKE");
   disc(ctx, CX, cy, R, undefined, rgb(sk.hi), 3);
   disc(ctx, CX, cy, R + 12, undefined, rgb(sk.lo), 1.2);
 
@@ -716,6 +721,104 @@ function voice(ctx: Ctx, sk: Skin, input: CardInput, index: string) {
   );
 }
 
+// ---------- III. Tempatnya ----------
+
+const PLACE_DEG = 44;
+
+/** Langit di sekitar benda itu dari peta seluruh langit SPHEREx yang asli, dengan garis
+ *  rasinya. Busur di sekeliling jendela adalah kompas: utara di atas, timur di kiri. */
+function place(ctx: Ctx, sk: Skin, input: CardInput, index: string, numeral: string) {
+  const m = input.manifest;
+  const { atlas, gray } = input.sky!;
+  const ax = 210;
+  const ay = 370;
+  const aw = 660;
+  const ah = 830;
+  const r = aw / 2;
+  const cy = ay + r;
+  background(ctx, sk, input.look, input.context, [CX, cy + 60, 560]);
+
+  const facts = placeFacts(atlas, m.ra, m.dec);
+  const patch = patchAt(m.ra, m.dec, aw, ah, PLACE_DEG);
+  const sky = document.createElement("canvas");
+  paintPatch(sky, gray, atlas, patch, LUTS[input.look]);
+  ctx.save();
+  archPath(ctx, ax, ay, aw, ah);
+  ctx.clip();
+  ctx.drawImage(sky, ax, ay);
+  // Garis rasi: yang ditempati benda ini terang dengan bintang di tiap sudutnya, tetangganya tipis.
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  for (const [abbr, parts] of Object.entries(atlas.constellations.lines)) {
+    const home = abbr === facts.abbr;
+    ctx.strokeStyle = home ? rgb(sk.hi) : rgb(sk.gold, 0.42);
+    ctx.lineWidth = home ? 3 : 1.5;
+    ctx.beginPath();
+    const dots: [number, number][] = [];
+    for (const part of parts) {
+      let pen = false;
+      for (const [ra, dec] of part) {
+        const q = patchPoint(patch, ra, dec);
+        if (!q || q.x < -200 || q.x > aw + 200 || q.y < -200 || q.y > ah + 200) {
+          pen = false;
+          continue;
+        }
+        if (pen) ctx.lineTo(ax + q.x, ay + q.y);
+        else ctx.moveTo(ax + q.x, ay + q.y);
+        pen = true;
+        if (home) dots.push([ax + q.x, ay + q.y]);
+      }
+    }
+    ctx.stroke();
+    for (const [x, y] of dots) disc(ctx, x, y, 5, rgb(sk.hi));
+  }
+  // Di sinilah benda itu.
+  disc(ctx, CX, ay + ah / 2, 26, undefined, rgb(sk.top, 0.7), 7);
+  disc(ctx, CX, ay + ah / 2, 26, undefined, rgb(sk.gold), 3);
+  disc(ctx, CX, ay + ah / 2, 5, rgb(sk.hi));
+  ctx.restore();
+
+  border(ctx, sk);
+  head(ctx, sk, numeral, "LOOK WHERE THIS LIVES IN THE SKY");
+
+  // Kompas: garis tiap 15 derajat, utara di atas.
+  arc(ctx, CX, cy, r + 16, 180, 360, rgb(sk.lo), 1.2);
+  arc(ctx, CX, cy, r + 124, 180, 360, rgb(sk.lo), 1.2);
+  for (let a = 180; a <= 360; a += 7.5) {
+    const major = (a - 180) % 45 === 0;
+    const [x0, y0] = polar(CX, cy, a, r + 16);
+    const [x1, y1] = polar(CX, cy, a, r + (major ? 40 : (a - 180) % 15 === 0 ? 28 : 22));
+    line(ctx, x0, y0, x1, y1, rgb(major ? sk.gold : sk.lo), major ? 2 : 1.2);
+  }
+  const [nx, ny] = polar(CX, cy, 270, r + 76);
+  text(ctx, "N", nx, ny + 8, wide(24, 600), rgb(sk.hi), { align: "center" });
+  sparkle(ctx, nx, ny - 32, 8, rgb(sk.gold));
+  for (const [sign, label] of [
+    [-1, "E"],
+    [1, "W"],
+  ] as const) {
+    line(ctx, CX + sign * (r + 16), cy, CX + sign * (r + 124), cy, rgb(sk.lo), 1.2);
+    text(ctx, label, CX + sign * (r + 70), cy + 28, mono(15, 500), rgb(sk.gold), { align: "center" });
+  }
+
+  ctx.lineCap = "butt";
+  archPath(ctx, ax, ay, aw, ah);
+  ctx.strokeStyle = rgb(sk.hi);
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  archPath(ctx, ax - 10, ay - 10, aw + 20, ah + 10);
+  ctx.strokeStyle = rgb(sk.lo);
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  const lines: Line[] = [
+    [`${raHms(m.ra)}  ${decDms(m.dec)}, ${PLACE_DEG}° of sky as SPHEREx mapped it`, "text"],
+    [facts.plane, "muted"],
+    [facts.visible, "faint"],
+  ];
+  lower(ctx, sk, input, `IN ${facts.constellation.toUpperCase()}`, lines, "Pick any patch of sky and watch it change", index);
+}
+
 /** Kartu yang bisa dibuat dari bundle ini. Kartu cahaya hanya ada kalau spektrumnya
  *  cukup terisi: benda yang terlalu terang untuk SPHEREx tidak diberi sinar kosong. */
 export function cardKinds(input: CardInput): CardKind[] {
@@ -723,6 +826,7 @@ export function cardKinds(input: CardInput): CardKind[] {
   if (input.wiseImages.length || input.frame) kinds.push("wanderer");
   const filled = slices(input.points ?? []).filter((s) => s.flux !== null).length;
   if (input.frame && !input.blended && filled >= STEPS / 3) kinds.push("voice");
+  if (input.sky && kinds.length) kinds.push("place");
   return kinds;
 }
 
@@ -742,6 +846,8 @@ export async function drawCard(canvas: HTMLCanvasElement, kind: CardKind, input:
   const at = kinds.indexOf(kind) + 1;
   const index = kinds.length > 1 ? `CARD ${ROMAN[at]} OF ${ROMAN[kinds.length]}` : "SWARA CARD";
   const sk = SKINS[input.look];
-  if (kind === "voice") voice(ctx, sk, input, index);
-  else wanderer(ctx, sk, input, index);
+  const numeral = ROMAN[at] || "I";
+  if (kind === "voice") voice(ctx, sk, input, index, numeral);
+  else if (kind === "place" && input.sky) place(ctx, sk, input, index, numeral);
+  else wanderer(ctx, sk, input, index, numeral);
 }

@@ -9,10 +9,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { BLENDED, TARGET_NOTES } from "../content";
+import { TARGET_NOTES } from "../content";
 import { atlasUrl, constellationAt, decDms, raHms, type Atlas } from "../lib/allsky";
-import { finding } from "../lib/bundle";
-import { monthYear, span } from "../lib/format";
+import { monthYear } from "../lib/format";
 import { orderFor, visibleTiles, type TileId } from "../lib/hips";
 import { prefersReducedMotion } from "../lib/hooks";
 import { lookGradient, LOOKS, LUTS, REVEAL_LUT, type PaletteId } from "../lib/palette";
@@ -34,7 +33,7 @@ import {
   type V3,
   type View,
 } from "../lib/skyview";
-import { placeManifest, PlaceThumb } from "./PlaceThumb";
+import { PlaceThumb, useVerdict } from "./PlaceThumb";
 
 /** Tempat yang ditandai di peta: contoh, atau tempat yang dibuka pengguna di sesi ini. */
 export type SkyMarker = {
@@ -150,42 +149,25 @@ const lineOfRa = (ra: number, dec0 = -89, dec1 = 89, step = 1): V3[] => {
   return out;
 };
 
-/** Cuplikan satu tempat: citra aslinya, jenisnya, dan apa yang terukur di sana. */
+/** Cuplikan satu tempat sebagai kartu kecil: jendela melengkung berisi citra aslinya,
+ *  julukannya, dan angka yang terukur di sana. */
 function PlacePeek({ marker, look, pinned, onGo }: { marker: SkyMarker; look: PaletteId; pinned: boolean; onGo: () => void }) {
-  const [measured, setMeasured] = useState<string>();
-  useEffect(() => {
-    let alive = true;
-    setMeasured(undefined);
-    if (!marker.built) return;
-    placeManifest(marker.id, marker.yours)
-      .then((m) => {
-        if (!alive) return;
-        const f = finding(m);
-        setMeasured(
-          !marker.yours && BLENDED[marker.id]
-            ? "Not separated from a background star"
-            : f.kind === "moved"
-              ? `Moved ${f.total.toFixed(1)}″ in ${span(f.fromMjd, f.toMjd)}`
-              : f.kind === "still"
-                ? `No shift across ${f.visits} visits`
-                : "Position not trackable",
-        );
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [marker.id, marker.yours, marker.built]);
+  const v = useVerdict(marker.id, marker.yours, marker.built);
   const note = marker.yours ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
   return (
     <div className="sky-peek" data-pinned={pinned} data-ra={marker.ra} data-dec={marker.dec} data-keep="true">
-      <PlaceThumb id={marker.id} custom={marker.yours} enabled={marker.built} look={look} size={144} />
+      <PlaceThumb id={marker.id} custom={marker.yours} enabled={marker.built} look={look} size={168} arch />
       <div className="sky-peek-text">
+        <small>{v?.epithet ?? (marker.yours ? "Your place" : marker.detail)}</small>
         <b>{marker.name}</b>
-        <small>{marker.yours ? "Your place" : marker.detail}</small>
-        {note && <p>{note.endsWith(".") ? note : `${note}.`}</p>}
-        {measured && <span className="sky-peek-measured">{measured}</span>}
+        {v && (
+          <span className="sky-peek-measured">
+            <i>{v.big}</i>
+            {v.line}
+          </span>
+        )}
         {!marker.built && <span className="sky-peek-measured">Still being gathered</span>}
+        {note && <p>{note.endsWith(".") ? note : `${note}.`}</p>}
         {pinned && (
           <button type="button" className="pill pill-accent" onClick={onGo}>
             Look closer

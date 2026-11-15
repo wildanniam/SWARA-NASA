@@ -5122,3 +5122,346 @@ kbd {
     transform: rotate(var(--a)) translateY(calc(var(--lens) * -0.5 - 3px)) rotate(calc(var(--a) * -1));
   }
 }
+
+/* ---------- kartu tempat: cuplikan penanda dan daftar Go to ---------- */
+
+/* Jendela melengkung, bentuk jendela kartu SWARA: dipakai saat SWARA bercerita tentang sebuah
+   tempat. Lensa bundar tetap milik alat ukur. Garis ganda tipis seperti bingkai kartu. */
+.arch {
+  --w: 40px;
+  position: relative;
+  flex: none;
+  display: block;
+  width: var(--w);
+  height: calc(var(--w) * 1.28);
+  overflow: hidden;
+  border-radius: calc(var(--w) / 2) calc(var(--w) / 2) 5px 5px;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgb(255 180 84 / 0.6),
+    0 0 0 3px var(--panel-solid),
+    0 0 0 4px rgb(255 180 84 / 0.2);
+}
+
+.arch .thumb,
+.sky-peek .arch .thumb {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: auto;
+  height: 100%;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 0;
+  transform: translateX(-50%) scale(1.04);
+  transition:
+    opacity 300ms,
+    transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Cuplikan penanda: kartu kecil. Julukan, nama, angka terukur, lalu satu kalimat. */
+.sky-peek {
+  gap: 18px;
+  width: 340px;
+  padding: 16px 18px 16px 18px;
+  align-items: center;
+}
+
+.sky-peek .arch {
+  --w: 84px;
+}
+
+.sky-peek-text {
+  gap: 2px;
+}
+
+.sky-peek-text small {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.sky-peek-text b {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.sky-peek-measured {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--soft);
+}
+
+.sky-peek-measured i {
+  font-family: var(--sans);
+  font-size: 26px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.sky-peek-text p {
+  display: -webkit-box;
+  margin: 8px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* Daftar Go to: tiap tempat satu baris kartu. */
+.goto-lists ul {
+  gap: 0;
+}
+
+.goto-lists li + li {
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.place {
+  grid-template-columns: 40px minmax(0, 1fr) auto 16px;
+  gap: 18px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 16px;
+}
+
+.place-id {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.place-name {
+  font-size: 16px;
+  transition: transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.place-epithet {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+  transition: color 200ms;
+}
+
+.place-detail {
+  color: var(--soft);
+}
+
+.place svg {
+  transition:
+    transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    color 200ms;
+}
+
+.place:hover .arch .thumb,
+.place:focus-visible .arch .thumb {
+  transform: translateX(-50%) scale(1.16);
+}
+
+.place:hover .place-epithet,
+.place:focus-visible .place-epithet,
+.place[aria-current="true"] .place-epithet {
+  color: var(--accent);
+}
+
+.place:hover svg,
+.place:focus-visible svg {
+  color: var(--accent);
+  transform: translateX(3px);
+}
+
+@media (max-width: 859px) {
+  .place {
+    grid-template-columns: 34px minmax(0, 1fr) 16px;
+    gap: 14px;
+  }
+
+  .place .arch {
+    --w: 34px;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  /* Nama di atas julukannya; angka terukur jadi baris ketiga di bawahnya. */
+  .place .place-name,
+  .place .place-epithet {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .place-detail {
+    margin-top: 3px;
+    font-size: 11.5px;
+  }
+
+  .sky-peek {
+    width: min(340px, calc(100vw - 32px));
+  }
+}
+
+/* ---------- keterangan tombol cincin lensa ---------- */
+
+/* Dua baris: nama (dengan tombol pintasnya), lalu apa gunanya. Menggantikan label satu kata. */
+.satellite:has(.tip)::after {
+  content: none;
+}
+
+.satellite .tip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  z-index: 4;
+  display: none;
+  gap: 3px;
+  padding: 8px 12px 9px;
+  border: 1px solid rgb(255 180 84 / 0.38);
+  border-radius: 12px;
+  background: linear-gradient(#17100d, #0b0a0e);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.55);
+  text-align: left;
+  white-space: nowrap;
+  /* Sedikit di bawah tengah tombol, supaya tidak menimpa tombol tetangga di cincin. */
+  transform: translateY(-18%);
+  pointer-events: none;
+}
+
+/* Tombol paling bawah: keterangannya turun di bawah tombol tetangganya. */
+.satellite-low .tip {
+  top: calc(50% + 12px);
+  transform: none;
+}
+
+.satellite-left .tip {
+  left: auto;
+  right: calc(100% + 10px);
+}
+
+.satellite:hover .tip,
+.satellite:focus-visible .tip,
+.satellite[data-intro="true"] .tip {
+  display: grid;
+  animation: tip-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.satellite .tip b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.satellite .tip kbd {
+  padding: 0 5px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+  color: var(--muted);
+}
+
+.satellite .tip i {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-style: normal;
+  color: var(--muted);
+}
+
+/* Perkenalan: tombol yang sedang memperkenalkan diri menyala seperti saat ditunjuk. */
+.satellite[data-intro="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    0 0 0 4px rgb(255 180 84 / 0.16),
+    0 0 18px rgb(255 180 84 / 0.4);
+}
+
+@media (max-width: 859px) {
+  .satellite .tip {
+    left: auto;
+    right: calc(100% + 10px);
+    white-space: normal;
+    width: max-content;
+    max-width: 200px;
+  }
+}
+
+/* ---------- keterangan kunjungan di garis waktu ---------- */
+
+/* Menunjuk satu tanda di garis waktu: tanggal dan teleskopnya, lalu kualitas datanya. */
+.time-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 5;
+  display: none;
+  gap: 2px;
+  padding: 8px 12px 9px;
+  border: 1px solid rgb(255 180 84 / 0.38);
+  border-radius: 12px;
+  background: linear-gradient(#17100d, #0b0a0e);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.55);
+  font-style: normal;
+  text-align: left;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.time-tip[data-edge="start"] {
+  left: -6px;
+  transform: none;
+}
+
+.time-tip[data-edge="end"] {
+  left: auto;
+  right: -6px;
+  transform: none;
+}
+
+.tick:hover .time-tip,
+.tick:focus-visible .time-tip,
+.visit:hover .time-tip,
+.visit:focus-visible .time-tip {
+  display: grid;
+  animation: fade 180ms ease-out;
+}
+
+.time-tip b {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.time-tip em {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-style: normal;
+  color: var(--soft);
+}
+
+.time-tip em + em {
+  color: var(--muted);
+}

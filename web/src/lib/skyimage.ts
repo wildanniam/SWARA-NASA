@@ -1,7 +1,7 @@
 // Citra peta seluruh langit: dimuat sekali per berkas, lalu diwarnai dengan look yang
 // sedang dipakai. Di luar elips langit dibiarkan tembus, supaya halaman tetap terlihat.
 
-type Gray = { data: Uint8ClampedArray; width: number; height: number };
+export type Gray = { data: Uint8ClampedArray; width: number; height: number };
 
 const cache = new Map<string, Promise<Gray>>();
 

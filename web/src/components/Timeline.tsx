@@ -8,12 +8,14 @@ type Props = {
   /** Teks pendek di bawah tiap kunjungan: pergeseran terukur pada kunjungan itu. */
   notes: Record<string, string>;
   onSelect: (id: string) => void;
+  /** Kualitas data tiap kunjungan pada band yang tampil, dua baris pendek. */
+  quality?: Record<string, string[]>;
 };
 
 const PAD = 7; // persen, supaya label kunjungan pertama dan terakhir tidak terpotong
 
 /** Penggaris waktu: jarak antar kunjungan mengikuti tanggalnya, dengan tanda tiap bulan. */
-export function Timeline({ windows, available, current, notes, onSelect }: Props) {
+export function Timeline({ windows, available, current, notes, onSelect, quality }: Props) {
   const t0 = windows[0].mjd_mid;
   const span = Math.max(1, windows[windows.length - 1].mjd_mid - t0);
   const at = (mjd: number) => PAD + ((mjd - t0) / span) * (100 - 2 * PAD);
@@ -47,7 +49,7 @@ export function Timeline({ windows, available, current, notes, onSelect }: Props
             style={{ left: `${at(w.mjd_mid)}%` }}
             aria-pressed={w.id === current}
             disabled={!ok}
-            title={ok ? undefined : "No image in this band for this visit"}
+
             onClick={() => onSelect(w.id)}
           >
             <span className="visit-node" aria-hidden="true" />
@@ -57,6 +59,12 @@ export function Timeline({ windows, available, current, notes, onSelect }: Props
               <span className="yr-short">'{monthYear(w.mjd_mid).slice(-2)}</span>
             </span>
             <span className="visit-note">{notes[w.id] ?? ""}</span>
+            <i className="time-tip" data-edge={at(w.mjd_mid) < 14 ? "start" : at(w.mjd_mid) > 86 ? "end" : undefined} aria-hidden="true">
+              <b>{monthYear(w.mjd_mid)} · SPHEREx</b>
+              {(quality?.[w.id] ?? []).map((line) => (
+                <em key={line}>{line}</em>
+              ))}
+            </i>
           </button>
         );
       })}

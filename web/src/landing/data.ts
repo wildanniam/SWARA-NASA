@@ -16,6 +16,7 @@ import {
   type TargetRef,
 } from "../lib/bundle";
 import { span } from "../lib/format";
+import { compass } from "../lib/verdict";
 import { paint, paintDifference, type Rect } from "../lib/paint";
 
 // ---------- warna ----------
@@ -102,14 +103,6 @@ export type Example = {
   image?: string;
   blended: boolean;
 };
-
-const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
-
-/** Arah pergeseran dalam kata: utara di atas, timur di kiri, seperti di langit. */
-export function compass(east: number, north: number): string {
-  const bearing = ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
-  return COMPASS[Math.round(bearing / 45) % 8];
-}
 
 export function describe(ref: TargetRef, m: Manifest): Example {
   const f = finding(m);

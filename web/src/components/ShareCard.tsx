@@ -15,7 +15,7 @@ type Props = {
   onCopyLink: () => void;
 };
 
-const NUMERAL: Record<CardKind, string> = { wanderer: "I", voice: "II" };
+const NUMERAL = ["I", "II", "III"];
 
 const slug = (s: string) =>
   s
@@ -134,22 +134,22 @@ export function ShareCard(p: Props) {
 
           {kinds.length > 1 && (
             <div className="cardbox-tabs" role="group" aria-label="Which card">
-              {kinds.map((k) => (
+              {kinds.map((k, i) => (
                 <button key={k} type="button" className="pill" aria-pressed={k === kind} onClick={() => setWanted(k)}>
                   <span className="cardbox-numeral" aria-hidden="true">
-                    {NUMERAL[k]}
+                    {NUMERAL[i]}
                   </span>
                   {CARD_TITLE[k]}
                 </button>
               ))}
             </div>
           )}
-          {kinds.length === 1 && (
+          {kinds.length > 0 && !kinds.includes("voice") && (
             <p className="cardbox-note">
               {p.input?.blended
                 ? "There is no card for its light here: it could not be separated from a background star in this data."
                 : p.spectrumPending
-                  ? "A second card, for its light, appears once the spectrum has loaded."
+                  ? "A card for its light appears once the spectrum has loaded."
                   : "There is no card for its light here: the spectrum has too few clean measurements."}
             </p>
           )}
