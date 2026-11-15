@@ -1344,13 +1344,13 @@ export function App() {
           <button
             type="button"
             className="pill pill-cards"
-            aria-label={atlas ? "The whole sky in one card" : "This place in three cards"}
+            aria-label={atlas ? "Story: the whole sky in one card" : "Story: this place in three cards"}
             aria-expanded={notesOpen}
             data-new={!guideSeen}
             onClick={openGuide}
           >
             <Cards aria-hidden="true" />
-            <span>The cards</span>
+            <span>Story</span>
           </button>
           {!atlas && (
             <button type="button" className="round" aria-label="See the whole sky" title="Whole sky" onClick={enterAtlas}>
