@@ -3,6 +3,7 @@ import { decDms, raHms } from "../lib/allsky";
 import { prefersReducedMotion } from "../lib/hooks";
 import { paint, paintDifference, type Linear, type Rect } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
+import { CROWN_DEG, type SoundArt } from "../lib/soundArt";
 
 type Props = {
   image?: HTMLImageElement;
@@ -50,6 +51,8 @@ type Props = {
   soundRing: RefObject<SVGCircleElement | null>;
   /** Garis pindai vertikal; digerakkan langsung oleh sapuan gambar. */
   scanLineRef: RefObject<SVGLineElement | null>;
+  /** Tanda dari suara yang sedang berbunyi; diisi langsung oleh pemutar. */
+  soundArt: RefObject<SoundArt>;
   /** Kotak tata letak lensa; diukur supaya latar bisa dipusatkan di bawahnya. */
   slotRef: RefObject<HTMLDivElement | null>;
   /** Isi lensa yang dibesarkan dan dikecilkan saat berganti pembesaran. */
@@ -274,6 +277,7 @@ export function Lens(p: Props) {
   const loadPct = p.progress && p.progress.total > 0 ? (p.progress.done / p.progress.total) * 100 : undefined;
   const slotStyle = { "--k": p.collapseScale, "--foot": `${p.footprintPx}px` } as CSSProperties;
   const live = open && !p.collapsed;
+  const bellAt = (moved && p.trail.find((t) => t.id === p.currentId)) || p.mark;
 
   return (
     <div
@@ -331,6 +335,18 @@ export function Lens(p: Props) {
                     ))}
                   </>
                 )}
+                {/* Lonceng gerak: posisi terukur kunjungan yang tampil berdenyut saat nadanya berbunyi. */}
+                {bellAt && (
+                  <circle
+                    ref={(el) => {
+                      p.soundArt.current.bell = el;
+                    }}
+                    className="mark-bell"
+                    cx={bellAt.x}
+                    cy={bellAt.y}
+                    r={s * 0.05}
+                  />
+                )}
                 {/* Digambar dua kali: garis gelap di bawah supaya tanda ambar tetap terbaca di atas inti bintang yang terang. */}
                 {p.mark &&
                   ["mark mark-halo", "mark"].map((cls) => (
@@ -349,6 +365,13 @@ export function Lens(p: Props) {
                 aria-hidden="true"
               >
                 <line ref={p.scanLineRef} className="scan-line" x1={-10} y1={0} x2={-10} y2={100} />
+              </svg>
+              <svg className="lens-pings" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <g
+                  ref={(el) => {
+                    p.soundArt.current.pings = el;
+                  }}
+                />
               </svg>
             </div>
             <div className="lens-scale" style={{ width: `${(scaleArcsec / p.viewArcsec) * 100}%` }} aria-hidden="true">
@@ -390,13 +413,20 @@ export function Lens(p: Props) {
                 transform="rotate(-90)"
               />
             )}
+            {/* Mahkota spektrum: satu sinar per nada, pada sudut panjang gelombangnya. */}
+            <g
+              className="ring-crown"
+              ref={(el) => {
+                p.soundArt.current.crown = el;
+              }}
+            />
             <circle
               ref={p.soundRing}
               className="ring-arc ring-sound"
               r={R + 2.2}
               pathLength={100}
               strokeDasharray="0 100"
-              transform="rotate(-90)"
+              transform={`rotate(${-90 - CROWN_DEG / 2})`}
             />
           </svg>
 

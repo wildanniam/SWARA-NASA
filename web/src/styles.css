@@ -1064,10 +1064,94 @@ kbd {
 }
 
 .scan-line {
-  stroke: var(--accent);
-  stroke-width: 2px;
+  stroke: #e5eaf0;
+  stroke-opacity: 0.85;
+  stroke-width: 1px;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1.5px rgb(236 241 247 / 0.42)) drop-shadow(0 0 4px rgb(166 181 198 / 0.22));
+  opacity: 0.7;
   vector-effect: non-scaling-stroke;
   visibility: hidden;
+}
+
+/* Gambar dari suara (lib/soundArt.ts). Pindai berwarna dingin seperti garis pindainya;
+   spektrum dan gerak ambar, seperti sinar di kartu cahaya dan tanda benda. */
+.lens-pings {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Cincin tipis mengelilingi bintang yang berbunyi; bintangnya sendiri tetap terlihat. */
+.ping {
+  fill: none;
+  stroke: #eef2f7;
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 1.5px rgb(236 241 247 / 0.6));
+}
+
+.ping-flagged {
+  stroke-dasharray: 3 3;
+}
+
+.ping-ring {
+  fill: none;
+  stroke: #eef2f7;
+  stroke-width: 0.8px;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.lens[data-look="paper"] .scan-line {
+  stroke: #2b3038;
+  filter: none;
+}
+
+.lens[data-look="paper"] .ping,
+.lens[data-look="paper"] .ping-ring {
+  stroke: #20252c;
+  filter: none;
+}
+
+.ring-crown .ray {
+  stroke: var(--accent);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  transition: opacity 600ms ease, stroke 600ms ease;
+}
+
+.ring-crown .ray-flagged {
+  stroke-dasharray: 1 1.2;
+  opacity: 0.6;
+}
+
+.ring-crown .ray-empty {
+  stroke: var(--muted);
+  stroke-width: 0.9;
+}
+
+.ring-crown .ghost {
+  stroke: var(--muted);
+  opacity: 0.32;
+}
+
+.mark-bell {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
 }
 
 .mark line {
