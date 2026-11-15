@@ -66,7 +66,7 @@ SWARA turns a small patch of that archive into an approachable, shareable experi
 ## How it works
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/wildanniam/swara-assets@bf6c48264ce003c768282e0e91032a5364d0b3f5/images/swara-how-it-works.jpg" width="100%" alt="SWARA workflow: pick a sky position, gather and combine observations, measure, then see and hear the result" />
+  <img src="https://cdn.jsdelivr.net/gh/wildanniam/swara-assets@bf6c48264ce003c768282e0e91032a5364d0b3f5/images/swara-engine.jpg" width="100%" alt="SWARA data engine: find observations, stack images, measure light and motion, and check results" />
 </p>
 
 1. **Pick a position.** A name is resolved through CDS Sesame/SIMBAD and adjusted using catalog proper motion. Coordinates and map clicks are also supported.
@@ -90,10 +90,6 @@ flowchart LR
     Viewer --> Canvas[Canvas and WebGL visualization]
     Viewer --> Audio[Web Audio sonification]
 ```
-
-<p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/wildanniam/swara-assets@bf6c48264ce003c768282e0e91032a5364d0b3f5/images/swara-engine.jpg" width="100%" alt="SWARA data engine: find observations, stack images, measure light and motion, and check results" />
-</p>
 
 ### A note about SPHEREx views
 
