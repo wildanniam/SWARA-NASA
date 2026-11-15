@@ -138,6 +138,7 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-15
+- **KEPUTUSAN (Wildan): panel temuan WISE 0855 menulis "Hidden · ? · behind a background star", bukan "Holding still".** Yang terukur di posisi itu bintang latar, jadi "Holding still" bisa terbaca sebagai WISE 0855 tidak bergerak. Teks dibuat sependek benda lain (prinsip minimalis); penjelasan panjang tetap di panel kiri. Berlaku untuk semua benda di `BLENDED` (`web/src/content.ts`).
 - **KEPUTUSAN (Wildan): UX lensa dipoles tanpa menunggu persetujuan per langkah.** Masukannya: Difference dan tombol lain berganti "langsung pek" tanpa transisi, dan teleskopnya terasa statis saat ditunjuk.
   - Pergantian cara melukis (Difference, look, Reveal faint, piksel tak andal) sekarang menyapu citra lama dari kiri ke kanan dalam 0,64 detik dengan garis ambar; blink dan pergantian pembesaran tidak tersapu. Cincin Gaia mengunci satu per satu dan memudar saat dimatikan. Keterangan di bawah lensa masuk pelan.
   - Menunjuk lensa menampilkan RA/Dec titik itu dan jaraknya dari tanda, jarum ambar di cincin, dan kompas yang menyala. Diperiksa: di pusat lensa Barnard's Star terbaca 17h 57m 47s +4° 46′ 06″, sama dengan manifest (269,4463°, +4,7682°).

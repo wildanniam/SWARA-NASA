@@ -1084,6 +1084,7 @@ export function App() {
   }, [gaiaStars, markView]);
 
   const found = useMemo(() => (manifest ? finding(manifest) : undefined), [manifest]);
+  const blendedHere = !custom && !!targetId && !!BLENDED[targetId];
   const path = useMemo(() => (manifest ? trail(manifest) : []), [manifest]);
   const contextUrl =
     manifest?.context && targetId ? assetUrl(targetId, custom, manifest.context.image) : undefined;
@@ -1482,7 +1483,16 @@ export function App() {
               </p>
             </>
           )}
-          {!manifest?.preview && found?.kind === "moved" && (
+          {/* Benda yang tercampur bintang latar (WISE 0855): angka di bawahnya milik bintang itu,
+              jadi tidak ditampilkan sebagai gerak benda ini. Penjelasannya ada di panel kiri. */}
+          {!manifest?.preview && blendedHere && (
+            <>
+              <p className="finding-word">Hidden</p>
+              <p className="finding-number">?</p>
+              <p className="finding-detail">behind a background star</p>
+            </>
+          )}
+          {!manifest?.preview && !blendedHere && found?.kind === "moved" && (
             <>
               <p className="finding-word">Moved</p>
               <p className="finding-number">
@@ -1500,14 +1510,14 @@ export function App() {
               </p>
             </>
           )}
-          {!manifest?.preview && found?.kind === "still" && (
+          {!manifest?.preview && !blendedHere && found?.kind === "still" && (
             <>
               <p className="finding-word">Holding still</p>
               <p className="finding-number">&lt; {found.tolerance.toFixed(1)}″</p>
               <p className="finding-detail">no shift measured across {found.visits} visits</p>
             </>
           )}
-          {!manifest?.preview && found?.kind === "none" && (
+          {!manifest?.preview && !blendedHere && found?.kind === "none" && (
             <>
               <p className="finding-word">Not trackable</p>
               <p className="finding-detail">
