@@ -282,7 +282,9 @@ function Footer() {
       </div>
       <div className="lp-foot-bot">
         <span>© 2026 SWARA team · AGPL-3.0-or-later</span>
-        <span>Built for NASA Space Apps 2026 · Planet X and SPHEREx</span>
+        <span>
+          <span className="lp-nowrap">Built for NASA Space Apps 2026 ·</span> <span className="lp-nowrap">Planet X and SPHEREx</span>
+        </span>
       </div>
     </footer>
   );
