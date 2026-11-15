@@ -7,12 +7,16 @@
 //      layar, shader menghitung arah langitnya lalu mengambil nilainya dari peta itu.
 //      Lapis ini selalu ada, jadi tidak pernah ada bidang kosong.
 //   2. Potongan HiPS dari IRSA yang sudah termuat, sebagai jaring segitiga di langit,
-//      dari order rendah ke tinggi. Tiap potongan muncul dengan larut singkat.
+//      dari order rendah ke tinggi. Tiap potongan muncul dengan larut singkat. Piksel
+//      yang tidak punya data tembus pandang dan diberi arsir tipis, jadi lapis di
+//      bawahnya (lebih kasar) tetap tampak dan celahnya terbaca sebagai celah
+//      (lihat tileGaps.ts).
 //
 // Proyeksi di shader sama dengan skyview.ts.
 
 import { meshIndices, MESH_N, tileMesh, tileRadius, tileUrl, type TileId } from "./hips";
 import type { V3 } from "./skyview";
+import { tilePixels } from "./tileGaps";
 
 const BASE_VS = `
 attribute vec2 aPos;
@@ -68,18 +72,28 @@ void main() {
 }`;
 
 const TILE_FS = `
-precision mediump float;
+precision highp float;
 uniform sampler2D uTex;
 uniform sampler2D uLut;
 uniform float uAlpha;
+uniform float uHatch;   // jarak antar garis arsir, piksel perangkat
 varying vec2 vUv;
 void main() {
-  float gray = texture2D(uTex, vUv).r;
+  // Alpha = bagian piksel yang punya data. Abu disimpan sudah dikali alpha, jadi di tepi
+  // celah nilai yang diinterpolasi dibagi lagi supaya tidak menggelap.
+  vec4 t = texture2D(uTex, vUv);
+  float gray = t.a > 0.02 ? min(1.0, t.r / t.a) : 0.0;
   vec3 col = texture2D(uLut, vec2(gray * 0.99609375 + 0.001953125, 0.5)).rgb;
-  gl_FragColor = vec4(col * uAlpha, uAlpha);
+  // Celah tanpa data: selaput tipis dan garis miring sewarna nada tengah look, di ruang
+  // layar. Selaputnya mengangkat bagian yang di peta dasar pun kosong (hitam pekat).
+  float off = abs(mod(gl_FragCoord.x + gl_FragCoord.y, uHatch) - uHatch * 0.5) * 0.7071;
+  float line = 1.0 - smoothstep(uHatch * 0.05, uHatch * 0.05 + 1.0, off);
+  float hatch = (0.11 + 0.2 * line) * (1.0 - t.a);
+  vec3 ink = texture2D(uLut, vec2(0.5, 0.5)).rgb;
+  gl_FragColor = vec4(col * t.a + ink * hatch, t.a + hatch) * uAlpha;
 }`;
 
-type Tile = { texture: WebGLTexture; loadedAt: number; usedAt: number; id: TileId };
+type Tile = { texture: WebGLTexture; loadedAt: number; usedAt: number; id: TileId; gap: number };
 type Shape = { buffer: WebGLBuffer; centre: V3 };
 
 const FADE_MS = 260;
@@ -132,6 +146,9 @@ export class SkyRenderer {
   private disposed = false;
   /** Jumlah potongan yang digambar di bingkai terakhir, untuk uji. */
   lastShown = 0;
+  /** Bagian tanpa data (0-1) terbesar di antara potongan paling tajam yang digambar di bingkai terakhir. */
+  lastGap = 0;
+  private scratch?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
 
   constructor(canvas: HTMLCanvasElement, icrsToGalactic: number[][], capacity: number) {
     const gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: false });
@@ -256,10 +273,19 @@ export class SkyRenderer {
       if (this.disposed || control.signal.aborted) return;
       const gl = this.gl;
       const texture = this.texture();
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, bitmap);
+      const pixels = this.read(bitmap);
+      let gap = 0;
+      if (pixels) {
+        const made = tilePixels(pixels.data, pixels.width, pixels.height);
+        gap = made.gap;
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE_ALPHA, pixels.width, pixels.height, 0, gl.LUMINANCE_ALPHA, gl.UNSIGNED_BYTE, made.data);
+      } else {
+        // Tanpa kanvas 2D pikselnya tidak bisa dibaca: potongan dipakai apa adanya.
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, bitmap);
+      }
       bitmap.close();
       const now = performance.now();
-      this.tiles.set(key, { texture, loadedAt: now, usedAt: now, id: t });
+      this.tiles.set(key, { texture, loadedAt: now, usedAt: now, id: t, gap });
       this.failures = 0;
       this.trim();
     } catch (err) {
@@ -271,6 +297,23 @@ export class SkyRenderer {
       if (this.pending.get(key) === control) this.pending.delete(key);
       if (!this.disposed) this.onChange();
     }
+  }
+
+  /** Piksel satu potongan (RGBA), dibaca lewat kanvas 2D. */
+  private read(bitmap: ImageBitmap): ImageData | undefined {
+    if (this.scratch === undefined) {
+      const canvas = typeof OffscreenCanvas === "undefined" ? document.createElement("canvas") : new OffscreenCanvas(bitmap.width, bitmap.height);
+      this.scratch = canvas.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    }
+    const ctx = this.scratch;
+    if (!ctx) return undefined;
+    if (ctx.canvas.width !== bitmap.width || ctx.canvas.height !== bitmap.height) {
+      ctx.canvas.width = bitmap.width;
+      ctx.canvas.height = bitmap.height;
+    }
+    ctx.globalCompositeOperation = "copy";
+    ctx.drawImage(bitmap, 0, 0);
+    return ctx.getImageData(0, 0, bitmap.width, bitmap.height);
   }
 
   /** Buang potongan yang paling lama tidak dipakai kalau tembolok penuh. */
@@ -352,28 +395,34 @@ export class SkyRenderer {
     gl.disableVertexAttribArray(aPos);
 
     // Potongan: hanya pada zoom yang tepi langitnya sudah di luar layar.
+    this.lastGap = 0;
     if (zoom < 1.5 || maxOrder < 1) return moving;
     const centre: V3 = [m[0], m[1], m[2]];
     // Setengah diagonal medan, dengan batas atas supaya tidak mendekati sambungan proyeksi.
     const reach = Math.min((125 * Math.PI) / 180, (3.4 / zoom) * 1.05);
-    const shown: { tile: Tile; shape: Shape }[] = [];
+    const shown: { tile: Tile; shape: Shape; near: boolean }[] = [];
     const prefix = `${this.frame}:`;
     for (const [key, tile] of this.tiles) {
       if (!key.startsWith(prefix) || tile.id.order > maxOrder) continue;
       const shape = this.shape(tile.id);
       const cos = shape.centre[0] * centre[0] + shape.centre[1] * centre[1] + shape.centre[2] * centre[2];
-      if (Math.acos(Math.max(-1, Math.min(1, cos))) > reach + tileRadius(tile.id.order)) continue;
+      const away = Math.acos(Math.max(-1, Math.min(1, cos)));
+      if (away > reach + tileRadius(tile.id.order)) continue;
       tile.usedAt = now;
-      shown.push({ tile, shape });
+      shown.push({ tile, shape, near: away <= reach });
     }
     shown.sort((a, b) => a.tile.id.order - b.tile.id.order);
     this.lastShown = shown.length;
+    const sharpest = shown.length ? shown[shown.length - 1].tile.id.order : 0;
+    // Hanya potongan yang pusatnya di dalam medan: yang cuma menyentuh tepi layar tidak dihitung.
+    for (const s of shown) if (s.near && s.tile.id.order === sharpest) this.lastGap = Math.max(this.lastGap, s.tile.gap);
     gl.useProgram(this.tile);
     const tu = (n: string) => gl.getUniformLocation(this.tile, n);
     gl.uniformMatrix3fv(tu("uM"), false, columns(m));
     gl.uniform1f(tu("uZoom"), zoom);
     gl.uniform1i(tu("uTex"), 0);
     gl.uniform1i(tu("uLut"), 2);
+    gl.uniform1f(tu("uHatch"), 10 * Math.min(2, window.devicePixelRatio || 1));
     const aDir = gl.getAttribLocation(this.tile, "aDir");
     const aUv = gl.getAttribLocation(this.tile, "aUv");
     gl.enableVertexAttribArray(aDir);
