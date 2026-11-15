@@ -1860,6 +1860,7 @@ export function App() {
         open={cardOpen}
         onClose={() => setCardOpen(false)}
         input={cardInput}
+        look={palette}
         lookName={LOOKS.find((l) => l.id === palette)?.name ?? ""}
         spectrumPending={!spectrum?.data && !spectrum?.error}
       />

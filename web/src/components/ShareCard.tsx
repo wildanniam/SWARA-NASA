@@ -1,20 +1,33 @@
 import { ArrowUpRight, DownloadSimple, LinkSimple, ShareNetwork, X } from "@phosphor-icons/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CARD_H, CARD_TITLE, CARD_W, cardKinds, drawCard, type CardInput, type CardKind } from "../lib/card";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { CARD_H, CARD_TITLE, CARD_W, cardKinds, drawCard, SKINS, type CardInput, type CardKind, type RGB } from "../lib/card";
 import { cardUrl, KIND_SLUG } from "../lib/cardData";
 import { useDialog } from "../lib/hooks";
+import type { PaletteId } from "../lib/palette";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   /** Bahan kartu dari yang sedang tampil; kosong selagi bahannya belum termuat. */
   input?: CardInput;
+  /** Look yang dipakai; dialog pembungkusnya ikut berwarna sama dengan kartunya. */
+  look: PaletteId;
   lookName: string;
   /** Spektrum masih dimuat, jadi kartu cahaya belum bisa dinilai ada atau tidaknya. */
   spectrumPending: boolean;
 };
 
 const NUMERAL = ["I", "II", "III"];
+
+/** Warna dialog dari skin kartu look itu: aksen, tinta di atas aksen, dan rona pelat.
+ *  Paper kartunya terang, sedangkan dialognya tetap gelap, jadi memakai warna Ember. */
+function dialogColors(look: PaletteId): CSSProperties {
+  const sk = SKINS[look === "paper" ? "heat" : look];
+  const c = (v: RGB) => v.join(" ");
+  const hex = (v: RGB) => v.map((n) => n.toString(16).padStart(2, "0")).join("");
+  const star = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23${hex(sk.gold)}' d='M10 0l2 8 8 2-8 2-2 8-2-8-8-2 8-2z'/%3E%3C/svg%3E")`;
+  return { "--k-gold": c(sk.gold), "--k-ink": c(sk.ink), "--k-top": c(sk.top), "--k-bottom": c(sk.bottom), "--k-star": star } as CSSProperties;
+}
 
 const slug = (s: string) =>
   s
@@ -107,7 +120,7 @@ export function ShareCard(p: Props) {
         if (e.target === e.currentTarget) p.onClose();
       }}
     >
-      <div ref={ref} className="cardbox" role="dialog" aria-modal="true" aria-label="Draw a card of this place">
+      <div ref={ref} className="cardbox" style={dialogColors(p.look)} role="dialog" aria-modal="true" aria-label="Draw a card of this place">
         <div className="cardbox-stage" data-ready={ready}>
           <canvas
             ref={canvasRef}
