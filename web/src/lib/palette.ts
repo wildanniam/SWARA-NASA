@@ -60,12 +60,12 @@ const STOPS: Record<PaletteId, Stop[]> = {
 };
 
 export const LOOKS: { id: PaletteId; name: string }[] = [
-  { id: "heat", name: "Ember" },
-  { id: "glacier", name: "Glacier" },
-  { id: "aurora", name: "Aurora" },
+  { id: "heat", name: "Heat" },
+  { id: "glacier", name: "Ice" },
+  { id: "aurora", name: "Viridis" },
   { id: "nebula", name: "Nebula" },
-  { id: "gray", name: "Mono" },
-  { id: "paper", name: "Paper" },
+  { id: "gray", name: "Grey" },
+  { id: "paper", name: "Inverted" },
 ];
 
 export const isPalette = (v: unknown): v is PaletteId => typeof v === "string" && v in STOPS;
