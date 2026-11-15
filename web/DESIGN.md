@@ -108,7 +108,7 @@ Pembuka situs dan tingkat terluar teleskop (`web/src/components/SkyMap.tsx`). Pe
 
 ## Kartu berbagi
 
-Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang sedang tampil (`web/src/lib/card.ts`). Dialognya menampilkan kartu itu, lalu menyimpannya sebagai PNG, membagikannya lewat lembar berbagi sistem kalau sistem menerima berkas, atau menyalin tautan.
+Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang sedang tampil (`web/src/lib/card.ts`). Dialognya menampilkan kartu itu. Yang dibagikan adalah tautan ke halaman kartunya (lihat "Halaman kartu"): disalin di desktop, lewat lembar berbagi sistem di ponsel. Gambarnya sendiri disimpan sebagai PNG untuk story. Berkas gambar tidak lagi dikirim lewat lembar berbagi, karena di desktop ia tersalin dua kali beserta jalur berkasnya.
 
 **Satu aturan: sinar adalah data.**
 
@@ -121,6 +121,21 @@ Gambar 1080 x 1920 (9:16, ukuran story) yang dilukis di kanvas dari bundle yang 
 - **Kode QR** gelap di atas ubin terang dengan modul berukuran bilangan bulat piksel, dan mengarah ke tautan pendek tempat itu.
 
 Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai yang dilarang di viewer: gradien latar, satu pendar lembut, dan garis hias di bingkai. Aturan viewer di atas tidak berubah.
+
+## Halaman kartu
+
+`/card?target=…&card=motion|light|place` (atau `ra`, `dec`, `name` untuk tempat di luar contoh; `look` kalau bukan Ember). Tujuan tautan berbagi: isinya hanya satu kartu dan dua jalan keluar, "Explore this place" dan "Draw your own card". Kodenya di `web/src/card/`, bahannya dimuat `web/src/lib/cardData.ts` tanpa aplikasi.
+
+- **Yang di belakang kartu adalah langit tempat itu.** Petak peta SPHEREx yang asli di sekitar bendanya (104 derajat di layar lebar, 58 di ponsel), diredupkan, dengan garis rasi yang memang ada di sana; rasi yang ditempati bendanya digambar terang. Tidak ada bintang karangan.
+- **Yang murni hiasan** hanya dua cincin berskala yang berputar pelan, debu cahaya yang naik, percikan bintang empat sudut saat kartu dibalik, dan kilau di muka kartu.
+- **Kartu datang tertelungkup lalu membalik.** Punggungnya memakai tanda SWARA. Mengeklik kartu atau memilih I, II, III membaliknya ke kartu berikutnya: punggung lewat dulu, baru muka yang baru.
+- **Kartu miring mengikuti penunjuk** (di ponsel Android mengikuti miringnya tangan), dan bernapas sendiri kalau tidak disentuh. Langit dan garis rasi bergeser sedikit berlawanan arah, jadi kartunya terasa melayang di depan.
+- **Warna halaman mengikuti look kartu**: garis, tombol utama, dan pendar memakai warna emas look itu.
+- **Teks di samping** satu kalimat tentang yang terukur (sama kata dengan `verdict.ts`), satu catatan kecil, lalu tombol. Benda yang tidak terpisah dari bintang latar ditulis "Hidden behind a background star".
+- **Keadaan:** selagi dimuat kartu tertelungkup dan cincin berputar lebih cepat; bundle yang belum selesai dibuat dan tautan yang rusak punya kalimat dan tombolnya sendiri.
+- **Gerak dikurangi:** kartu langsung terbuka, tanpa kemiringan, cincin diam, tanpa debu dan percikan.
+
+**Pratinjau tautan.** WhatsApp dan layanan lain membaca tag Open Graph tanpa menjalankan JavaScript, jadi `/card` dilayani `web/api/card.js`, yang mengisi tag itu ke `index.html`. Kartu contoh mendapat gambarnya sendiri: tangkapan layar halaman kartunya pada 1200 x 630 (`web/public/og/`, dibuat `web/scripts/og-cards.cjs`; jalankan ulang kalau bundle contoh atau tampilan kartu berubah). Tempat di luar contoh mendapat kartu tertelungkup dan namanya di judul, karena gambarnya tidak bisa dilukis di server.
 
 ## Bacaan (pengganti Guide)
 

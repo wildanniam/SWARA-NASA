@@ -59,7 +59,7 @@ Urutan platform berikutnya:
 
 2. Halaman proyek dan video demo berbahasa Inggris.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), pembuka seluruh langit, landing page di `/` (aplikasi pindah ke `/sky`), gaya kartu untuk cuplikan penanda dan daftar Go to, kartu berbagi ketiga (tempatnya), perkenalan tombol lensa, dan kualitas data per kunjungan di garis waktu.
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), pembuka seluruh langit, landing page di `/` (aplikasi pindah ke `/sky`), gaya kartu untuk cuplikan penanda dan daftar Go to, kartu berbagi ketiga (tempatnya), perkenalan tombol lensa, kualitas data per kunjungan di garis waktu, dan halaman kartu `/card` dengan pratinjau tautannya.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -137,6 +137,11 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-15
+- **KEPUTUSAN (Wildan): yang dibagikan dari kartu adalah tautan ke halaman kartunya, bukan berkas gambar.** Sebabnya: di Chrome desktop, lembar berbagi macOS menyalin berkas PNG dua kali beserta jalur berkasnya, jadi di WhatsApp muncul dua gambar dan teks jalur. Rincian tampilan di [web/DESIGN.md](web/DESIGN.md), "Halaman kartu".
+  - **Halaman `/card`**: satu kartu melayang di petak langit SPHEREx yang asli di sekitar bendanya, datang tertelungkup lalu membalik, miring mengikuti penunjuk, dan bisa diputar ke kartu lain. Dua tombol: "Explore this place" dan "Draw your own card". Simpan gambar ukuran story tetap ada, di dialog dan di halaman ini.
+  - **Pratinjau tautan**: `/card` dilayani `web/api/card.js` supaya tag Open Graph ada di HTML. Sebelas kartu contoh punya gambar pratinjau sendiri (tangkapan layar halaman kartunya); tempat di luar contoh mendapat kartu tertelungkup dan namanya di judul. Tautan situs lainnya sekarang juga punya pratinjau (landing page).
+  - Diuji di Chromium headless: kelima contoh dengan tiap kartunya, tautan langsung ke satu kartu, klik dan papan ketik, klik beruntun, simpan (PNG 1080 x 1920), salin tautan, kemiringan, waktu bingkai (median 16,7 ms), gerak dikurangi, sembilan ukuran layar, dialog berbagi di aplikasi, dan regresi aplikasi 26 langkah. Dengan respons tiruan: tempat yang dicari, bundle yang belum jadi, layanan mati, dan lembar berbagi ponsel.
+  - Belum diuji: ponsel asli, Safari, Firefox, dan miring mengikuti tangan di Android.
 - **KEPUTUSAN (Wildan): empat sisa pekerjaan core dikerjakan dengan estetika sebagai tekanan utama.** Semuanya memakai data yang sudah ada; tidak ada bentuk bundle yang berubah.
   - **Cuplikan penanda dan daftar Go to jadi kartu tempat:** jendela melengkung berisi citra asli, julukan, dan angka terukur ("The Wanderer · 10.1″ north in 12 months"). Julukan dan angka dihitung di `web/src/lib/verdict.ts`, dipakai juga oleh landing page.
   - **Kartu berbagi ketiga, "Its place":** langit 44 derajat di sekitar benda dari peta seluruh langit SPHEREx, rasi yang ditempatinya digambar terang, kompas di sekeliling jendela, lalu lintang galaktik dan dari mana ia bisa terlihat. Kartu ini selalu ada, jadi benda tanpa spektrum bersih sekarang punya dua kartu.

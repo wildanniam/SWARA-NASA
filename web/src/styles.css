@@ -2189,6 +2189,29 @@ kbd {
   color: inherit;
 }
 
+/* Jalan ke halaman kartu: tautan teks, bukan tombol ketiga. */
+.cardbox-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.cardbox-open:hover {
+  color: var(--accent);
+}
+
+.cardbox-open svg {
+  width: 14px;
+  height: 14px;
+}
+
 @media (max-width: 720px) {
   .scrim-center {
     align-items: start;

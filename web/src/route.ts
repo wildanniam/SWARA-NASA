@@ -1,8 +1,13 @@
-// Dua halaman dalam satu situs: landing page di "/", aplikasi di "/sky".
+// Tiga halaman dalam satu situs: landing page di "/", aplikasi di "/sky", satu kartu di "/card".
 // Tautan lama ke satu tempat ("/?target=barnard", "/?ra=…&dec=…") tetap membuka aplikasi,
 // karena kartu berbagi dan kode QR yang sudah tersebar memakai bentuk itu.
 
 export const APP_PATH = "/sky";
+/** Halaman satu kartu, tujuan tautan berbagi. Diperiksa lebih dulu dari aplikasi, karena
+ *  tautannya memakai parameter tempat yang sama ("target", "ra", "dec", "name"). */
+export const CARD_PATH = "/card";
+
+export const isCardRoute = (loc: Location = window.location) => loc.pathname.replace(/\/+$/, "") === CARD_PATH;
 
 /** Parameter yang hanya dipakai aplikasi; salah satunya ada berarti tautan ke aplikasi. */
 const APP_KEYS = ["target", "ra", "dec", "name", "band", "look", "view"];
