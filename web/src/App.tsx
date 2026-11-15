@@ -14,6 +14,7 @@ import {
   Pause,
   Play,
   ShareNetwork,
+  Planet,
   Question,
   Subtract,
   StarFour,
@@ -61,7 +62,7 @@ import { prefersReducedMotion } from "./lib/hooks";
 import { preload, useImageStore } from "./lib/images";
 import { backdropPalette, isPalette, lookGradient, LOOKS, LUTS, REVEAL_LUT, type PaletteId } from "./lib/palette";
 import { isPending, requestSky, SkyRequestError, skyStatus, type SkyJob } from "./lib/sky";
-import { APP_PATH } from "./route";
+import { APP_PATH, SPHEREX_PATH } from "./route";
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
@@ -1340,17 +1341,24 @@ export function App() {
       <header className="top">
         {/* Tanda SWARA adalah jalan pulang, satu tingkat sekali: dari teleskop ke seluruh
             langit, dari seluruh langit ke landing page. */}
-        {atlas ? (
-          <a className="brand" href="/" aria-label="SWARA: home">
-            <LogoMark size={22} />
-            <Wordmark height={15} />
+        <div className="top-lead">
+          {atlas ? (
+            <a className="brand" href="/" aria-label="SWARA: home">
+              <LogoMark size={22} />
+              <Wordmark height={15} />
+            </a>
+          ) : (
+            <button type="button" className="brand" aria-label="SWARA: see the whole sky" onClick={enterAtlas}>
+              <LogoMark size={22} />
+              <Wordmark height={15} />
+            </button>
+          )}
+          {/* Pintu ke penjelasan misi SPHEREx, di kiri pelat cari karena sisi kanan sudah penuh. */}
+          <a className="pill pill-mission" href={SPHEREX_PATH} aria-label="What is SPHEREx? About the telescope behind this data" title="What is SPHEREx?">
+            <Planet aria-hidden="true" />
+            <span>SPHEREx</span>
           </a>
-        ) : (
-          <button type="button" className="brand" aria-label="SWARA: see the whole sky" onClick={enterAtlas}>
-            <LogoMark size={22} />
-            <Wordmark height={15} />
-          </button>
-        )}
+        </div>
         <button type="button" className="goto-trigger" onClick={openGoTo}>
           <MagnifyingGlass aria-hidden="true" />
           <span>Go to a place in the sky</span>

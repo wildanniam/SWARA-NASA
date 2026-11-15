@@ -254,7 +254,7 @@ export function SpectrumStrip(p: Props) {
       : plan.skipped;
     const start = sonifier.playMixed(plan.notes, plan.activeVoices, total);
     setPlay({ start, total, visits, skipped, activeVoices: plan.activeVoices, pings, rays: spectrumLayers });
-    if (ambienceOnly) setAnnounce("Tidak ada lapisan data yang siap; ambience ruang angkasa diputar.");
+    if (ambienceOnly) setAnnounce("No data is ready to play here, so only a quiet space ambience is playing.");
     setFresh(false);
     try {
       window.localStorage.setItem(HEARD_KEY, "1");
@@ -288,7 +288,7 @@ export function SpectrumStrip(p: Props) {
       }
       const elapsed = sonifier.now() - play.start;
       if (elapsed >= play.total) {
-        setAnnounce("Pemutaran gabungan selesai.");
+        setAnnounce("Playback finished.");
         stop();
         return;
       }
@@ -316,23 +316,23 @@ export function SpectrumStrip(p: Props) {
         listenRef.current(visit.id);
         const w = windows.find((q) => q.id === visit.id);
         const active = [
-          visit.layers.scan ? "pindai gambar" : "",
-          visit.layers.spectrum ? "spektrum" : "",
-          visit.layers.motion ? "gerak" : "",
+          visit.layers.scan ? "image scan" : "",
+          visit.layers.spectrum ? "spectrum" : "",
+          visit.layers.motion ? "motion" : "",
         ].filter(Boolean);
         const missing = [
-          !visit.layers.scan ? "pindai gambar" : "",
-          !visit.layers.spectrum ? "spektrum" : "",
-          !visit.layers.motion ? "gerak" : "",
+          !visit.layers.scan ? "image scan" : "",
+          !visit.layers.spectrum ? "spectrum" : "",
+          !visit.layers.motion ? "motion" : "",
         ].filter(Boolean);
         const skippedVisits = play.skipped.filter((entry) => !play.visits.some((q) => q.id === entry.id));
         const skippedSummary = i === 0 && skippedVisits.length
-          ? ` ${skippedVisits.length} kunjungan tanpa data untuk semua lapisan dilewati.`
+          ? ` Skipped ${skippedVisits.length} ${skippedVisits.length === 1 ? "visit" : "visits"} with nothing to play.`
           : "";
         setAnnounce(active.length
-          ? `Kunjungan ${w ? monthYear(w.mjd_mid) : visit.id}: ${active.join(", ")}.` +
-              (missing.length ? ` Lapisan ${missing.join(", ")} dilewati.` : "") + skippedSummary
-          : `Kunjungan ${w ? monthYear(w.mjd_mid) : visit.id}: ambience tenang tanpa data.`);
+          ? `Visit ${w ? monthYear(w.mjd_mid) : visit.id}: ${active.join(", ")}.` +
+              (missing.length ? ` No ${missing.join(" or ")} for this visit.` : "") + skippedSummary
+          : `Visit ${w ? monthYear(w.mjd_mid) : visit.id}: quiet ambience, no data.`);
       }
       const col = local / SCAN.colSeconds;
       const line = p.scanLine.current;
@@ -355,7 +355,7 @@ export function SpectrumStrip(p: Props) {
       }
       if (visit.layers.scan && col >= SCAN.columns / 2 && centerTold !== visit.id) {
         centerTold = visit.id;
-        setAnnounce("Target di tengah gambar.");
+        setAnnounce("The scan is at the target, in the middle of the image.");
       }
 
       if (visit.layers.spectrum) {
