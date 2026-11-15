@@ -5582,35 +5582,84 @@ kbd {
   color: var(--muted);
 }
 
-/* Cuplikan benda contoh: kenapa ia istimewa, lalu angka terukur.
-   Garis tipis memisahkan cerita (atas) dari ukuran (bawah). */
-.sky-peek[data-why="true"] {
-  align-items: flex-start;
+/* Cuplikan penanda, susunan akhir. Dua baris: cerita di atas (jendela, julukan, nama, kenapa ia
+   istimewa), lalu kaki selebar kartu dengan yang terukur di kiri dan jalan masuk di kanan.
+   Angka dan keterangannya satu baris baca: 22 px lawan 12,5 px, bukan 26 lawan 11,5. */
+.sky-peek {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px 18px;
+  padding: 18px 20px 16px;
 }
 
-@media (min-width: 861px) {
-  .sky-peek[data-why="true"] {
-    width: 388px;
-  }
+.sky-peek .arch {
+  margin: 0;
 }
 
-.sky-peek[data-why="true"] .arch {
-  margin-top: 4px;
-}
-
-.sky-peek-text .sky-peek-why {
+.sky-peek-text p {
   display: block;
-  margin: 6px 0 0;
+  margin: 7px 0 0;
   overflow: visible;
   -webkit-line-clamp: unset;
   line-clamp: unset;
   font-size: 12.5px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--soft);
 }
 
-.sky-peek[data-why="true"] .sky-peek-measured {
-  margin-top: 11px;
-  padding-top: 11px;
+.sky-peek-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding-top: 13px;
   border-top: 1px solid rgb(255 180 84 / 0.16);
+}
+
+.sky-peek-foot .sky-peek-measured {
+  margin: 0;
+  gap: 9px;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.sky-peek-foot .sky-peek-measured i {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.sky-peek-foot .pill {
+  margin: 0;
+}
+
+@media (min-width: 861px) {
+  .sky-peek {
+    width: 392px;
+  }
+
+  /* Kartu sudah menyebut namanya: label penandanya menepi supaya tidak mengintip di sela kartu. */
+  .sky-marker[data-peeked="true"] .sky-marker-text {
+    visibility: hidden !important;
+  }
+}
+
+/* Layar kecil: kartu cuplikan dan kartu bidikan duduk di bawah peta dan mendorong isi di bawahnya.
+   Dulu baris petanya tidak ikut memanjang, jadi kartu menimpa judul; dan garis dalam kartu lepas ke
+   bingkai peta karena kartunya tidak berposisi. */
+@media (max-width: 860px) {
+  .atlas-stage {
+    min-height: auto;
+  }
+
+  .sky-peek,
+  .aim-card {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+  }
 }

@@ -153,23 +153,26 @@ const lineOfRa = (ra: number, dec0 = -89, dec1 = 89, step = 1): V3[] => {
  *  julukannya, kenapa benda itu istimewa, lalu angka yang terukur di sana. */
 function PlacePeek({ marker, look, pinned, onGo }: { marker: SkyMarker; look: PaletteId; pinned: boolean; onGo: () => void }) {
   const v = useVerdict(marker.id, marker.yours, marker.built);
-  const why = marker.yours ? undefined : TARGET_WHY[marker.id];
-  const note = marker.yours || why ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
+  const first = marker.yours ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
+  const text = marker.yours ? undefined : (TARGET_WHY[marker.id]?.why ?? (first && (first.endsWith(".") ? first : `${first}.`)));
   return (
-    <div className="sky-peek" data-pinned={pinned} data-why={!!why} data-ra={marker.ra} data-dec={marker.dec} data-keep="true">
+    <div className="sky-peek" data-pinned={pinned} data-ra={marker.ra} data-dec={marker.dec} data-keep="true">
       <PlaceThumb id={marker.id} custom={marker.yours} enabled={marker.built} look={look} size={168} arch />
       <div className="sky-peek-text">
         <small>{v?.epithet ?? (marker.yours ? "Your place" : marker.detail)}</small>
         <b>{marker.name}</b>
-        {why && <p className="sky-peek-why">{why.why}</p>}
-        {v && (
+        {text && <p>{text}</p>}
+      </div>
+      {/* Kaki selebar kartu: yang terukur di kiri, jalan masuk di kanan. */}
+      <div className="sky-peek-foot">
+        {v ? (
           <span className="sky-peek-measured">
             <i>{v.big}</i>
             {v.line}
           </span>
+        ) : (
+          <span className="sky-peek-measured">{marker.built ? "Not measured yet" : "Still being gathered"}</span>
         )}
-        {!marker.built && <span className="sky-peek-measured">Still being gathered</span>}
-        {note && <p>{note.endsWith(".") ? note : `${note}.`}</p>}
         {pinned && (
           <button type="button" className="pill pill-accent" onClick={onGo}>
             Look closer
@@ -1093,6 +1096,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
                   data-id={m.id}
                   data-yours={m.yours}
                   data-current={m.current}
+                  data-peeked={peek?.id === m.id}
                   data-ra={m.ra}
                   data-dec={m.dec}
                   aria-label={`${m.name}, ${m.detail}. Look closer.`}

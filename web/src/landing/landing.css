@@ -2917,3 +2917,57 @@ a.lp-btn-primary,
   line-height: 1.5;
   color: var(--text);
 }
+
+/* ---------- lima contoh: susunan akhir ---------- */
+
+/* Bacaan: label, angka, lalu keterangannya dengan ukuran yang masih terbaca di samping angka itu. */
+.lp-stage-big {
+  margin: 8px 0 10px;
+  font-size: 56px;
+}
+
+.lp-stage-line {
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+@media (min-width: 960px) {
+  /* Daftar setinggi panggung: garis atas dan bawahnya sejajar dengan tepi kartu. */
+  .lp-pick {
+    align-items: stretch;
+  }
+
+  .lp-rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-rows li {
+    flex: 1;
+    display: flex;
+  }
+
+  .lp-row {
+    align-content: center;
+  }
+}
+
+/* Saat bacaan dan tombol bertumpuk, tombolnya selebar kartu: tidak menggantung di kiri. */
+@media (max-width: 1359px) {
+  .lp-stage-foot {
+    align-items: stretch;
+  }
+
+  .lp-stage-go {
+    justify-content: center;
+    margin: 6px 0 0;
+  }
+}
+
+@media (max-width: 1199px) {
+  .lp-stage-big {
+    font-size: 48px;
+  }
+}
