@@ -1057,8 +1057,11 @@ kbd {
 }
 
 .scan-line {
-  stroke: var(--accent);
-  stroke-width: 2px;
+  stroke: #e5eaf0;
+  stroke-opacity: 0.92;
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 2px rgb(236 241 247 / 0.85)) drop-shadow(0 0 7px rgb(166 181 198 / 0.5));
   vector-effect: non-scaling-stroke;
   visibility: hidden;
 }
