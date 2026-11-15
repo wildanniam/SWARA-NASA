@@ -147,7 +147,7 @@ Kartu adalah benda untuk dibagikan, bukan alat ukur. Karena itu ia boleh memakai
 
 ## Bacaan (pengganti Guide)
 
-Tombol **The cards** (dulu Guide) membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartunya diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog. Semua yang digambar dan ditulis dihitung dari bundle dan peta seluruh langit (`web/src/lib/reading.ts`); tidak ada angka yang ditulis tangan.
+Tombol **Story** (dulu Guide, lalu The cards) membuka dialog di tengah layar berisi kartu, bukan laci teks. Kartunya diletakkan langsung di atas langit yang diredupkan, tanpa kotak dialog. Semua yang digambar dan ditulis dihitung dari bundle dan peta seluruh langit (`web/src/lib/reading.ts`); tidak ada angka yang ditulis tangan.
 
 - **Anatomi kartu** (sama dengan kartu berbagi, sepertiga ukurannya, 360 x 640 satuan): bingkai garis ganda bersudut cekung, angka Romawi, satu baris pertanyaan, gambar, keterangan gambar, pita julukan, satu kalimat, dua fakta bertanda kecil, tombol. Warna kartu mengikuti look.
 - **I, tempatnya.** Jendela melengkung berisi 44 derajat langit dari peta SPHEREx yang asli, utara di atas, dengan garis rasi di atasnya; rasi yang ditempati benda itu digambar terang dan namanya jadi isi pita. Faktanya: jarak dari pita Bima Sakti (dengan peta seluruh langit mini) dan dari lintang mana ia tidak pernah terbit.
@@ -173,7 +173,7 @@ Di Go to, di bawah kotak cari, ada dua isian RA dan Dec yang ditata seperti dua 
 
 ## Bilah atas dan mode fokus
 
-- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (jalan pulang satu tingkat sekali: dari teleskop ke seluruh langit, dari seluruh langit ke landing page), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
+- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (jalan pulang satu tingkat sekali: dari teleskop ke seluruh langit, dari seluruh langit ke landing page), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **Story**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
 - **Mode fokus** (tombol pojok atau F): bilah atas dan dok menghilang, lensa membesar, nama di kiri dan angka terukur di kanan tetap ada. Browser diminta masuk layar penuh; kalau ditolak, mode fokus tetap jalan. Esc, F, atau tombol kecil di pojok untuk keluar. Blink tetap dengan Spasi dan panah.
 
 ## Logo
@@ -209,7 +209,7 @@ Layar sentuh tidak punya hover, jadi animasi kartu berjalan sendiri selama kartu
 
 ## Pelat: gaya semua panel
 
-Dialog dan popover memakai satu gaya, bukan kotak abu-abu polos: latar gelap yang hangat di bagian atas, garis tepi aksen tipis, dan satu garis lagi 5 px di dalamnya (garis ganda, seperti bingkai kartu). Dipakai dialog Go to dan Share, kartu bidik dan cuplikan penanda di peta, dan panel Keys and sources. Dua dialog besar membawa satu bintang empat sudut yang memutus garis atasnya, seperti garis dok. Keterangan kecil (tooltip) dan gugus tombol zoom peta memakai garis dan latar yang sama tanpa garis dalam. Kartu tarot tetap hanya di The cards dan kartu berbagi; pelat adalah wadah, bukan kartu.
+Dialog dan popover memakai satu gaya, bukan kotak abu-abu polos: latar gelap yang hangat di bagian atas, garis tepi aksen tipis, dan satu garis lagi 5 px di dalamnya (garis ganda, seperti bingkai kartu). Dipakai dialog Go to dan Share, kartu bidik dan cuplikan penanda di peta, dan panel Keys and sources. Dua dialog besar membawa satu bintang empat sudut yang memutus garis atasnya, seperti garis dok. Keterangan kecil (tooltip) dan gugus tombol zoom peta memakai garis dan latar yang sama tanpa garis dalam. Kartu tarot tetap hanya di Story dan kartu berbagi; pelat adalah wadah, bukan kartu.
 
 Semua tombol pil dan tombol di cincin lensa bergaris ganda: satu garis tipis di dalam tepinya. Saat ditunjuk, garisnya berubah ke aksen.
 
