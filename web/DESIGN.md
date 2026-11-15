@@ -234,7 +234,7 @@ Tiap gerak punya alasan:
 | Isi lensa membesar atau mengecil saat ganti tingkat | pembesaran berubah, tempatnya tetap |
 | Lensa membuka seperti diafragma | data untuk tempat ini sudah siap |
 | Cincin terisi atau menyapu | progres muat atau posisi suara |
-| Garis pindai audio di lensa | inti putih keabu-abuan yang tipis dan agak transparan, dengan cahaya tepi abu lembut | terasa sebagai berkas scanner, bukan aksen ambar |
+| Garis pindai audio di lensa | garis putih keabu-abuan yang sangat tipis dan beropacity rendah, dengan cahaya tepi abu lembut | terasa sebagai berkas scanner, bukan aksen ambar |
 | Citra lama tersapu dari kiri ke kanan oleh garis ambar saat Difference, look, Reveal faint, atau penanda piksel diganti | filter teleskop diputar: tempat dan waktunya sama, hanya cara melihatnya yang berubah. Blink tidak tersapu |
 | Cincin Gaia mengunci dari besar ke ukurannya satu per satu, lalu memudar saat dimatikan | katalog sedang dicocokkan ke bintang di citra |
 | Menunjuk lensa: bacaan RA/Dec dan jarak dari tanda di samping kursor, jarum ambar di cincin menunjuk arahnya, N dan E menyala | lensa adalah alat ukur; tiap titiknya punya koordinat (rumusnya sama dengan `sky_grid` di pipeline) |
