@@ -44,8 +44,9 @@ function Card({ index, name, title, text, href, className, onPointer, children }
     const el = ref.current;
     if (!el) return;
     const box = el.getBoundingClientRect();
-    el.style.setProperty("--mx", `${e.clientX - box.left}px`);
-    el.style.setProperty("--my", `${e.clientY - box.top}px`);
+    // Dalam persen, supaya tetap tepat di bawah kursor walau kartunya diperkecil (zoom).
+    el.style.setProperty("--mx", `${(((e.clientX - box.left) / box.width) * 100).toFixed(2)}%`);
+    el.style.setProperty("--my", `${(((e.clientY - box.top) / box.height) * 100).toFixed(2)}%`);
     onPointer?.(e);
   };
   return (

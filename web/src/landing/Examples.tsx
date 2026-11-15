@@ -67,10 +67,16 @@ export function Examples({ examples }: { examples?: Example[] }) {
       const name = nameRefs.current[active];
       const box = name?.parentElement;
       if (!list || !name || !box) return;
-      const lb = list.getBoundingClientRect();
-      const bb = box.getBoundingClientRect();
+      // Letak tata letak (offset), bukan getBoundingClientRect: tetap benar saat daftar diperkecil
+      // dengan zoom di layar pendek. Daftar adalah induk berposisi baris-barisnya.
+      let x = 0;
+      let y = 0;
+      for (let el: HTMLElement | null = box; el && el !== list; el = el.offsetParent as HTMLElement | null) {
+        x += el.offsetLeft;
+        y += el.offsetTop;
+      }
       const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight;
-      setStar({ x: bb.left - lb.left, y: bb.top - lb.top + line / 2 - 6.5 });
+      setStar({ x, y: y + line / 2 - 6.5 });
     };
     measure();
     window.addEventListener("resize", measure);
