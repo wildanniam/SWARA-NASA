@@ -78,15 +78,20 @@ const NO_SPECTRUM = {
 /** Pita spektrum selebar dok. Enam ruasnya adalah enam band citra, jadi pita ini
  *  sekaligus pemilih band; saat suara berjalan, band yang terdengar ikut tampil di lensa. */
 /** Kolom pindai hanya tahu baris puncaknya; letak tepat bintang di dalam kolom dicari
- *  dari piksel tersterang di baris itu, supaya denyutnya jatuh di bintangnya. */
+ *  dari piksel tersterang di baris itu, supaya denyutnya jatuh di bintangnya. Pencarian
+ *  dimulai di dalam kolom (puncaknya memang berasal dari sana), lalu mendaki ke luar kolom
+ *  hanya selama piksel di sebelahnya makin terang: bintang di batas dua kolom tetap ditemukan
+ *  di pusatnya, tanpa meloncat ke bintang lain yang lebih terang di kolom tetangga. */
 function brightestX(gray: ArrayLike<number>, size: number, col: number, columns: number, row01: number): number {
   const width = size / columns;
-  // Setengah kolom ke tiap sisi: bintang di batas dua kolom tetap ditemukan di pusatnya.
-  const x0 = Math.max(0, Math.floor((col - 0.5) * width));
-  const x1 = Math.min(size, Math.ceil((col + 1.5) * width));
+  const x0 = Math.floor(col * width);
+  const x1 = col === columns - 1 ? size : Math.floor((col + 1) * width);
   const y = Math.round(row01 * (size - 1));
+  const at = (x: number) => gray[y * size + x];
   let best = x0;
-  for (let x = x0; x < x1; x++) if (gray[y * size + x] > gray[y * size + best]) best = x;
+  for (let x = x0; x < x1; x++) if (at(x) > at(best)) best = x;
+  while (best > 0 && at(best - 1) > at(best)) best--;
+  while (best < size - 1 && at(best + 1) > at(best)) best++;
   return (best + 0.5) / size;
 }
 
@@ -371,7 +376,9 @@ export function SpectrumStrip(p: Props) {
           lastStep = step;
           setHeardLambda(lambda);
         }
-        if (frac >= 0 && frac <= 1 && band !== lastBand) {
+        // Selama pindai berbunyi, lensa tetap di band yang dipindai: cincin denyut dihitung dari
+        // citra band itu, jadi kalau lensa ikut berganti band, cincinnya jatuh di bintang yang tidak tampak.
+        if (frac >= 0 && frac <= 1 && band !== lastBand && !visit.layers.scan) {
           lastBand = band;
           hearRef.current(band);
         }

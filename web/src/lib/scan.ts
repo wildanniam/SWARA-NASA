@@ -133,6 +133,8 @@ export function scanPitch(row01: number, s: ScanSettings): number {
   return s.baseHz * Math.pow(2, semitones / 12);
 }
 
+const GLINT_HZ = [2217.46, 2637.02];
+
 /** Puncak yang sangat kontras: berbunyi dengan dua kilau pendek seperti denting. */
 export function isGlint(grid: ScanGrid, p: ScanPeak, peakIndex: number): boolean {
   return peakIndex < 2 && p.value >= grid.bg + 6 * grid.sigma && p.value / grid.top >= 0.58;
@@ -161,13 +163,15 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
           lambda: pos,
           voice: "scan",
         });
-        // Bintang yang sangat kontras mendapat dua kilau pendek seperti denting.
+        // Bintang yang sangat kontras mendapat dua kilau pendek seperti denting. Nadanya C#7 dan E7
+        // (masih tangga nada pentatonik A pindai), sengaja bukan 1760 Hz: itu nada earcon tengah
+        // medan, dan kilau yang sama nadanya tidak bisa dibedakan dari "target di tengah".
         if (isGlint(grid, p, peakIndex)) {
           for (let glint = 0; glint < 2; glint++) {
             notes.push({
               t: t + 0.07 + glint * 0.12,
               dur: 0.065,
-              hz: 1760 + glint * 440,
+              hz: GLINT_HZ[glint],
               vol: 0.16,
               unverified: false,
               pan: 0,
