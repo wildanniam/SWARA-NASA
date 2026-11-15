@@ -121,6 +121,7 @@ let sharedWet: GainNode | undefined;
 let spectrumSpace: ConvolverNode | undefined;
 let spectrumSpaceWet: GainNode | undefined;
 const scheduledEvents = new Set<number>();
+const AUDIO_START_LEAD_SECONDS = 0.24;
 
 function ensureSharedVoice() {
   if (sharedSynth) return;
@@ -327,6 +328,10 @@ export class Sonifier {
   /** Buka konteks dari gestur tombol Play agar kebijakan autoplay browser terpenuhi. */
   resume(): Promise<void> {
     this.audioContext();
+    // Buat node instrumen sebelum konteks mulai berjalan, bukan saat suara
+    // pertama sudah dekat waktunya diputar.
+    ensureSpectrumVoice();
+    ensureMotionVoice();
     return Tone.start();
   }
 
@@ -337,7 +342,7 @@ export class Sonifier {
     const ctx = this.audioContext();
     void ctx.resume();
     const starts: number[] = [];
-    let at = Tone.now() + 0.08;
+    let at = Tone.now() + AUDIO_START_LEAD_SECONDS;
     for (const notes of phrases) {
       starts.push(at);
       scheduleMixed(ctx, ctx.destination, notes, at, ["spectrum"]);
@@ -352,11 +357,10 @@ export class Sonifier {
     soundEpoch.n++;
     const ctx = this.audioContext();
     void ctx.resume();
-    const start = Tone.now() + 0.08;
+    const start = Tone.now() + AUDIO_START_LEAD_SECONDS;
     scheduleMixed(ctx, ctx.destination, notes, start, activeVoices);
     if (duration > 0) {
-      const ambientAt = ctx.currentTime + Math.max(0, start - Tone.now());
-      startAmbience(ctx, ambientAt, duration);
+      startAmbience(ctx, start, duration);
     }
     return start;
   }

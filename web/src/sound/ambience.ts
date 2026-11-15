@@ -9,9 +9,18 @@ type Run = {
 };
 
 let current: Run | undefined;
+const impulseCache = new WeakMap<BaseAudioContext, Map<number, AudioBuffer>>();
 
-export function makeImpulseResponse(ctx: AudioContext, seconds: number): AudioBuffer {
+export function makeImpulseResponse(ctx: BaseAudioContext, seconds: number): AudioBuffer {
   const length = Math.ceil(ctx.sampleRate * seconds);
+  let buffers = impulseCache.get(ctx);
+  if (!buffers) {
+    buffers = new Map();
+    impulseCache.set(ctx, buffers);
+  }
+  const cached = buffers.get(length);
+  if (cached) return cached;
+
   const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
   for (let channel = 0; channel < 2; channel++) {
     const samples = buffer.getChannelData(channel);
@@ -22,11 +31,12 @@ export function makeImpulseResponse(ctx: AudioContext, seconds: number): AudioBu
       samples[i] = (state / 0xffffffff * 2 - 1) * decay;
     }
   }
+  buffers.set(length, buffer);
   return buffer;
 }
 
 /** Reverb dan bed lama yang dipakai oleh pemutar kartu berbagi mesin suara ini. */
-export function makeSpaceImpulse(ctx: AudioContext, seconds = AMBIENCE.reverbSeconds): AudioBuffer {
+export function makeSpaceImpulse(ctx: BaseAudioContext, seconds = AMBIENCE.reverbSeconds): AudioBuffer {
   return makeImpulseResponse(ctx, seconds);
 }
 
