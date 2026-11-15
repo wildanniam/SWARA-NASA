@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, t
 import type { Band, TimeWindow } from "../lib/bundle";
 import { microns, monthYear } from "../lib/format";
 import { useWidth } from "../lib/hooks";
-import { scanGrid, scanPhrase } from "../lib/scan";
+import { isGlint, scanGrid, scanPhrase } from "../lib/scan";
+import { addRay, clearArt, CROWN_DEG, ghostCrown, pingColumn, ringBell, type ScanPing, type SoundArt } from "../lib/soundArt";
 import { combineSoundLayers, VISIT_PAUSE_SECONDS, VISIT_SLOT_SECONDS, type CombinedVisit } from "../lib/combinedSound";
 import {
   assessVisit,
@@ -51,6 +52,8 @@ type Props = {
   soundRing: RefObject<SVGCircleElement | null>;
   /** Garis pindai di lensa; digerakkan kolom-per-kolom mengikuti jam audio. */
   scanLine: RefObject<SVGLineElement | null>;
+  /** Tanda di lensa untuk tiap nada yang berbunyi (denyut bintang, sinar spektrum, lonceng gerak). */
+  soundArt: RefObject<SoundArt>;
 };
 
 const H = 84;
@@ -74,6 +77,19 @@ const NO_SPECTRUM = {
 
 /** Pita spektrum selebar dok. Enam ruasnya adalah enam band citra, jadi pita ini
  *  sekaligus pemilih band; saat suara berjalan, band yang terdengar ikut tampil di lensa. */
+/** Kolom pindai hanya tahu baris puncaknya; letak tepat bintang di dalam kolom dicari
+ *  dari piksel tersterang di baris itu, supaya denyutnya jatuh di bintangnya. */
+function brightestX(gray: ArrayLike<number>, size: number, col: number, columns: number, row01: number): number {
+  const width = size / columns;
+  // Setengah kolom ke tiap sisi: bintang di batas dua kolom tetap ditemukan di pusatnya.
+  const x0 = Math.max(0, Math.floor((col - 0.5) * width));
+  const x1 = Math.min(size, Math.ceil((col + 1.5) * width));
+  const y = Math.round(row01 * (size - 1));
+  let best = x0;
+  for (let x = x0; x < x1; x++) if (gray[y * size + x] > gray[y * size + best]) best = x;
+  return (best + 0.5) / size;
+}
+
 export function SpectrumStrip(p: Props) {
   const { spectrum, windows, windowId, bands } = p;
   const [plotRef, width] = useWidth<HTMLDivElement>();
@@ -91,6 +107,10 @@ export function SpectrumStrip(p: Props) {
     visits: CombinedVisit[];
     skipped: { id: string; layers: ("scan" | "spectrum" | "motion")[] }[];
     activeVoices: ("scan" | "spectrum" | "motion")[];
+    /** Puncak per kolom pindai, per kunjungan: yang berdenyut di lensa. */
+    pings: Map<string, ScanPing[][]>;
+    /** Nada spektrum per kunjungan (waktu relatif kunjungan): yang jadi sinar di cincin. */
+    rays: Map<string, Note[]>;
   }>();
   const readMotionRef = useRef(p.readMotion);
   readMotionRef.current = p.readMotion;
@@ -141,12 +161,13 @@ export function SpectrumStrip(p: Props) {
     const line = p.scanLine.current;
     if (line) line.style.visibility = "hidden";
     p.soundRing.current?.setAttribute("stroke-dasharray", "0 100");
+    clearArt(p.soundArt.current);
     setPlay(undefined);
     setPlayVisit(undefined);
     setHeardLambda(undefined);
     setMotionNoteActive(false);
     hearRef.current(undefined);
-  }, [p.soundRing, p.scanLine]);
+  }, [p.soundRing, p.scanLine, p.soundArt]);
 
   const stop = useCallback(() => {
     sonifier.stop();
@@ -162,6 +183,7 @@ export function SpectrumStrip(p: Props) {
     hearRef.current(undefined);
 
     const scanLayers = new Map<string, Note[]>();
+    const pings = new Map<string, ScanPing[][]>();
     let refStats: { bg: number; sigma: number; top: number } | undefined;
     for (const w of windows) {
       if (!hasImageRef.current(w.id)) continue;
@@ -170,6 +192,18 @@ export function SpectrumStrip(p: Props) {
       const grid = scanGrid(frame.gray, frame.size, frame.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
       if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
       scanLayers.set(w.id, scanPhrase(grid, SCAN));
+      pings.set(
+        w.id,
+        grid.columns.map((c, ci) =>
+          c.peaks.map((q, i) => ({
+            x01: brightestX(frame.gray, frame.size, ci, grid.columns.length, q.row01),
+            row01: q.row01,
+            vol: Math.min(1, Math.max(SCAN.minVol, q.value / grid.top)),
+            glint: isGlint(grid, q, i),
+            flagged: q.flagged,
+          })),
+        ),
+      );
     }
 
     const spectrumLayers = new Map<string, Note[]>();
@@ -219,7 +253,7 @@ export function SpectrumStrip(p: Props) {
       ? windows.map((w) => ({ id: w.id, layers: ["scan", "spectrum", "motion"] as ("scan" | "spectrum" | "motion")[] }))
       : plan.skipped;
     const start = sonifier.playMixed(plan.notes, plan.activeVoices, total);
-    setPlay({ start, total, visits, skipped, activeVoices: plan.activeVoices });
+    setPlay({ start, total, visits, skipped, activeVoices: plan.activeVoices, pings, rays: spectrumLayers });
     if (ambienceOnly) setAnnounce("Tidak ada lapisan data yang siap; ambience ruang angkasa diputar.");
     setFresh(false);
     try {
@@ -242,6 +276,9 @@ export function SpectrumStrip(p: Props) {
     let lastBand: string | undefined;
     let lastStep = -1;
     let lastMotionActive: boolean | undefined;
+    let lastCol = -1;
+    let rayAt = 0;
+    const art = p.soundArt.current;
     const epoch = soundEpoch.n;
     const tick = () => {
       if (soundEpoch.n !== epoch) {
@@ -261,6 +298,7 @@ export function SpectrumStrip(p: Props) {
       const local = elapsed - visit.start;
       const motionActive = visit.layers.motion && local >= 0 && local < MOTION.seconds;
       if (motionActive !== lastMotionActive) {
+        if (motionActive) ringBell(art);
         lastMotionActive = motionActive;
         setMotionNoteActive(motionActive);
       }
@@ -269,6 +307,9 @@ export function SpectrumStrip(p: Props) {
         centerTold = "";
         lastBand = undefined;
         lastStep = -1;
+        lastCol = -1;
+        rayAt = 0;
+        ghostCrown(art);
         setPlayVisit(visit.id);
         setHeardLambda(undefined);
         hearRef.current(undefined);
@@ -301,6 +342,16 @@ export function SpectrumStrip(p: Props) {
           line.setAttribute("x2", String(col + 0.5));
           line.style.visibility = "visible";
         } else line.style.visibility = "hidden";
+      }
+      const colIndex = Math.floor(col);
+      if (visit.layers.scan && colIndex >= 0 && colIndex < SCAN.columns && colIndex !== lastCol) {
+        lastCol = colIndex;
+        pingColumn(art, play.pings.get(visit.id)?.[colIndex] ?? []);
+      }
+      const rays = play.rays.get(visit.id);
+      while (rays && rayAt < rays.length && rays[rayAt].t <= local) {
+        const n = rays[rayAt++];
+        addRay(art, n.lambda, n.hz === null ? null : n.heat ?? 0, n.unverified);
       }
       if (visit.layers.scan && col >= SCAN.columns / 2 && centerTold !== visit.id) {
         centerTold = visit.id;
@@ -350,12 +401,16 @@ export function SpectrumStrip(p: Props) {
         if (headRef.current) headRef.current.style.visibility = "hidden";
         if (headDotRef.current) headDotRef.current.style.visibility = "hidden";
       }
-      p.soundRing.current?.setAttribute("stroke-dasharray", `${clamp01(elapsed / play.total) * 100} 100`);
+      // Busur cincin = jarum mahkota: berjalan sepanjang bentang spektrum dalam tiap kunjungan.
+      p.soundRing.current?.setAttribute(
+        "stroke-dasharray",
+        `${clamp01(local / VISIT_SLOT_SECONDS) * (CROWN_DEG / 360) * 100} 100`,
+      );
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [play, stop, abandon, windows, bands, binned, top, xOf, p.soundRing, p.scanLine]);
+  }, [play, stop, abandon, windows, bands, binned, top, xOf, p.soundRing, p.scanLine, p.soundArt]);
 
   const bandsLocked = !!play;
   const scanReady = windows.filter((w) => p.hasImage(w.id)).map((w) => w.id);

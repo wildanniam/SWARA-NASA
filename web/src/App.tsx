@@ -64,6 +64,7 @@ import { APP_PATH } from "./route";
 import { separationDeg, slewMs, useSkyGeometry, useZoomTween } from "./lib/skygeo";
 import { WISE_SOFTEN_ARCSEC, wiseTone } from "./lib/tone";
 import type { Spectrum } from "./lib/spectrum";
+import type { SoundArt } from "./lib/soundArt";
 import { motionNote } from "./sound/sonify";
 
 const BLINK_MS = 700;
@@ -204,6 +205,7 @@ export function App() {
   const [heardBand, setHeardBand] = useState<string>();
   const soundRing = useRef<SVGCircleElement>(null);
   const scanLine = useRef<SVGLineElement>(null);
+  const soundArt = useRef<SoundArt>({ pings: null, crown: null, bell: null });
   const images = useImageStore();
 
   const toggleFocus = useCallback(() => {
@@ -1418,6 +1420,7 @@ export function App() {
           onRetry={retry}
           soundRing={soundRing}
           scanLineRef={scanLine}
+          soundArt={soundArt}
           slotRef={slotRef}
           zoomerRef={zoomerRef}
           collapsed={collapsed}
@@ -1754,6 +1757,7 @@ export function App() {
               hasImage={hasImage}
               soundRing={soundRing}
               scanLine={scanLine}
+              soundArt={soundArt}
             />
           ) : (
             <div className="strip strip-empty" />

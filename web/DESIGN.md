@@ -233,8 +233,11 @@ Tiap gerak punya alasan:
 | Lensa mengecil ke latar atau membesar darinya | lensa dan latar adalah langit yang sama pada pembesaran berbeda |
 | Isi lensa membesar atau mengecil saat ganti tingkat | pembesaran berubah, tempatnya tetap |
 | Lensa membuka seperti diafragma | data untuk tempat ini sudah siap |
-| Cincin terisi atau menyapu | progres muat atau posisi suara |
-| Garis pindai audio di lensa | garis inti putih keabu-abuan yang tipis dan jelas, dengan cahaya tepi abu lembut | terasa sebagai berkas scanner, bukan aksen ambar |
+| Cincin terisi atau menyapu | progres muat, atau jarum suara yang berjalan sepanjang mahkota spektrum |
+| Garis pindai putih keabuan, tipis, dengan cahaya tepi lembut (gelap di look Paper) | berkas pemindai yang membunyikan citra kolom demi kolom, bukan aksen ambar |
+| Cincin tipis putih mengelilingi bintang saat garis pindai melewatinya; bintang yang berkilau mendapat cincin kedua yang mengembang | bintang inilah yang sedang terdengar; tinggi nadanya mengikuti letak utara-selatannya |
+| Sinar ambar tumbuh ke dalam dari cincin, satu per nada spektrum, pada sudut panjang gelombangnya (0,75 µm di kiri sampai 5 µm di kanan, bagian bawah dibiarkan untuk tombol). Panjang sinar = fluks; langkah tanpa nilai hanya bintik abu; sinar putus-putus = titik bertanda | cahaya benda yang sedang terdengar. Mahkota kunjungan sebelumnya tinggal sebagai bayangan abu, jadi perubahan antarkunjungan terlihat |
+| Lingkar ambar berdenyut sekali di posisi terukur saat lonceng gerak berbunyi | nada gerak kunjungan ini berasal dari titik ini |
 | Citra lama tersapu dari kiri ke kanan oleh garis ambar saat Difference, look, Reveal faint, atau penanda piksel diganti | filter teleskop diputar: tempat dan waktunya sama, hanya cara melihatnya yang berubah. Blink tidak tersapu |
 | Cincin Gaia mengunci dari besar ke ukurannya satu per satu, lalu memudar saat dimatikan | katalog sedang dicocokkan ke bintang di citra |
 | Menunjuk lensa: bacaan RA/Dec dan jarak dari tanda di samping kursor, jarum ambar di cincin menunjuk arahnya, N dan E menyala | lensa adalah alat ukur; tiap titiknya punya koordinat (rumusnya sama dengan `sky_grid` di pipeline) |

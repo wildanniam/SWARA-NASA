@@ -133,6 +133,11 @@ export function scanPitch(row01: number, s: ScanSettings): number {
   return s.baseHz * Math.pow(2, semitones / 12);
 }
 
+/** Puncak yang sangat kontras: berbunyi dengan dua kilau pendek seperti denting. */
+export function isGlint(grid: ScanGrid, p: ScanPeak, peakIndex: number): boolean {
+  return peakIndex < 2 && p.value >= grid.bg + 6 * grid.sigma && p.value / grid.top >= 0.58;
+}
+
 /** Grid puncak -> satu frasa nada yang siap dijadwalkan engine. */
 export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
   const notes: Note[] = [];
@@ -157,7 +162,7 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
           voice: "scan",
         });
         // Bintang yang sangat kontras mendapat dua kilau pendek seperti denting.
-        if (peakIndex < 2 && p.value >= grid.bg + 6 * grid.sigma && p.value / grid.top >= 0.58) {
+        if (isGlint(grid, p, peakIndex)) {
           for (let glint = 0; glint < 2; glint++) {
             notes.push({
               t: t + 0.07 + glint * 0.12,
