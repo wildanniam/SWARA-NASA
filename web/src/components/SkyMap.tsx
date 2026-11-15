@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { TARGET_NOTES } from "../content";
+import { TARGET_NOTES, TARGET_WHY } from "../content";
 import { atlasUrl, constellationAt, decDms, raHms, type Atlas } from "../lib/allsky";
 import { monthYear } from "../lib/format";
 import { orderFor, visibleTiles, type TileId } from "../lib/hips";
@@ -150,24 +150,29 @@ const lineOfRa = (ra: number, dec0 = -89, dec1 = 89, step = 1): V3[] => {
 };
 
 /** Cuplikan satu tempat sebagai kartu kecil: jendela melengkung berisi citra aslinya,
- *  julukannya, dan angka yang terukur di sana. */
+ *  julukannya, kenapa benda itu istimewa, lalu angka yang terukur di sana. */
 function PlacePeek({ marker, look, pinned, onGo }: { marker: SkyMarker; look: PaletteId; pinned: boolean; onGo: () => void }) {
   const v = useVerdict(marker.id, marker.yours, marker.built);
-  const note = marker.yours ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
+  const first = marker.yours ? undefined : TARGET_NOTES[marker.id]?.split(". ")[0];
+  const text = marker.yours ? undefined : (TARGET_WHY[marker.id]?.why ?? (first && (first.endsWith(".") ? first : `${first}.`)));
   return (
     <div className="sky-peek" data-pinned={pinned} data-ra={marker.ra} data-dec={marker.dec} data-keep="true">
       <PlaceThumb id={marker.id} custom={marker.yours} enabled={marker.built} look={look} size={168} arch />
       <div className="sky-peek-text">
         <small>{v?.epithet ?? (marker.yours ? "Your place" : marker.detail)}</small>
         <b>{marker.name}</b>
-        {v && (
+        {text && <p>{text}</p>}
+      </div>
+      {/* Kaki selebar kartu: yang terukur di kiri, jalan masuk di kanan. */}
+      <div className="sky-peek-foot">
+        {v ? (
           <span className="sky-peek-measured">
             <i>{v.big}</i>
             {v.line}
           </span>
+        ) : (
+          <span className="sky-peek-measured">{marker.built ? "Not measured yet" : "Still being gathered"}</span>
         )}
-        {!marker.built && <span className="sky-peek-measured">Still being gathered</span>}
-        {note && <p>{note.endsWith(".") ? note : `${note}.`}</p>}
         {pinned && (
           <button type="button" className="pill pill-accent" onClick={onGo}>
             Look closer
@@ -1021,8 +1026,8 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
         <p className="atlas-kicker">
           <span>
             {atlas
-              ? `SPHEREx all-sky map · ${monthYear(atlas.source.mjd_start)} to ${monthYear(atlas.source.mjd_end)}`
-              : "SPHEREx all-sky map"}
+              ? `SPHEREx all-sky map · seen from Earth · ${monthYear(atlas.source.mjd_start)} to ${monthYear(atlas.source.mjd_end)}`
+              : "SPHEREx all-sky map · seen from Earth"}
             <span ref={fieldRef} />
           </span>
         </p>
@@ -1056,7 +1061,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
               ref={canvasRef}
               className="atlas-canvas"
               role="img"
-              aria-label={`The whole sky as SPHEREx saw it at ${lambda}: our galaxy runs across the middle.`}
+              aria-label={`The whole sky seen from Earth, as SPHEREx saw it at ${lambda}: our galaxy runs across the middle.`}
             />
             <canvas ref={overlayRef} className="atlas-overlay" aria-hidden="true" />
 
@@ -1091,6 +1096,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
                   data-id={m.id}
                   data-yours={m.yours}
                   data-current={m.current}
+                  data-peeked={peek?.id === m.id}
                   data-ra={m.ra}
                   data-dec={m.dec}
                   aria-label={`${m.name}, ${m.detail}. Look closer.`}
@@ -1186,7 +1192,11 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
       <footer className="atlas-foot">
         <div className="atlas-intro">
           <h1>The whole sky</h1>
-          <p>Every point of light is SPHEREx data, here at {lambda || "one wavelength"}. Our galaxy runs across the middle.</p>
+          {/* Pertanyaan yang selalu muncul: "Bumi di mana?" Peta ini pandangan dari Bumi ke luar. */}
+          <p>
+            The sky seen from Earth, looking out in every direction, so Earth, the Sun and the Moon are not on this map. Every point of
+            light is SPHEREx data, here at {lambda || "one wavelength"}. Our galaxy runs across the middle.
+          </p>
           <p className="atlas-hint">
             {!gl ? "Choose a spot to look closer" : touch ? "Pinch to zoom · drag to move · tap to aim" : "Scroll to zoom · drag to move · click to aim"}
           </p>

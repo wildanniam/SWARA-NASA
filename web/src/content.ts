@@ -32,3 +32,36 @@ export const TARGET_NOTES: Record<string, string> = {
   rdra:
     "A giant pulsating star, too bright for SPHEREx: its core is saturated in every band, so this view shows the limits of the data rather than a clean measurement.",
 };
+
+/** Kenapa lima benda contoh ini istimewa. Dipakai penanda dan cuplikan di peta seluruh langit
+ *  serta bagian contoh di landing page, supaya kata-katanya selalu sama.
+ *  Faktanya (jarak, tahun, periode) dari pustaka umum; perlu ditinjau tim konten. */
+export type Why = {
+  /** Di bawah nama penanda di peta: benda ini apa, dalam beberapa kata. */
+  tag: string;
+  /** Satu atau dua kalimat: kenapa benda ini istimewa. */
+  why: string;
+};
+
+export const TARGET_WHY: Record<string, Why> = {
+  barnard: {
+    tag: "fastest star in our sky",
+    why: "No star crosses our sky faster, and only the Alpha Centauri system lies closer to the Sun. It is about 6 light-years away.",
+  },
+  wise0855: {
+    tag: "coldest brown dwarf known",
+    why: "The coldest brown dwarf known, colder than ice and about 7 light-years away. It was found in 2014 because a faint dot moved between WISE images.",
+  },
+  epsindb: {
+    tag: "a pair of brown dwarfs",
+    why: "Two brown dwarfs, too small to shine like stars, about 12 light-years away. They glow in infrared, the light SPHEREx sees.",
+  },
+  rwaur: {
+    tag: "a young star that dims",
+    why: "A young star still gathering gas and dust, known for fading deeply and without warning.",
+  },
+  rdra: {
+    tag: "a pulsing giant star",
+    why: "An old giant star that swells and shrinks, brightening and fading about every eight months. It is bright enough to overwhelm SPHEREx.",
+  },
+};

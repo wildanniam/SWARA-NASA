@@ -2044,7 +2044,7 @@ a.lp-btn-primary,
   display: grid;
   grid-template-columns: 1fr 560px;
   gap: 40px;
-  align-items: center;
+  align-items: start;
   min-height: 560px;
   margin-top: 50px;
 }
@@ -2162,8 +2162,8 @@ a.lp-btn-primary,
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  height: 560px;
-  padding: 0 40px 36px;
+  min-height: 560px;
+  padding: 384px 40px 36px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 26px;
@@ -2889,5 +2889,85 @@ a.lp-btn-primary,
   .lp-bento,
   .lp-pick {
     zoom: 0.72;
+  }
+}
+
+/* ---------- lima contoh: kenapa lima ini ---------- */
+
+.lp-lede {
+  max-width: 640px;
+  margin: 18px 0 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--soft);
+}
+
+/* Di panggung: kenapa benda ini istimewa, di antara lensa dan angkanya. */
+.lp-stage-why {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.lp-stage-why p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* ---------- lima contoh: susunan akhir ---------- */
+
+/* Bacaan: label, angka, lalu keterangannya dengan ukuran yang masih terbaca di samping angka itu. */
+.lp-stage-big {
+  margin: 8px 0 10px;
+  font-size: 56px;
+}
+
+.lp-stage-line {
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+@media (min-width: 960px) {
+  /* Daftar setinggi panggung: garis atas dan bawahnya sejajar dengan tepi kartu. */
+  .lp-pick {
+    align-items: stretch;
+  }
+
+  .lp-rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-rows li {
+    flex: 1;
+    display: flex;
+  }
+
+  .lp-row {
+    align-content: center;
+  }
+}
+
+/* Saat bacaan dan tombol bertumpuk, tombolnya selebar kartu: tidak menggantung di kiri. */
+@media (max-width: 1359px) {
+  .lp-stage-foot {
+    align-items: stretch;
+  }
+
+  .lp-stage-go {
+    justify-content: center;
+    margin: 6px 0 0;
+  }
+}
+
+@media (max-width: 1199px) {
+  .lp-stage-big {
+    font-size: 48px;
   }
 }

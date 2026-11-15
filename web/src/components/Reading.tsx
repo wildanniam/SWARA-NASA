@@ -1195,7 +1195,7 @@ export function Reading({ open, onClose, look, atlas, sky, place, canShare, onSh
                     Seen at {skyFrame.lambda_um.toFixed(2)} <span className="unit">µm</span>
                   </p>
                   <Ribbon text="THE WHOLE SKY" />
-                  <p className="tcard-say">SPHEREx's own map of the entire sky, from its first year of scans. Our galaxy runs across the middle.</p>
+                  <p className="tcard-say">SPHEREx's own map of the entire sky as seen from Earth, from its first year of scans. Earth is where we look from, so it is not on the map. Our galaxy runs across the middle.</p>
                   <ul className="tcard-facts">
                     <Fact
                       glyph={
