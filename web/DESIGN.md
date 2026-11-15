@@ -173,7 +173,7 @@ Di Go to, di bawah kotak cari, ada dua isian RA dan Dec yang ditata seperti dua 
 
 ## Bilah atas dan mode fokus
 
-- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (mengekliknya kembali ke seluruh langit), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
+- **Bilah atas** memakai bahasa ukiran kartu: tanda SWARA berhuruf lebar (jalan pulang satu tingkat sekali: dari teleskop ke seluruh langit, dari seluruh langit ke landing page), pelat cari bergaris ganda tipis diapit dua bintang empat sudut, dan satu garis tipis di bawah bilah yang memudar di ujung. Di kanan hanya satu tombol berteks, **The cards**; Whole sky, Share, dan Focus adalah tombol bundar berikon.
 - **Mode fokus** (tombol pojok atau F): bilah atas dan dok menghilang, lensa membesar, nama di kiri dan angka terukur di kanan tetap ada. Browser diminta masuk layar penuh; kalau ditolak, mode fokus tetap jalan. Esc, F, atau tombol kecil di pojok untuk keluar. Blink tetap dengan Spasi dan panah.
 
 ## Logo

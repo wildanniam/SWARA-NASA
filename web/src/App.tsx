@@ -1316,16 +1316,19 @@ export function App() {
       />
 
       <header className="top">
-        {/* Tanda SWARA adalah jalan pulang ke seluruh langit. */}
-        <button
-          type="button"
-          className="brand"
-          aria-label={atlas ? "SWARA: the whole sky" : "SWARA: see the whole sky"}
-          onClick={() => (atlas ? skyRef.current?.reset() : enterAtlas())}
-        >
-          <LogoMark size={22} />
-          <Wordmark height={15} />
-        </button>
+        {/* Tanda SWARA adalah jalan pulang, satu tingkat sekali: dari teleskop ke seluruh
+            langit, dari seluruh langit ke landing page. */}
+        {atlas ? (
+          <a className="brand" href="/" aria-label="SWARA: home">
+            <LogoMark size={22} />
+            <Wordmark height={15} />
+          </a>
+        ) : (
+          <button type="button" className="brand" aria-label="SWARA: see the whole sky" onClick={enterAtlas}>
+            <LogoMark size={22} />
+            <Wordmark height={15} />
+          </button>
+        )}
         <button type="button" className="goto-trigger" onClick={openGoTo}>
           <MagnifyingGlass aria-hidden="true" />
           <span>Go to a place in the sky</span>
