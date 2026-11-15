@@ -5634,3 +5634,53 @@ kbd {
     top: auto !important;
   }
 }
+
+/* Pintu ke halaman SPHEREx, di kiri pelat cari. Pil biasa dengan garis tipis; di layar
+   sempit hanya ikonnya. */
+.top-lead {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pill-mission {
+  height: 36px;
+  border-color: var(--hair-strong);
+  color: var(--soft);
+  text-decoration: none;
+}
+
+.pill-mission:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 1100px) and (min-width: 861px) {
+  .pill-mission span {
+    display: none;
+  }
+
+  .pill-mission {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 860px) {
+  .top-lead {
+    gap: 8px;
+  }
+
+  .pill-mission {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pill-mission span {
+    display: none;
+  }
+}

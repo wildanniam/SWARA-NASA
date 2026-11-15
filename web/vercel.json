@@ -7,6 +7,7 @@
     { "source": "/api/:path*", "destination": "/api/proxy" },
     { "source": "/card", "destination": "/api/card" },
     { "source": "/sky", "destination": "/index.html" },
+    { "source": "/spherex", "destination": "/index.html" },
     { "source": "/sky/:path*", "destination": "/index.html" }
   ]
 }
