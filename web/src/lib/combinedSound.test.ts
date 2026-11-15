@@ -69,7 +69,9 @@ const note = (voice: InstrumentId, hz: number, t = 0): Note => ({
   };
   const notes = [note("spectrum", 440), note("scan", 330), note("motion", 660)];
   const sources = scheduleMixed(ctx as never, {} as never, notes, 0.5, ["spectrum", "scan", "motion"]);
-  assert.equal(oscs.length, 6); // satu dasar spektrum, dua parsial gambar, tiga parsial lonceng
+  // Tiap nada: satu osilator dasar plus parsial instrumennya; spektrum menambah dua harmoni kehangatan.
+  const expected = (["spectrum", "scan", "motion"] as const).reduce((n, v) => n + 1 + INSTRUMENTS[v].partials.length, 0) + 2;
+  assert.equal(oscs.length, expected);
   assert.ok(oscs.some((o) => o.type === INSTRUMENTS.spectrum.waveform && o.hz === 440));
   assert.ok(oscs.some((o) => o.type === INSTRUMENTS.scan.waveform && o.hz === 330));
   assert.ok(oscs.some((o) => o.type === INSTRUMENTS.motion.waveform && o.hz === 660));
