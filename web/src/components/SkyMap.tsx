@@ -104,6 +104,8 @@ const easeQuad = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
 // Menyelam: bagian ini dari waktunya dipakai sampai zoom terdalam (potongan paling
 // tajam), sisanya untuk langkah terakhir ke skala pandangan lebar sambil larut.
 const DEEP_PART = 0.8;
+/** Kalau satu potongan yang tampak kosong sebanyak ini, arsirnya diberi keterangan di sudut peta. */
+const GAP_NOTE = 0.01;
 /** Zoom dan tirai di saat t (0..1) dari gerak menyelam z0 -> zEnd; naik memakainya terbalik. */
 function divePace(t: number, z0: number, zEnd: number): { zoom: number; veil: number } {
   if (zEnd <= MAX_ZOOM) return { zoom: z0 * (zEnd / z0) ** easeQuad(t), veil: 1 - smooth((t - 0.8) / 0.2) };
@@ -464,7 +466,8 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
       if (r.draw(f.m, f.zoom, Math.round(f.w * dpr), Math.round(f.h * dpr), order + 1)) moving = true;
       const status = statusRef.current;
       if (status) {
-        const state = r.unreachable ? "down" : r.loading && f.zoom >= 1.5 && !motion.current ? "loading" : "idle";
+        const still = f.zoom >= 1.5 && !motion.current;
+        const state = r.unreachable ? "down" : r.loading && still ? "loading" : r.lastGap >= GAP_NOTE && still ? "gaps" : "idle";
         if (status.dataset.state !== state) status.dataset.state = state;
       }
     }
@@ -1141,6 +1144,7 @@ export const SkyMap = forwardRef<SkyMapHandle, Props>(function SkyMap(p, handle)
             <p ref={statusRef} className="atlas-status" data-state="idle" aria-hidden="true">
               <span className="atlas-status-loading">Sharpening with SPHEREx tiles from IRSA…</span>
               <span className="atlas-status-down">IRSA is not answering, so the map stays at overview sharpness.</span>
+              <span className="atlas-status-gaps">Hatched patches: SPHEREx has no data there at this wavelength.</span>
             </p>
             {gl && (
               <div className="atlas-zoom" role="group" aria-label="Zoom the map">

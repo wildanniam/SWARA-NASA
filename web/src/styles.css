@@ -3079,8 +3079,13 @@ kbd {
 }
 
 .atlas-status[data-state="loading"] .atlas-status-down,
+.atlas-status[data-state="loading"] .atlas-status-gaps,
 .atlas-status[data-state="down"] .atlas-status-loading,
-.atlas-status[data-state="idle"] .atlas-status-down {
+.atlas-status[data-state="down"] .atlas-status-gaps,
+.atlas-status[data-state="gaps"] .atlas-status-loading,
+.atlas-status[data-state="gaps"] .atlas-status-down,
+.atlas-status[data-state="idle"] .atlas-status-down,
+.atlas-status[data-state="idle"] .atlas-status-gaps {
   display: none;
 }
 
