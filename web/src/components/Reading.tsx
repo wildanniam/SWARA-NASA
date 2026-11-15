@@ -820,19 +820,17 @@ function lightBack(place: ReadingPlace) {
         is a step with no clean measurement.
       </p>
       <p>
-        Listen layers the image, spectrum, and measured motion on one visit clock. The image moves through 32 columns from
-        east to west: higher is further north, louder is brighter, and a short ping marks the target at the centre. The
-        spectrum follows 48 wavelengths from short to long, with higher pitch for brighter measurements and a soft tick for
-        a data gap; brighter flux sounds warmer, while dimmer flux eases lower and softer. This expresses measured
-        brightness, not a direct object-temperature reading. Motion adds a brief bell at each measured visit.
+        Listen layers the image scan, spectrum, and measured motion on one visit clock. The scan moves through 32 columns
+        from east to west: the selected infrared band sets pitch, image brightness sets loudness, and a short ping marks
+        the target at the centre. The spectrum follows 48 wavelength steps in a muted horn pad. Measured flux shapes its
+        pitch and loudness; this is a brightness mapping, not a temperature reading. A bright star adds one short shimmer.
       </p>
       <p>
-        The note legend uses yellow-green for the image scan, orange for the spectrum, and blue for motion; the active
-        source glows while it sounds. The image uses percussive notes, the spectrum a smooth flute-like tone, and motion a
-        bell-like tone. Bright stars add short shimmering chimes. A soft pipe-organ chord, string pad, sparse piano notes,
-        and low drone build slowly under the layers with a long reverb tail. If every data layer is unavailable, only a
-        quiet space ambience plays. Missing layers or visits are announced; the scan line, wavelength cursor, and lens
-        follow the same clock.
+        Measured motion has its own stereo voice. North-south change shifts pitch; east-west change pans toward the same
+        side as the arrow on the north-up sky map. East is left and west is right, with the opposite channel silent;
+        shifts below 0.5″ remain centered. The sound describes measured position change, not confirmed physical motion.
+        A soft orchestra-like pad, distant wind, and slow quiet ticks fill the background. Missing layers or visits are
+        announced; the scan line, wavelength cursor, and lens follow the same clock.
       </p>
     </>
   );

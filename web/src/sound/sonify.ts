@@ -2,7 +2,12 @@
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
 import type { Bin } from "../lib/spectrum";
-import { AMBIENCE, INSTRUMENTS, MIX, MOTION, SOUND, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
+import * as Tone from "tone";
+import { AMBIENCE, DATA_REVERB, MOTION, SOUND, SPECTRUM_VOICES, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
+import { makeImpulseResponse, startAmbience, stopAmbience } from "./ambience";
+
+// Kartu berbagi memakai helper ambience dan impulse response lewat modul ini.
+export { makeSpaceImpulse, scheduleAmbience } from "./ambience";
 
 export type Note = {
   /** Detik sejak awal frasa. */
@@ -20,6 +25,10 @@ export type Note = {
   voice?: InstrumentId;
   /** Normalisasi fluks 0..1 untuk kehangatan dan dinamika timbre spektrum. */
   heat?: number;
+  /** Arah perubahan fluks lokal: naik, stabil, atau turun. */
+  trend?: -1 | 0 | 1;
+  /** Besar perubahan fluks ternormalisasi, -1..1. */
+  change?: number;
 };
 
 /** Kebutuhan minimum penjadwal: dipenuhi SoundSettings maupun ScanSettings. */
@@ -49,205 +58,241 @@ export function pitch(flux: number, top: number, s: SoundSettings = SOUND): numb
 /** Satu kunjungan (sudah dibagi per langkah) -> deretan nada. */
 export function phrase(bins: Bin[], top: number, s: SoundSettings = SOUND): Note[] {
   const step = s.visitSeconds / bins.length;
-  return bins.map((b, i) => ({
-    t: i * step,
-    dur: step * s.noteFill,
-    hz: b.flux === null ? null : pitch(b.flux, top, s),
-    unverified: b.unverified,
-    pan: bins.length > 1 ? (i / (bins.length - 1)) * 2 * s.pan - s.pan : 0,
-    lambda: b.lambda,
-    voice: "spectrum",
-    heat: b.flux === null ? 0 : Math.min(1, Math.max(0, b.flux / top)),
-    vol: b.flux === null ? undefined : 0.2 + 0.8 * Math.sqrt(Math.min(1, Math.max(0, b.flux / top))),
-  }));
+  let previousHeat: number | undefined;
+  return bins.map((b, i) => {
+    const rawHeat = b.flux === null ? null : Math.min(1, Math.max(0, b.flux / top));
+    const heat = rawHeat === null
+      ? 0
+      : previousHeat === undefined
+        ? rawHeat
+        : previousHeat + (rawHeat - previousHeat) * s.fluxSmoothing;
+    const rawChange = rawHeat === null || previousHeat === undefined ? 0 : heat - previousHeat;
+    const change = Math.abs(rawChange) < 0.012 ? 0 : Math.min(1, Math.max(-1, rawChange * 8));
+    if (rawHeat !== null) previousHeat = heat;
+    const wavelength = Math.min(1, Math.max(0, (b.lambda - 0.75) / (5 - 0.75)));
+    const hz = rawHeat === null
+      ? null
+      : s.spectrumBaseHz * Math.pow(2, heat * s.spectrumOctaves + wavelength * s.spectrumLambdaLiftOctaves);
+    return {
+      t: i * step,
+      dur: step * s.noteFill,
+      // Fluks membentuk kontur sub-bass; panjang gelombang hanya memberi
+      // kenaikan kecil sepanjang frasa.
+      hz,
+      unverified: b.unverified,
+      // Target berada di tengah apertur; panjang gelombang adalah urutan waktu,
+      // bukan posisi sumber kiri-kanan.
+      pan: 0,
+      lambda: b.lambda,
+      voice: "spectrum" as const,
+      heat,
+      vol: rawHeat === null ? undefined : 0.12 + 0.62 * Math.sqrt(heat),
+      trend: rawHeat === null ? 0 as const : change > 0 ? 1 as const : change < 0 ? -1 as const : 0 as const,
+      change,
+    };
+  });
 }
 
-/** Jadwalkan satu frasa mulai `at` (waktu konteks audio). Mengembalikan sumber
- *  suaranya supaya bisa dihentikan. Dipakai juga untuk render luring saat menguji. */
+/** Jalur kompatibilitas untuk frasa tunggal; suara tetap lewat mesin Tone.js yang sama. */
 export function schedule(
   ctx: BaseAudioContext,
   out: AudioNode,
   notes: Note[],
   at: number,
-  s: Voice,
+  _s: Voice,
 ): AudioScheduledSourceNode[] {
-  const sources: AudioScheduledSourceNode[] = [];
-  for (const n of notes) {
-    const tick = n.hz === null;
-    if (tick && !s.gapTick) continue;
-    const osc = ctx.createOscillator();
-    const env = ctx.createGain();
-    const pan = ctx.createStereoPanner();
-    const start = at + n.t;
-    const dur = tick ? 0.012 : n.dur;
-    const peak = (tick ? s.gapTickGain : n.unverified ? s.unverifiedGain : 1) * (n.vol ?? 1);
-    osc.type = tick ? "sine" : n.unverified ? s.unverifiedWaveform : s.waveform;
-    osc.frequency.value = tick ? s.gapTickHz : n.hz!;
-    pan.pan.value = n.pan;
-    const attack = Math.min(0.008, dur / 4);
-    env.gain.setValueAtTime(0, start);
-    env.gain.linearRampToValueAtTime(peak, start + attack);
-    env.gain.setValueAtTime(peak, start + dur * 0.6);
-    env.gain.linearRampToValueAtTime(0, start + dur);
-    osc.connect(env).connect(pan).connect(out);
-    osc.start(start);
-    osc.stop(start + dur + 0.02);
-    sources.push(osc);
-  }
-  return sources;
+  return scheduleMixed(ctx, out, notes, at, ["spectrum"]);
 }
 
 /** Jadwalkan semua nada pada satu jam dengan timbre, envelope, dan level per lapisan. */
+// Sapuan memakai suara monofonik; gerak punya suara stereo tersendiri;
+// spektrum memakai muted horn pad.
+let sharedSynth: Tone.Synth | undefined;
+let sharedFilter: Tone.Filter | undefined;
+let sharedPan: Tone.Panner | undefined;
+let sharedLevel: Tone.Gain | undefined;
+type SpectrumVoiceRuntime = { synth: Tone.DuoSynth; filter: Tone.Filter; level: Tone.Gain };
+let spectrumVoiceRuntime: SpectrumVoiceRuntime | undefined;
+type MotionVoiceRuntime = { synth: Tone.Synth; panner: Tone.Panner; level: Tone.Gain };
+let motionVoiceRuntime: MotionVoiceRuntime | undefined;
+let sharedReverb: ConvolverNode | undefined;
+let sharedDry: GainNode | undefined;
+let sharedWet: GainNode | undefined;
+let spectrumSpace: ConvolverNode | undefined;
+let spectrumSpaceWet: GainNode | undefined;
+const scheduledEvents = new Set<number>();
+
+function ensureSharedVoice() {
+  if (sharedSynth) return;
+  const ctx = Tone.getContext().rawContext as AudioContext;
+  sharedSynth = new Tone.Synth({
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.025, decay: 0.08, sustain: 0.72, release: 0.12 },
+    portamento: 0.035,
+  });
+  sharedFilter = new Tone.Filter(1800, "lowpass", -12);
+  sharedPan = new Tone.Panner(0);
+  sharedLevel = new Tone.Gain(SOUND.gain);
+  sharedDry = ctx.createGain();
+  sharedWet = ctx.createGain();
+  sharedReverb = ctx.createConvolver();
+  sharedReverb.buffer = makeImpulseResponse(ctx, DATA_REVERB.seconds);
+  spectrumSpace = ctx.createConvolver();
+  spectrumSpace.buffer = makeImpulseResponse(ctx, AMBIENCE.reverbSeconds);
+  spectrumSpaceWet = ctx.createGain();
+  sharedDry.gain.value = DATA_REVERB.dry;
+  sharedWet.gain.value = DATA_REVERB.wet;
+  // Pad spektrum mendapat tail panjang seperti ambience; sapuan dan gerak
+  // memakai reverb data yang lebih pendek.
+  spectrumSpaceWet.gain.value = 0.26;
+  sharedSynth.chain(sharedFilter, sharedPan, sharedLevel);
+  sharedLevel.connect(sharedDry);
+  sharedDry.connect(Tone.Destination.input.input.input);
+  sharedLevel.connect(sharedReverb);
+  sharedReverb.connect(sharedWet).connect(Tone.Destination.input.input.input);
+  spectrumSpace.connect(spectrumSpaceWet).connect(Tone.Destination.input.input.input);
+}
+
+function ensureSpectrumVoice(): SpectrumVoiceRuntime {
+  ensureSharedVoice();
+  if (spectrumVoiceRuntime) return spectrumVoiceRuntime;
+  const profile = SPECTRUM_VOICES.mutedHornPad;
+  const envelope = {
+    attack: profile.attackSeconds,
+    decay: profile.decaySeconds,
+    sustain: profile.sustain,
+    release: profile.releaseSeconds,
+  };
+  const filterOptions = { type: "lowpass" as const, frequency: profile.filterHz, Q: 0.75, rolloff: -12 as const };
+  const filter = new Tone.Filter(profile.filterHz, "lowpass", -12);
+  const tremolo = new Tone.Tremolo(profile.tremoloHz, profile.tremoloDepth).start();
+  const level = new Tone.Gain(profile.gain);
+  const synth = new Tone.DuoSynth({
+    harmonicity: profile.harmonicity,
+    vibratoRate: profile.vibratoHz,
+    vibratoAmount: profile.vibratoDepth,
+    portamento: profile.glideSeconds,
+    voice0: { oscillator: { type: profile.waveform }, envelope, filter: filterOptions },
+    voice1: { oscillator: { type: profile.secondWaveform }, envelope, filter: filterOptions },
+  });
+  synth.chain(filter, tremolo, level);
+  level.connect(sharedDry!);
+  level.connect(spectrumSpace!);
+  spectrumVoiceRuntime = { synth, filter, level };
+  return spectrumVoiceRuntime;
+}
+
+function ensureMotionVoice(): MotionVoiceRuntime {
+  ensureSharedVoice();
+  if (motionVoiceRuntime) return motionVoiceRuntime;
+  const synth = new Tone.Synth({
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.012, decay: 0.18, sustain: 0.18, release: 0.42 },
+    portamento: 0.035,
+  });
+  const panner = new Tone.Panner(0);
+  const level = new Tone.Gain(MOTION.gain);
+  synth.chain(panner, level);
+  level.connect(sharedDry!);
+  level.connect(sharedReverb!);
+  motionVoiceRuntime = { synth, panner, level };
+  return motionVoiceRuntime;
+}
+
+/** Jadwalkan suara pindai, gerak, dan pad spektrum pada satu jam. */
 export function scheduleMixed(
-  ctx: BaseAudioContext,
-  out: AudioNode,
+  _ctx: BaseAudioContext,
+  _out: AudioNode,
   notes: Note[],
   at: number,
-  activeVoices: InstrumentId[],
+  _activeVoices: InstrumentId[],
 ): AudioScheduledSourceNode[] {
-  const sources: AudioScheduledSourceNode[] = [];
-  const mix = 1 / Math.sqrt(Math.max(1, activeVoices.length));
+  ensureSharedVoice();
+  const spectrumVoice = ensureSpectrumVoice();
+  const transport = Tone.Transport;
+  if (transport.state !== "started") transport.start();
+  const timelineAt = transport.seconds + Math.max(0, at - Tone.now());
+
+  // Satu suara tidak dapat membunyikan puncak serentak. Saat waktunya sama,
+  // pilih puncak dengan amplitudo data terkuat dan pertahankan jam sapuan.
+  const byTime = new Map<number, Note>();
   for (const note of notes) {
-    const profile = INSTRUMENTS[note.voice ?? "spectrum"];
-    const tick = note.hz === null;
-    if (tick && !profile.gapTick) continue;
-    const start = at + note.t;
-    const dur = tick ? 0.012 : note.dur;
-    const peak =
-      (tick ? profile.gapTickGain : note.unverified ? profile.unverifiedGain : 1) *
-      (note.vol ?? 1) *
-      profile.gain *
-      mix;
-    const heat = Math.min(1, Math.max(0, note.heat ?? 0));
-    const tones = tick
-      ? [{ hz: profile.gapTickHz, gain: 1, waveform: profile.gapTickWaveform }]
-      : [
-          { hz: note.hz!, gain: 1, waveform: note.unverified ? profile.unverifiedWaveform : profile.waveform },
-          ...profile.partials.map((partial) => ({
-            hz: note.hz! * partial.ratio,
-            gain: partial.gain,
-            waveform: note.unverified ? profile.unverifiedWaveform : profile.waveform,
-          })),
-          ...(note.voice === "spectrum"
-            ? [
-                { hz: note.hz! * 2, gain: 0.015 + heat * 0.065, waveform: "sine" as OscillatorType },
-                { hz: note.hz! * 3, gain: heat * 0.02, waveform: "triangle" as OscillatorType },
-              ]
-            : []),
-        ];
-    for (const tone of tones) {
-      const osc = ctx.createOscillator();
-      const env = ctx.createGain();
-      const pan = ctx.createStereoPanner();
-      const tonePeak = Math.max(0.0001, peak * tone.gain);
-      osc.type = tone.waveform;
-      osc.frequency.value = tone.hz;
-      pan.pan.value = note.pan;
-      env.gain.setValueAtTime(0, start);
-      const attack = note.voice === "spectrum" && !tick
-        ? profile.attackSeconds + heat * 0.1
-        : profile.attackSeconds;
-      env.gain.linearRampToValueAtTime(tonePeak, start + Math.min(attack, dur * 0.7));
-      if (profile.envelope === "sustain" && !tick) {
-        const sustainTo = start + dur * profile.sustainFraction;
-        env.gain.setValueAtTime(tonePeak, sustainTo);
-        env.gain.linearRampToValueAtTime(0, start + dur);
-      } else {
-        env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-      }
-      osc.connect(env).connect(pan).connect(out);
-      osc.start(start);
-      osc.stop(start + dur + 0.02);
-      sources.push(osc);
+    if (note.hz === null || !Number.isFinite(note.hz)) continue;
+    const eventAt = timelineAt + note.t;
+    if (note.voice === "motion") {
+      const motion = ensureMotionVoice();
+      let id = -1;
+      id = transport.scheduleOnce((time) => {
+        scheduledEvents.delete(id);
+        motion.panner.pan.rampTo(Math.min(1, Math.max(-1, note.pan)), 0.012, time);
+        motion.level.gain.rampTo(MOTION.gain, 0.04, time);
+        const velocity = Math.min(1, Math.max(0.05, note.vol ?? 0.85));
+        motion.synth.triggerAttackRelease(note.hz!, note.dur, time, velocity);
+      }, eventAt);
+      scheduledEvents.add(id);
+      continue;
     }
-  }
-  return sources;
-}
-
-/** Synthesize a slow space bed without external audio assets. */
-export function scheduleAmbience(ctx: BaseAudioContext, out: AudioNode, at: number, duration: number): AudioScheduledSourceNode[] {
-  const sources: AudioScheduledSourceNode[] = [];
-  if (duration <= 0) return sources;
-
-  const tone = (
-    hz: number,
-    start: number,
-    length: number,
-    waveform: OscillatorType,
-    peak: number,
-    attack: number,
-    release: number,
-    panValue = 0,
-    cutoff?: number,
-  ) => {
-    const osc = ctx.createOscillator();
-    const env = ctx.createGain();
-    const pan = ctx.createStereoPanner();
-    osc.type = waveform;
-    osc.frequency.value = hz;
-    pan.pan.value = panValue;
-    let node: AudioNode = osc;
-    if (cutoff) {
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = cutoff;
-      osc.connect(filter);
-      node = filter;
+    if (note.voice === "spectrum" && note.heat !== undefined) {
+      let id = -1;
+      id = transport.scheduleOnce((time) => {
+        scheduledEvents.delete(id);
+        const confidence = note.unverified ? 0.65 : 1;
+        const change = Math.min(1, Math.max(-1, note.change ?? 0));
+        const contourGain = change > 0 ? 1 + change * 0.14 : 1 + change * 0.18;
+        const velocity = Math.min(1, Math.max(0.035, (note.vol ?? 0.5) * confidence * contourGain));
+        const profile = SPECTRUM_VOICES.mutedHornPad;
+        const heat = Math.min(1, Math.max(0, note.heat ?? 0));
+        // Flux yang naik membuka nada; flux yang turun menggelapkan dan
+        // meredakannya sebagai metafora bunyi, bukan pembacaan suhu.
+        const cutoff = note.change === undefined
+          ? profile.filterHz * (note.unverified ? 0.78 : 1)
+          : profile.filterHz * (0.72 + heat * 0.25 + Math.max(0, change) * 0.18 + Math.min(0, change) * 0.2) * (note.unverified ? 0.78 : 1);
+        spectrumVoice.filter.frequency.rampTo(cutoff, note.change === undefined ? 0.12 : 0.15, time);
+        spectrumVoice.level.gain.rampTo(profile.gain, 0.08, time);
+        spectrumVoice.synth.triggerAttackRelease(note.hz!, note.dur, time, velocity);
+      }, eventAt);
+      scheduledEvents.add(id);
+      continue;
     }
-    env.gain.setValueAtTime(0, start);
-    env.gain.linearRampToValueAtTime(peak, start + Math.min(attack, length * 0.45));
-    env.gain.setValueAtTime(peak, start + Math.max(attack, length - release));
-    env.gain.linearRampToValueAtTime(0, start + length);
-    node.connect(env).connect(pan).connect(out);
-    osc.start(start);
-    osc.stop(start + length + 0.03);
-    sources.push(osc);
-  };
-
-  const bedLength = duration + AMBIENCE.releaseSeconds;
-  for (const hz of AMBIENCE.droneHz) {
-    tone(hz, at, bedLength, "sine", AMBIENCE.gain * 0.5, AMBIENCE.buildSeconds, AMBIENCE.releaseSeconds, hz === 55 ? -0.25 : 0.25);
+    const previous = byTime.get(note.t);
+    const strength = (candidate: Note) => (candidate.vol ?? 1) * (candidate.unverified ? 0.65 : 1);
+    if (!previous || strength(note) > strength(previous)) byTime.set(note.t, note);
   }
-  for (const hz of AMBIENCE.organHz) {
-    tone(hz, at, bedLength, "sawtooth", AMBIENCE.gain * 0.09, AMBIENCE.buildSeconds, AMBIENCE.releaseSeconds, 0, 720);
+  const ordered = [...byTime.values()].sort((a, b) => a.t - b.t);
+  const scheduled: AudioScheduledSourceNode[] = [];
+  for (let index = 0; index < ordered.length; index++) {
+    const note = ordered[index];
+    const next = ordered[index + 1];
+    const eventAt = timelineAt + note.t;
+    const duration = Math.max(0.035, Math.min(note.dur, next ? next.t - note.t : note.dur));
+    const confidence = note.unverified ? 0.65 : 1;
+    const amplitude = Math.min(1, Math.max(0.035, (note.vol ?? 0.5) * confidence));
+    const harmonicPosition = Math.min(1, Math.max(0, (Math.log2(note.hz!) - Math.log2(110)) / 4));
+    const cutoff = 900 + harmonicPosition * 6900;
+    let id = -1;
+    id = transport.scheduleOnce((time) => {
+      scheduledEvents.delete(id);
+      sharedFilter!.frequency.rampTo(cutoff, 0.08, time);
+      sharedPan!.pan.rampTo(Math.min(1, Math.max(-1, note.pan)), 0.06, time);
+      sharedLevel!.gain.rampTo(SOUND.gain, 0.055, time);
+      sharedSynth!.triggerAttackRelease(note.hz!, duration, time, amplitude);
+    }, eventAt);
+    scheduledEvents.add(id);
   }
-  for (const hz of AMBIENCE.stringsHz) {
-    tone(hz, at, bedLength, "triangle", AMBIENCE.gain * 0.065, AMBIENCE.buildSeconds * 1.4, AMBIENCE.releaseSeconds, 0);
-    tone(hz * 1.004, at, bedLength, "sine", AMBIENCE.gain * 0.025, AMBIENCE.buildSeconds * 1.4, AMBIENCE.releaseSeconds, 0.08);
-  }
-  for (let t = 0, i = 0; t < duration; t += AMBIENCE.pianoIntervalSeconds, i++) {
-    tone(AMBIENCE.pianoHz[i % AMBIENCE.pianoHz.length], at + t, Math.min(2.6, duration - t), "sine", AMBIENCE.gain * 0.26, 0.018, 2.2, i % 2 ? 0.18 : -0.18);
-  }
-  return sources;
-}
-
-/** Seeded-like synthetic impulse response for a long, soft tail. */
-export function makeSpaceImpulse(ctx: BaseAudioContext, seconds = MIX.reverbSeconds): AudioBuffer {
-  const length = Math.max(1, Math.floor(ctx.sampleRate * seconds));
-  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
-  for (let channel = 0; channel < 2; channel++) {
-    const data = buffer.getChannelData(channel);
-    let state = 0x51f15e + channel * 97;
-    for (let i = 0; i < length; i++) {
-      state = (state * 1664525 + 1013904223) >>> 0;
-      const noise = (state / 0xffffffff) * 2 - 1;
-      const fade = Math.pow(1 - i / length, 4.2);
-      data[i] = noise * fade * (channel ? 0.86 : 1);
-    }
-  }
-  return buffer;
+  return scheduled;
 }
 
 /** Pergeseran sejak kunjungan acuan (detik busur) -> satu nada. Utara menaikkan
  *  nada, selatan menurunkan; timur menggeser ke kiri, barat ke kanan. */
 export function motionNote(east: number, north: number, m: MotionSettings = MOTION): { hz: number; pan: number } {
-  const steps = Math.min(m.maxSteps, Math.max(-m.maxSteps, Math.round(north / m.arcsecPerStep)));
-  const per = m.scale.length;
-  const degree = ((steps % per) + per) % per;
-  const semitones = Math.floor(steps / per) * 12 + m.scale[degree];
+  const displacement = Math.min(m.maxSteps, Math.max(-m.maxSteps, north / m.arcsecPerStep));
   return {
-    hz: m.baseHz * Math.pow(2, semitones / 12),
-    pan: Math.min(1, Math.max(-1, -east / m.panArcsec)),
+    // Pemetaan logaritmik kontinu: seluruh rentang ukur membentang satu oktaf
+    // ke masing-masing arah, tanpa pembulatan ke tangga nada.
+    hz: m.baseHz * Math.pow(2, displacement / m.maxSteps),
+    // Pan keras ke sisi yang sama dengan arah timur-barat di peta (timur kiri).
+    // Sisi lawan senyap; pergeseran kecil di bawah ambang tetap di tengah.
+    pan: Math.abs(east) < m.panArcsec ? 0 : -Math.sign(east),
   };
 }
 
@@ -272,27 +317,30 @@ export const soundEpoch = { n: 0 };
 /** Pemutar: satu konteks audio untuk seluruh aplikasi, dibuat saat tombol pertama ditekan. */
 export class Sonifier {
   private ctx?: AudioContext;
-  private master?: GainNode;
-  private compressor?: DynamicsCompressorNode;
-  private reverb?: ConvolverNode;
-  private dry?: GainNode;
-  private wet?: GainNode;
-  private sources: AudioScheduledSourceNode[] = [];
+
+  /** Konteks Tone.js yang dipakai bersama seluruh suara SWARA. */
+  audioContext(): AudioContext {
+    ensureSharedVoice();
+    return (this.ctx ??= Tone.getContext().rawContext as AudioContext);
+  }
+
+  /** Buka konteks dari gestur tombol Play agar kebijakan autoplay browser terpenuhi. */
+  resume(): Promise<void> {
+    this.audioContext();
+    return Tone.start();
+  }
 
   /** Putar beberapa frasa berurutan. Mengembalikan waktu mulai tiap frasa (waktu konteks). */
   play(phrases: Note[][], s: SoundSettings = SOUND): number[] {
     this.stop();
     soundEpoch.n++;
-    const ctx = (this.ctx ??= new AudioContext());
+    const ctx = this.audioContext();
     void ctx.resume();
-    this.master = ctx.createGain();
-    this.master.gain.value = s.gain;
-    this.master.connect(ctx.destination);
     const starts: number[] = [];
-    let at = ctx.currentTime + 0.08;
+    let at = Tone.now() + 0.08;
     for (const notes of phrases) {
       starts.push(at);
-      this.sources.push(...schedule(ctx, this.master, notes, at, s));
+      scheduleMixed(ctx, ctx.destination, notes, at, ["spectrum"]);
       at += s.visitSeconds + s.pauseSeconds;
     }
     return starts;
@@ -302,60 +350,44 @@ export class Sonifier {
   playMixed(notes: Note[], activeVoices: InstrumentId[], duration = 0): number {
     this.stop();
     soundEpoch.n++;
-    const ctx = (this.ctx ??= new AudioContext());
+    const ctx = this.audioContext();
     void ctx.resume();
-    this.master = ctx.createGain();
-    this.master.gain.value = MIX.gain;
-    this.compressor = ctx.createDynamicsCompressor();
-    this.compressor.threshold.value = MIX.compressorThresholdDb;
-    this.compressor.knee.value = MIX.compressorKneeDb;
-    this.compressor.ratio.value = MIX.compressorRatio;
-    this.compressor.attack.value = MIX.compressorAttackSeconds;
-    this.compressor.release.value = MIX.compressorReleaseSeconds;
-    this.reverb = ctx.createConvolver();
-    this.reverb.buffer = makeSpaceImpulse(ctx);
-    this.dry = ctx.createGain();
-    this.wet = ctx.createGain();
-    this.dry.gain.value = 1 - MIX.reverbMix;
-    this.wet.gain.value = MIX.reverbMix;
-    this.master.connect(this.compressor);
-    this.compressor.connect(this.dry).connect(ctx.destination);
-    this.compressor.connect(this.reverb).connect(this.wet).connect(ctx.destination);
-    const start = ctx.currentTime + 0.08;
-    this.sources.push(...scheduleMixed(ctx, this.master, notes, start, activeVoices));
-    this.sources.push(...scheduleAmbience(ctx, this.master, start, duration));
+    const start = Tone.now() + 0.08;
+    scheduleMixed(ctx, ctx.destination, notes, start, activeVoices);
+    if (duration > 0) {
+      const ambientAt = ctx.currentTime + Math.max(0, start - Tone.now());
+      startAmbience(ctx, ambientAt, duration);
+    }
     return start;
   }
 
   stop() {
-    for (const src of this.sources) {
-      try {
-        src.stop();
-      } catch {
-        // sudah selesai
-      }
+    const now = Tone.now();
+    for (const id of scheduledEvents) Tone.Transport.clear(id);
+    scheduledEvents.clear();
+    ensureSharedVoice();
+    const ctx = this.audioContext();
+    stopAmbience(ctx);
+    sharedSynth!.triggerRelease(now);
+    sharedLevel!.gain.rampTo(0, 0.025, now);
+    if (spectrumVoiceRuntime) {
+      spectrumVoiceRuntime.synth.triggerRelease(now);
+      spectrumVoiceRuntime.level.gain.rampTo(0, 0.025, now);
     }
-    this.sources = [];
-    this.master?.disconnect();
-    this.master = undefined;
-    this.compressor?.disconnect();
-    this.compressor = undefined;
-    this.reverb?.disconnect();
-    this.reverb = undefined;
-    this.dry?.disconnect();
-    this.dry = undefined;
-    this.wet?.disconnect();
-    this.wet = undefined;
+    if (motionVoiceRuntime) {
+      motionVoiceRuntime.synth.triggerRelease(now);
+      motionVoiceRuntime.level.gain.rampTo(0, 0.025, now);
+    }
   }
 
   /** Ada frasa suara yang sedang dijalankan. */
   get busy(): boolean {
-    return this.sources.length > 0;
+    return scheduledEvents.size > 0;
   }
 
   /** Waktu konteks audio sekarang; penanda di panel mengikuti jam ini, bukan jam layar. */
   now(): number {
-    return this.ctx?.currentTime ?? 0;
+    return Tone.now();
   }
 }
 

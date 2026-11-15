@@ -11,6 +11,8 @@ export type ScanPeak = {
   row01: number;
   /** Nilai abu display 0-255. */
   value: number;
+  /** Lebar vertikal profil setengah-maksimum, dalam piksel gambar. */
+  widthPx: number;
   /** Puncak jatuh di piksel bertanda jenuh/rusak pada mask. */
   flagged: boolean;
 };
@@ -110,31 +112,36 @@ export function scanGrid(
     // Puncak terkuat dulu, maks `maxPeaks`.
     found.sort((a, b) => b.v - a.v);
     const xc = Math.min(size - 1, Math.floor((x0 + x1) / 2));
-    const peaks: ScanPeak[] = found.slice(0, maxPeaks).map((p) => ({
-      row01: p.y / (size - 1),
-      value: Math.round(p.v),
-      flagged: mask != null && mask[p.y * size + xc] > 64,
-    }));
+    const peaks: ScanPeak[] = found.slice(0, maxPeaks).map((p) => {
+      const halfHeight = bg + (p.v - bg) * 0.5;
+      let top = p.y;
+      let bottom = p.y;
+      while (top > 0 && sm[top - 1] >= halfHeight) top--;
+      while (bottom < size - 1 && sm[bottom + 1] >= halfHeight) bottom++;
+      return {
+        row01: p.y / (size - 1),
+        value: Math.round(p.v),
+        widthPx: bottom - top + 1,
+        flagged: mask != null && mask[p.y * size + xc] > 64,
+      };
+    });
     out.push({ peaks, center: c === Math.floor(columns / 2) });
   }
   return { columns: out, bg, sigma: sigma || 1, top: top || 1 };
 }
 
-/** Baris utara-selatan -> frekuensi. Utara (0) paling tinggi, seperti pitch(). */
-export function scanPitch(row01: number, s: ScanSettings): number {
-  const level = Math.pow(Math.min(1, Math.max(0, 1 - row01)), 1);
-  let semitones = level * s.octaves * 12;
-  if (s.scale.length) {
-    const perOctave = s.scale.length;
-    const degrees = s.octaves * perOctave;
-    const d = Math.round(level * degrees);
-    semitones = Math.floor(d / perOctave) * 12 + s.scale[d % perOctave];
-  }
-  return s.baseHz * Math.pow(2, semitones / 12);
+/** Band IR pendek -> pitch tinggi; profil gambar yang lebih lebar -> pitch rendah. */
+export function scanImagePitch(lambdaUm: number, widthPx: number, s: ScanSettings): number {
+  const color = Math.min(1, Math.max(0,
+    (lambdaUm - s.colorMinLambdaUm) / (s.colorMaxLambdaUm - s.colorMinLambdaUm)));
+  const wavelengthPitch = s.colorHighPitchHz * Math.pow(s.colorLowPitchHz / s.colorHighPitchHz, color);
+  const size = Math.min(1, Math.max(0,
+    (widthPx - s.sizeMinWidthPx) / (s.sizeMaxWidthPx - s.sizeMinWidthPx)));
+  return wavelengthPitch * Math.pow(2, -size * s.sizePitchOctaves);
 }
 
 /** Grid puncak -> satu frasa nada yang siap dijadwalkan engine. */
-export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
+export function scanPhrase(grid: ScanGrid, s: ScanSettings, lambdaUm = (s.colorMinLambdaUm + s.colorMaxLambdaUm) / 2): Note[] {
   const notes: Note[] = [];
   const total = grid.columns.length;
   grid.columns.forEach((col, c) => {
@@ -148,28 +155,26 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
         notes.push({
           t,
           dur,
-          hz: scanPitch(p.row01, s),
+          hz: scanImagePitch(lambdaUm, p.widthPx, s),
           vol: Math.min(1, Math.max(s.minVol, p.value / grid.top)),
           unverified: p.flagged,
-          pan: 0,
+          pan: Math.min(s.rowPan, Math.max(-s.rowPan, (p.row01 * 2 - 1) * s.rowPan)),
           // Posisi pindai 0..1, bukan panjang gelombang: jadwal tidak memakainya.
           lambda: pos,
           voice: "scan",
         });
-        // Bintang yang sangat kontras mendapat dua kilau pendek seperti denting.
+        // Satu kilau pendek untuk tiap bintang kontras.
         if (peakIndex < 2 && p.value >= grid.bg + 6 * grid.sigma && p.value / grid.top >= 0.58) {
-          for (let glint = 0; glint < 2; glint++) {
-            notes.push({
-              t: t + 0.07 + glint * 0.12,
-              dur: 0.065,
-              hz: 1760 + glint * 440,
-              vol: 0.16,
-              unverified: false,
-              pan: 0,
-              lambda: pos,
-              voice: "scan",
-            });
-          }
+          notes.push({
+            t: t + 0.07,
+            dur: 0.065,
+            hz: 1760,
+            vol: 0.16,
+            unverified: false,
+            pan: 0,
+            lambda: pos,
+            voice: "scan",
+          });
         }
       }
     }

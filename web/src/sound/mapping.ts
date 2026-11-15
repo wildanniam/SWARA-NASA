@@ -2,8 +2,8 @@
 // menyetel suaranya, tanpa menyentuh mesin (sonify.ts) atau panel.
 //
 // Pemetaan dasar: satu kunjungan = satu frasa. Panjang gelombang berjalan sebagai
-// waktu (pendek dulu), terang menjadi tinggi nada. Skala terang sama untuk semua
-// kunjungan satu benda, jadi benda yang meredup memang terdengar lebih rendah.
+// waktu (pendek dulu), fluks membentuk kontur nada rendah dan volume. Skala fluks
+// sama untuk semua kunjungan satu benda; ini pemetaan bunyi, bukan suhu benda.
 
 export const SOUND = {
   /** Lama satu kunjungan, detik. */
@@ -15,7 +15,7 @@ export const SOUND = {
   /** Jeda antar kunjungan saat semua diputar berurutan, detik. */
   pauseSeconds: 0.7,
 
-  /** Nada untuk fluks nol, Hz (110 = A2). */
+  /** Nada jangkar fluks nol; fluks tetap menggeser pitch relatifnya. */
   baseHz: 110,
   /** Tangga nada: semiton dari nada dasar dalam satu oktaf. Daftar kosong = nada kontinu. */
   scale: [0, 2, 4, 7, 9],
@@ -23,6 +23,12 @@ export const SOUND = {
   octaves: 3,
   /** 1 = linier. Di bawah 1 mengangkat bagian redup, di atas 1 menekannya. */
   curve: 1,
+  /** Register rendah untuk frasa spektrum; bukan konversi langsung dari frekuensi cahaya. */
+  spectrumBaseHz: 65,
+  spectrumOctaves: 0.72,
+  spectrumLambdaLiftOctaves: 0.035,
+  /** Menghaluskan perpindahan antar langkah agar terasa seperti gelombang pelan. */
+  fluxSmoothing: 0.24,
 
   /** Bentuk gelombang titik yang layak. */
   waveform: "triangle" as OscillatorType,
@@ -38,13 +44,60 @@ export const SOUND = {
 
   /** Geser stereo: panjang gelombang pendek di kiri (-pan), panjang di kanan (+pan). 0 = tengah. */
   pan: 0.6,
-  /** Bagian tiap langkah yang berbunyi; sisanya jeda antar nada. */
-  noteFill: 0.85,
+  /** Bagian tiap langkah yang berbunyi; 1 membuat frasa spektrum terasa legato. */
+  noteFill: 1,
   /** Keras keseluruhan, 0-1. */
   gain: 0.22,
+  /** Resonansi logam 174 Hz hanya menyertai ujung panjang spektrum. */
+  metalLambdaStartUm: 3.82,
+  metalLambdaFullUm: 4.42,
+  metalResonanceHz: 174,
+  metalResonanceGain: 0.1,
 };
 
 export type SoundSettings = typeof SOUND;
+
+export type SpectrumVoiceId = "mutedHornPad";
+
+export type SpectrumVoiceProfile = {
+  name: string;
+  description: string;
+  waveform: OscillatorType;
+  secondWaveform: OscillatorType;
+  filterHz: number;
+  attackSeconds: number;
+  decaySeconds: number;
+  sustain: number;
+  releaseSeconds: number;
+  glideSeconds: number;
+  vibratoHz: number;
+  vibratoDepth: number;
+  harmonicity: number;
+  tremoloHz: number;
+  tremoloDepth: number;
+  gain: number;
+};
+
+export const SPECTRUM_VOICES: Record<SpectrumVoiceId, SpectrumVoiceProfile> = {
+  mutedHornPad: {
+    name: "Muted horn pad",
+    description: "A warm, low-passed horn-like pad with a slow breath and a soft resonant tail.",
+    waveform: "sawtooth",
+    secondWaveform: "triangle",
+    filterHz: 900,
+    attackSeconds: 0.075,
+    decaySeconds: 0.16,
+    sustain: 0.88,
+    releaseSeconds: 0.55,
+    glideSeconds: 0.18,
+    vibratoHz: 0.55,
+    vibratoDepth: 0.02,
+    harmonicity: 1.005,
+    tremoloHz: 0.12,
+    tremoloDepth: 0.09,
+    gain: 0.4,
+  },
+};
 
 // Motif gerak: tiap kunjungan satu nada pendek dari posisi terukurnya, berbunyi
 // seiring blink. Ukurannya tetap untuk semua benda, jadi gerak yang lebih besar
@@ -68,8 +121,8 @@ export const MOTION = {
   gapTick: true,
   gapTickHz: 1400,
   gapTickGain: 0.12,
-  /** Pergeseran timur-barat yang memberi geser stereo penuh, detik busur. Timur di kiri, seperti di gambar. */
-  panArcsec: 10,
+  /** Abaikan geser timur-barat di bawah ambang ini; setelahnya, pan penuh ke sisi gerak. */
+  panArcsec: 0.5,
   /** Lama satu nada, detik. Blink berganti tiap 0,7 detik. */
   seconds: 0.4,
   /** Keras nada, 0-1. */
@@ -101,11 +154,6 @@ export const SCAN = {
   /** Volume minimum puncak yang lolos ambang, supaya tetap terdengar. */
   minVol: 0.08,
 
-  /** Nada baris paling utara, Hz (A3). Selatan turun `octaves` oktaf. */
-  baseHz: 220,
-  octaves: 2,
-  scale: [0, 2, 4, 7, 9],
-
   /** Bentuk gelombang nada data; kolom berflag memakai yang kasar. */
   waveform: "triangle" as OscillatorType,
   unverifiedWaveform: "sawtooth" as OscillatorType,
@@ -123,6 +171,17 @@ export const SCAN = {
 
   /** Jarak minimum antar puncak, piksel pada citra 480px. */
   minDistPx: 6,
+  /** Pitch dasar band lebih tinggi untuk panjang gelombang pendek (lebih biru relatif IR). */
+  colorMinLambdaUm: 0.75,
+  colorMaxLambdaUm: 5,
+  colorLowPitchHz: 220,
+  colorHighPitchHz: 880,
+  /** Lebar profil piksel yang lebih besar menurunkan pitch hingga batas ini. */
+  sizeMinWidthPx: 4,
+  sizeMaxWidthPx: 18,
+  sizePitchOctaves: 0.75,
+  /** Posisi atas-bawah gambar digeser ke stereo; kolom tetap menentukan waktu. */
+  rowPan: 0.6,
 };
 
 export type ScanSettings = typeof SCAN;
@@ -141,8 +200,24 @@ export type InstrumentProfile = {
   envelope: "sustain" | "pluck" | "bell";
   attackSeconds: number;
   sustainFraction: number;
-  partials: { ratio: number; gain: number }[];
+  partials: { ratio: number; gain: number; detuneCents?: number }[];
 };
+
+// Partial lembut untuk pad organ sintetis pada ambience.
+export const COSMIC_PAD_PARTIALS = [
+  { ratio: 2, gain: 0.18 },
+  { ratio: 3, gain: 0.055 },
+  { ratio: 4, gain: 0.014 },
+  { ratio: 1.003, gain: 0.035, detuneCents: 1.5 },
+  { ratio: 2.006, gain: 0.025, detuneCents: 2.4 },
+];
+
+// Mode inharmonik memberi karakter logam hanya pada ujung panjang spektrum.
+export const SPECTRUM_METAL_PARTIALS = [
+  { ratio: 2.76, gain: 0.3, detuneCents: -1 },
+  { ratio: 5.4, gain: 0.16, detuneCents: 1.5 },
+  { ratio: 8.93, gain: 0.055, detuneCents: -2.5 },
+];
 
 // Instrumen sintetis terpisah untuk tiap sumber data; level adalah pengali relatif.
 export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
@@ -152,13 +227,13 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
     unverifiedGain: 0.42,
     gapTick: true,
     gapTickHz: 1400,
-    gapTickGain: 0.1,
+    gapTickGain: 0.035,
     gapTickWaveform: "sine",
-    gain: 0.86,
+    gain: 0.92,
     envelope: "sustain",
     attackSeconds: 0.014,
     sustainFraction: 0.62,
-    partials: [],
+    partials: COSMIC_PAD_PARTIALS,
   },
   scan: {
     waveform: "sine",
@@ -183,7 +258,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
     unverifiedGain: 0.7,
     gapTick: true,
     gapTickHz: 1150,
-    gapTickGain: 0.1,
+    gapTickGain: 0.035,
     gapTickWaveform: "sine",
     gain: 0.58,
     envelope: "bell",
@@ -207,14 +282,79 @@ export const MIX = {
   reverbMix: 0.28,
 };
 
-// Ambience synthesized locally: low drone, pipe-organ chord, soft strings, sparse piano.
+/** Reverb untuk nada data dan kilau scanner, terpisah dari reverb ambience orkestra. */
+export const DATA_REVERB = {
+  seconds: 4.2,
+  dry: 0.88,
+  wet: 0.22,
+};
+
+// Ambience sintetis lokal: drone, harmonik organ, pad, dan piano yang jarang.
+const D2_CENTER_UM = (1.1 + 1.63) / 2;
+const D2_OPENING_HZ = 880 * Math.pow(220 / 880, (D2_CENTER_UM - 0.75) / (5 - 0.75));
+const D2_OPENING_ROOT_HZ = D2_OPENING_HZ / 8;
 export const AMBIENCE = {
-  gain: 0.3,
-  droneHz: [55, 82.41],
-  organHz: [110, 164.81, 220],
-  stringsHz: [164.81, 220, 329.63],
-  pianoHz: [220, 329.63, 440],
-  pianoIntervalSeconds: 6,
-  buildSeconds: 2.8,
-  releaseSeconds: 2.4,
+  /** Master bed dinaikkan agar setara lapisan musik, bukan dengung latar. */
+  gain: 0.48,
+  dryMix: 0.64,
+  reverbMix: 0.36,
+  reverbSeconds: 7,
+  compressorThresholdDb: -12,
+  compressorRatio: 4,
+  droneHz: [41.2, 55],
+  droneGain: 0.34,
+  droneFundamentalMix: 0.36,
+  droneUpperMix: 0.23,
+  droneAttackSeconds: 4.8,
+  padGain: 0.15,
+  organRootMix: 0.42,
+  organUpperMix: 0.28,
+  stringPadGain: 0.12,
+  stringHarmonicMix: 0.58,
+  stringDetuneCents: [-7, 0, 7],
+  stringPan: 0.34,
+  stringPadDelaySeconds: 2.2,
+  stringPadAttackSeconds: 5.2,
+  stringFilterHz: 1100,
+  brassGain: 0.075,
+  brassFilterHz: 540,
+  brassAttackSeconds: 4.5,
+  pianoGain: 0.12,
+  pianoFundamentalMix: 0.42,
+  pianoOvertoneMix: 0.11,
+  pianoStartSeconds: 4.5,
+  pianoIntervalSeconds: 10,
+  pianoTailSeconds: 1.8,
+  /** Nada aksen organ rendah, dalam Hz. */
+  progression: [
+    [65.41, 98, 130.81],
+    [58.27, 87.31, 116.54],
+    [73.42, 110, 146.83],
+    [65.41, 98, 130.81],
+  ],
+  /** Akor pembuka diturunkan dari titik tengah D2 (1,10–1,63 µm). */
+  openingBand: "D2",
+  openingBandNoteHz: D2_OPENING_HZ,
+  openingChord: [D2_OPENING_ROOT_HZ, D2_OPENING_ROOT_HZ * 1.5, D2_OPENING_ROOT_HZ * 2, D2_OPENING_HZ],
+  /** Harmoni organ berubah perlahan serta bertumpang tindih. */
+  chordSeconds: 12,
+  chordOverlapSeconds: 4,
+  buildSeconds: 3.4,
+  releaseSeconds: 3,
+  /** Hembusan noise tipis, disaring agar terasa seperti udara jauh. */
+  windGain: 0.022,
+  windHighPassHz: 120,
+  windLowPassHz: 620,
+  windAttackSeconds: 4.2,
+  windBreathHz: 0.075,
+  windBreathDepth: 0.22,
+  /** Tic jarang dengan serangan lembut; reverb ambience memberi ekor panjang. */
+  tickStartSeconds: 2.6,
+  tickIntervalSeconds: 6.2,
+  tickHz: 880,
+  tickGain: 0.022,
+  tickLengthSeconds: 0.11,
+  tickAttackSeconds: 0.018,
+  tickReleaseSeconds: 0.085,
+  tickFilterHz: 1500,
 };

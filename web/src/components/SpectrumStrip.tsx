@@ -92,6 +92,7 @@ export function SpectrumStrip(p: Props) {
     skipped: { id: string; layers: ("scan" | "spectrum" | "motion")[] }[];
     activeVoices: ("scan" | "spectrum" | "motion")[];
   }>();
+  const [preparing, setPreparing] = useState(false);
   const readMotionRef = useRef(p.readMotion);
   readMotionRef.current = p.readMotion;
   const [playVisit, setPlayVisit] = useState<string>();
@@ -99,6 +100,7 @@ export function SpectrumStrip(p: Props) {
   const [hover, setHover] = useState<SpectrumPoint>();
   const [heardLambda, setHeardLambda] = useState<number>();
   const [motionNoteActive, setMotionNoteActive] = useState(false);
+  const playRequestRef = useRef(0);
   const [fresh, setFresh] = useState(() => {
     try {
       return !window.localStorage.getItem(HEARD_KEY);
@@ -149,19 +151,31 @@ export function SpectrumStrip(p: Props) {
   }, [p.soundRing, p.scanLine]);
 
   const stop = useCallback(() => {
+    playRequestRef.current++;
+    setPreparing(false);
     sonifier.stop();
     abandon();
   }, [abandon]);
 
   // Ketiga lapisan masuk ke satu antrean dan satu jam per visit.
-  const startCombined = useCallback(() => {
+  const startCombined = useCallback(async () => {
     if (!windows.length) return;
-    setAnnounce("");
+    const request = ++playRequestRef.current;
+    sonifier.stop();
+    // Resume synchronously from the Play click so browser autoplay rules allow audio.
+    const audioReady = sonifier.resume();
+    setPlay(undefined);
+    setPreparing(true);
+    setAnnounce("Starting the data sonification…");
     setHeardLambda(undefined);
     setMotionNoteActive(false);
     hearRef.current(undefined);
 
     const scanLayers = new Map<string, Note[]>();
+    const imageBand = bands.find((band) => band.id === p.bandId) ?? bands[0];
+    const imageWavelength = imageBand
+      ? (imageBand.lambda_min + imageBand.lambda_max) / 2
+      : (SCAN.colorMinLambdaUm + SCAN.colorMaxLambdaUm) / 2;
     let refStats: { bg: number; sigma: number; top: number } | undefined;
     for (const w of windows) {
       if (!hasImageRef.current(w.id)) continue;
@@ -169,7 +183,7 @@ export function SpectrumStrip(p: Props) {
       if (!frame) continue;
       const grid = scanGrid(frame.gray, frame.size, frame.mask, { ...SCAN, ...(refStats ? { stats: refStats } : null) });
       if (!refStats) refStats = { bg: grid.bg, sigma: grid.sigma, top: grid.top };
-      scanLayers.set(w.id, scanPhrase(grid, SCAN));
+      scanLayers.set(w.id, scanPhrase(grid, SCAN, imageWavelength));
     }
 
     const spectrumLayers = new Map<string, Note[]>();
@@ -203,31 +217,37 @@ export function SpectrumStrip(p: Props) {
       VISIT_PAUSE_SECONDS,
     );
     const scanVisits = plan.visits.filter((visit) => visit.layers.scan).map((visit) => visit.id);
-    if (scanVisits.length) scanStartRef.current(scanVisits);
-    const ambienceOnly = plan.visits.length === 0;
-    const visits = ambienceOnly
-      ? windows.map((w, i) => ({
-          id: w.id,
-          start: i * (VISIT_SLOT_SECONDS + VISIT_PAUSE_SECONDS),
-          layers: { scan: false, spectrum: false, motion: false },
-        }))
-      : plan.visits;
-    const total = ambienceOnly
-      ? VISIT_SLOT_SECONDS + Math.max(0, visits.length - 1) * (VISIT_SLOT_SECONDS + VISIT_PAUSE_SECONDS)
-      : plan.total;
-    const skipped = ambienceOnly
-      ? windows.map((w) => ({ id: w.id, layers: ["scan", "spectrum", "motion"] as ("scan" | "spectrum" | "motion")[] }))
-      : plan.skipped;
-    const start = sonifier.playMixed(plan.notes, plan.activeVoices, total);
+    if (!plan.visits.length) {
+      setPreparing(false);
+      setAnnounce("No data layer is ready to play.");
+      return;
+    }
+    const visits = plan.visits;
+    const total = plan.total;
+    const skipped = plan.skipped;
+    let start: number;
+    try {
+      await audioReady;
+      if (request !== playRequestRef.current) return;
+      start = sonifier.playMixed(plan.notes, plan.activeVoices, total);
+      if (scanVisits.length) scanStartRef.current(scanVisits);
+    } catch (error) {
+      console.warn("The shared Tone.js voice could not start.", error);
+      if (request !== playRequestRef.current) return;
+      setAnnounce("The sound could not start. Try Listen again.");
+      setPreparing(false);
+      return;
+    }
+    if (request !== playRequestRef.current) return;
+    setPreparing(false);
     setPlay({ start, total, visits, skipped, activeVoices: plan.activeVoices });
-    if (ambienceOnly) setAnnounce("Tidak ada lapisan data yang siap; ambience ruang angkasa diputar.");
     setFresh(false);
     try {
       window.localStorage.setItem(HEARD_KEY, "1");
     } catch {
       // penyimpanan diblokir: petunjuknya hanya muncul lagi lain kali
     }
-  }, [binned, playable, top, windows, p.motionReady]);
+  }, [binned, playable, top, windows, bands, p.bandId, p.motionReady]);
 
   // Benda berganti atau pita hilang: suara berhenti.
   useEffect(() => stop, [p.targetId, stop]);
@@ -371,9 +391,9 @@ export function SpectrumStrip(p: Props) {
   ] as const;
 
   const toggle = useCallback(() => {
-    if (play) stop();
+    if (play || preparing) stop();
     else startCombined();
-  }, [play, startCombined, stop]);
+  }, [play, preparing, startCombined, stop]);
 
   // L = dengarkan / berhenti.
   useEffect(() => {
@@ -439,16 +459,16 @@ export function SpectrumStrip(p: Props) {
           className="dial"
           onClick={toggle}
           disabled={!play && !canPlayCombined}
-          aria-pressed={!!play}
-          aria-label={play ? "Stop the sound" : "Listen to image, spectrum, and motion"}
+          aria-pressed={!!play || preparing}
+          aria-label={play || preparing ? "Stop the sound" : "Listen to image, spectrum, and motion"}
         >
-          {play ? <Stop weight="fill" /> : <Play weight="fill" />}
+          {play || preparing ? <Stop weight="fill" /> : <Play weight="fill" />}
         </button>
         <span className="dial-text">
           <span className="dial-kicker" aria-hidden="true">
             <b>III</b> Light
           </span>
-          <span className="dial-caption">{play ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
+          <span className="dial-caption">{play || preparing ? "Stop" : fresh ? "Hear what it is" : "Listen"}</span>
         </span>
       </div>
 
@@ -595,7 +615,7 @@ export function SpectrumStrip(p: Props) {
           type="button"
           className="pill"
           onClick={startCombined}
-          disabled={!!play || combinedVisitCount < 2}
+          disabled={!!play || preparing || combinedVisitCount < 2}
         >
           All {combinedVisitCount || windows.length} visits
         </button>
