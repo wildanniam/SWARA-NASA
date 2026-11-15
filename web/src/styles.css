@@ -5582,7 +5582,7 @@ kbd {
   color: var(--muted);
 }
 
-/* Cuplikan benda contoh: kenapa ia istimewa, lalu apa yang diujinya, tepat di atas angka terukur.
+/* Cuplikan benda contoh: kenapa ia istimewa, lalu angka terukur.
    Garis tipis memisahkan cerita (atas) dari ukuran (bawah). */
 .sky-peek[data-why="true"] {
   align-items: flex-start;
@@ -5609,27 +5609,8 @@ kbd {
   color: var(--soft);
 }
 
-.sky-peek-test {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
-  margin-top: 11px;
-  padding-top: 10px;
-  border-top: 1px solid rgb(255 180 84 / 0.16);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-.sky-peek-test em {
-  font-style: normal;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
 .sky-peek[data-why="true"] .sky-peek-measured {
-  margin-top: 4px;
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid rgb(255 180 84 / 0.16);
 }

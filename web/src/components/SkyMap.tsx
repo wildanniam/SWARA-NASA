@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { TARGET_NOTES, TARGET_WHY, TEST_COUNT } from "../content";
+import { TARGET_NOTES, TARGET_WHY } from "../content";
 import { atlasUrl, constellationAt, decDms, raHms, type Atlas } from "../lib/allsky";
 import { monthYear } from "../lib/format";
 import { orderFor, visibleTiles, type TileId } from "../lib/hips";
@@ -150,8 +150,7 @@ const lineOfRa = (ra: number, dec0 = -89, dec1 = 89, step = 1): V3[] => {
 };
 
 /** Cuplikan satu tempat sebagai kartu kecil: jendela melengkung berisi citra aslinya,
- *  julukannya, kenapa benda itu istimewa, apa yang diujinya, lalu angka yang terukur di sana:
- *  pertanyaannya dulu, jawabannya sesudahnya. */
+ *  julukannya, kenapa benda itu istimewa, lalu angka yang terukur di sana. */
 function PlacePeek({ marker, look, pinned, onGo }: { marker: SkyMarker; look: PaletteId; pinned: boolean; onGo: () => void }) {
   const v = useVerdict(marker.id, marker.yours, marker.built);
   const why = marker.yours ? undefined : TARGET_WHY[marker.id];
@@ -163,14 +162,6 @@ function PlacePeek({ marker, look, pinned, onGo }: { marker: SkyMarker; look: Pa
         <small>{v?.epithet ?? (marker.yours ? "Your place" : marker.detail)}</small>
         <b>{marker.name}</b>
         {why && <p className="sky-peek-why">{why.why}</p>}
-        {why && (
-          <span className="sky-peek-test">
-            <em>
-              Test {why.n} of {TEST_COUNT}
-            </em>
-            {why.test}
-          </span>
-        )}
         {v && (
           <span className="sky-peek-measured">
             <i>{v.big}</i>

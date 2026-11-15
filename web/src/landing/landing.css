@@ -2902,7 +2902,7 @@ a.lp-btn-primary,
   color: var(--soft);
 }
 
-/* Di panggung: apa yang diuji benda ini dan kenapa ia istimewa, di antara lensa dan angkanya. */
+/* Di panggung: kenapa benda ini istimewa, di antara lensa dan angkanya. */
 .lp-stage-why {
   position: relative;
   z-index: 1;
@@ -2911,25 +2911,8 @@ a.lp-btn-primary,
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
 }
 
-.lp-stage-why span {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--soft);
-}
-
-.lp-stage-why em {
-  font-style: normal;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
 .lp-stage-why p {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 15px;
   line-height: 1.5;
   color: var(--text);
