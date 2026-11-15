@@ -1,6 +1,7 @@
-import { DownloadSimple, LinkSimple, ShareNetwork, X } from "@phosphor-icons/react";
+import { ArrowUpRight, DownloadSimple, LinkSimple, ShareNetwork, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CARD_H, CARD_TITLE, CARD_W, cardKinds, drawCard, type CardInput, type CardKind } from "../lib/card";
+import { cardUrl, KIND_SLUG } from "../lib/cardData";
 import { useDialog } from "../lib/hooks";
 
 type Props = {
@@ -11,8 +12,6 @@ type Props = {
   lookName: string;
   /** Spektrum masih dimuat, jadi kartu cahaya belum bisa dinilai ada atau tidaknya. */
   spectrumPending: boolean;
-  copied: boolean;
-  onCopyLink: () => void;
 };
 
 const NUMERAL = ["I", "II", "III"];
@@ -23,25 +22,25 @@ const slug = (s: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "sky";
 
-/** Kartu berbagi: gambar yang dilukis dari data di layar, untuk disimpan atau dibagikan. */
+/** Kartu berbagi: gambar yang dilukis dari data di layar. Yang dibagikan adalah tautan ke
+ *  halaman kartu itu (/card); gambarnya sendiri bisa disimpan, ukuran story. */
 export function ShareCard(p: Props) {
   const ref = useDialog<HTMLDivElement>(p.open, p.onClose);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [wanted, setWanted] = useState<CardKind>("wanderer");
   const [drawn, setDrawn] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [copied, setCopied] = useState(false);
   const kinds = useMemo(() => (p.input ? cardKinds(p.input) : []), [p.input]);
   const kind = kinds.includes(wanted) ? wanted : kinds[0];
 
-  // Lembar berbagi sistem hanya ditawarkan kalau ia memang menerima berkas gambar.
-  const canShareFiles = useMemo(() => {
-    try {
-      const probe = new File([""], "card.png", { type: "image/png" });
-      return typeof navigator.share === "function" && !!navigator.canShare?.({ files: [probe] });
-    } catch {
-      return false;
-    }
-  }, []);
+  // Di ponsel tautannya diserahkan ke lembar berbagi sistem; di tempat lain disalin.
+  // Hanya tautan yang dikirim, tanpa berkas: lembar berbagi desktop menyalin berkas gambar
+  // dua kali beserta jalur berkasnya.
+  const nativeShare = useMemo(
+    () => typeof navigator.share === "function" && !!window.matchMedia?.("(pointer: coarse)").matches,
+    [],
+  );
 
   const { open, input } = p;
   useEffect(() => {
@@ -63,7 +62,8 @@ export function ShareCard(p: Props) {
 
   if (!p.open) return null;
 
-  const fileName = `swara-${slug(p.input?.name ?? "")}-${kind === "voice" ? "light" : "motion"}.png`;
+  const fileName = `swara-${slug(p.input?.name ?? "")}-${kind ? KIND_SLUG[kind] : "card"}.png`;
+  const link = p.input && kind ? cardUrl(p.input.url, kind, p.input.look) : undefined;
   const toBlob = () =>
     new Promise<Blob | null>((resolve) => {
       const canvas = canvasRef.current;
@@ -82,16 +82,20 @@ export function ShareCard(p: Props) {
     window.setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
-  const share = async () => {
-    const blob = await toBlob();
-    if (!blob || !p.input) return;
-    const file = new File([blob], fileName, { type: "image/png" });
-    try {
-      await navigator.share({ files: [file], title: `${p.input.name} on SWARA`, text: `Look what I found in the sky: ${p.input.url}` });
-    } catch (err) {
-      // Dibatalkan pengguna bukan kegagalan; selain itu kartunya disimpan saja.
-      if (!(err instanceof DOMException && err.name === "AbortError")) void save();
-    }
+  const copy = () => {
+    if (!link) return;
+    void navigator.clipboard?.writeText(link).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  const share = () => {
+    if (!link || !p.input) return;
+    if (!nativeShare) return copy();
+    navigator.share({ title: `${p.input.name}: a card from the sky`, url: link }).catch((err: unknown) => {
+      // Dibatalkan pengguna bukan kegagalan; selain itu tautannya disalin saja.
+      if (!(err instanceof DOMException && err.name === "AbortError")) copy();
+    });
   };
 
   const ready = drawn && !failed;
@@ -129,7 +133,7 @@ export function ShareCard(p: Props) {
           </div>
           <p className="cardbox-lead">
             A card of this place, drawn from the data on screen. Every ray on it is a measurement, and it follows the
-            look you chose: {p.lookName}.
+            look you chose: {p.lookName}. The link opens this card on a page of its own.
           </p>
 
           {kinds.length > 1 && (
@@ -156,26 +160,20 @@ export function ShareCard(p: Props) {
 
           <div className="cardbox-actions">
             {/* Tidak memakai `disabled`: tombol ini menerima fokus saat dialog terbuka, sebelum kartunya selesai dilukis. */}
-            <button
-              type="button"
-              className="pill pill-accent"
-              data-autofocus
-              aria-disabled={!ready}
-              onClick={() => ready && void save()}
-            >
+            <button type="button" className="pill pill-accent" data-autofocus aria-disabled={!link} onClick={share}>
+              {nativeShare ? <ShareNetwork aria-hidden="true" /> : <LinkSimple aria-hidden="true" />}
+              <span aria-live="polite">{copied ? "Link copied" : nativeShare ? "Share this card" : "Copy card link"}</span>
+            </button>
+            <button type="button" className="pill" aria-disabled={!ready} onClick={() => ready && void save()}>
               <DownloadSimple aria-hidden="true" />
-              Save card
+              Save image for stories
             </button>
-            {canShareFiles && (
-              <button type="button" className="pill" disabled={!ready} onClick={() => void share()}>
-                <ShareNetwork aria-hidden="true" />
-                Share card
-              </button>
+            {link && (
+              <a className="cardbox-open" href={link} target="_blank" rel="noreferrer">
+                See the card page
+                <ArrowUpRight aria-hidden="true" />
+              </a>
             )}
-            <button type="button" className="pill" onClick={p.onCopyLink}>
-              <LinkSimple aria-hidden="true" />
-              <span aria-live="polite">{p.copied ? "Link copied" : "Copy link"}</span>
-            </button>
           </div>
         </div>
       </div>

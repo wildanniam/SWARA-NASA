@@ -1824,8 +1824,6 @@ export function App() {
         input={cardInput}
         lookName={LOOKS.find((l) => l.id === palette)?.name ?? ""}
         spectrumPending={!spectrum?.data && !spectrum?.error}
-        copied={copied}
-        onCopyLink={copyLink}
       />
       <Reading
         open={notesOpen}
