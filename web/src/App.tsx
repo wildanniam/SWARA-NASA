@@ -2,7 +2,6 @@ import {
   CaretLeft,
   CaretRight,
   BookOpenText,
-  ArrowsLeftRight,
   Flag,
   MagnifyingGlass,
   MagnifyingGlassMinus,
@@ -28,7 +27,6 @@ import { SkyMap, type Handoff, type SkyMapHandle, type SkyMarker } from "./compo
 import { SlewReadout, type Slew } from "./components/SlewReadout";
 import { SpectrumStrip } from "./components/SpectrumStrip";
 import { Timeline } from "./components/Timeline";
-import { VisitCompare } from "./components/VisitCompare";
 import { BLENDED, CUSTOM_NOTE, KIND_LABEL, SEARCH_LABEL, searchNote, TARGET_NOTES } from "./content";
 import {
   assetUrl,
@@ -133,7 +131,6 @@ export function App() {
   const slotRef = useRef<HTMLDivElement>(null);
   const zoomerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
-  const [compareOpen, setCompareOpen] = useState(false);
   const [palette, setPalette] = useState<PaletteId>(isPalette(LINK_LOOK) ? LINK_LOOK : "heat");
   // Roda filter: pilihan look di cincin lensa.
   const [wheelOpen, setWheelOpen] = useState(false);
@@ -559,22 +556,6 @@ export function App() {
     [manifest, bandId],
   );
   const availableIds = useMemo(() => new Set(available.map((w) => w.id)), [available]);
-  const firstAvailable = available.reduce<(typeof available)[number] | undefined>(
-    (first, visit) => (!first || visit.mjd_mid < first.mjd_mid ? visit : first),
-    undefined,
-  );
-  const stepCompareVisit = useCallback(
-    (direction: -1 | 1) => {
-      if (available.length < 2) return;
-      const currentIndex = available.findIndex((visit) => visit.id === windowId);
-      const nextIndex = (Math.max(currentIndex, 0) + direction + available.length) % available.length;
-      setPlaying(false);
-      setEra("spherex");
-      setWiseId(undefined);
-      setWindowId(available[nextIndex].id);
-    },
-    [available, windowId],
-  );
 
   const wise = manifest?.wise?.frames.length ? manifest.wise : undefined;
   const long = era === "long" && !!wise;
@@ -759,7 +740,6 @@ export function App() {
   const shownBandId =
     heardBand && manifest && windowId && findFrame(manifest, windowId, heardBand) ? heardBand : bandId;
   const frame = manifest && windowId && shownBandId ? findFrame(manifest, windowId, shownBandId) : undefined;
-  const firstFrame = manifest && firstAvailable && shownBandId ? findFrame(manifest, firstAvailable.id, shownBandId) : undefined;
   const band = manifest?.bands.find((b) => b.id === shownBandId);
   const win = manifest?.windows.find((w) => w.id === windowId);
   const imageUrl = !targetId
@@ -1388,25 +1368,6 @@ export function App() {
             </button>
           </div>
           <div className="dock-tail">
-            {available.length > 1 && !manifest?.preview && (
-              <button
-                type="button"
-                className="pill"
-                aria-haspopup="dialog"
-                onClick={() => {
-                  setPlaying(false);
-                  setSky(false);
-                  setEra("spherex");
-                  setWiseId(undefined);
-                  if (windowId && availableIds.has(windowId)) setWindowId(windowId);
-                  else if (available.length) setWindowId(available[available.length - 1].id);
-                  setCompareOpen(true);
-                }}
-              >
-                <ArrowsLeftRight aria-hidden="true" />
-                Compare visits
-              </button>
-            )}
             <button
               type="button"
               className="pill"
@@ -1522,23 +1483,6 @@ export function App() {
         spectrumPending={!spectrum?.data && !spectrum?.error}
         copied={copied}
         onCopyLink={copyLink}
-      />
-      <VisitCompare
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-        first={{
-          image: images.get(firstFrame && targetId ? assetUrl(targetId, custom, firstFrame.image) : undefined),
-          mask: images.get(firstFrame && targetId ? assetUrl(targetId, custom, firstFrame.mask) : undefined),
-          date: firstAvailable ? monthYear(firstAvailable.mjd_mid) : "",
-        }}
-        current={{ image: frame && !shownWise ? images.get(assetUrl(targetId!, custom, frame.image)) : undefined, mask: frame && !shownWise ? images.get(assetUrl(targetId!, custom, frame.mask)) : undefined, date: win ? monthYear(win.mjd_mid) : "" }}
-        targetName={target?.name ?? "this place"}
-        bandLabel={band ? `${microns(band.lambda_min, band.lambda_max)} (${band.id})` : "SPHEREx band"}
-        palette={palette}
-        view={markView}
-        showFlags={showFlags}
-        reveal={reveal}
-        onStepCurrent={stepCompareVisit}
       />
       <Notes
         open={notesOpen}

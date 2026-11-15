@@ -124,8 +124,6 @@ Satu keluarga: Phosphor, ketebalan `regular` (`fill` hanya untuk putar dan jeda)
 
 ## Gerak
 
-Perbandingan kunjungan SPHEREx membuka dua citra berdampingan pada band, crop, dan look yang sama. Panel kiri selalu kunjungan SPHEREx pertama yang tersedia di band itu; panel kanan mengikuti kunjungan yang dipilih di timeline. WISE tidak ikut dibandingkan.
-
 Tiap gerak punya alasan:
 
 | Gerak | Artinya |
