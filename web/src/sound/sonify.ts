@@ -3,7 +3,7 @@
 
 import type { Bin } from "../lib/spectrum";
 import * as Tone from "tone";
-import { AMBIENCE, DATA_REVERB, MOTION, SOUND, SPECTRUM_VOICES, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
+import { AMBIENCE, DATA_REVERB, MIX, MOTION, SOUND, SPECTRUM_VOICES, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
 import { makeImpulseResponse, startAmbience, stopAmbience } from "./ambience";
 
 // Kartu berbagi memakai helper ambience dan impulse response lewat modul ini.
@@ -118,10 +118,12 @@ let motionVoiceRuntime: MotionVoiceRuntime | undefined;
 let sharedReverb: ConvolverNode | undefined;
 let sharedDry: GainNode | undefined;
 let sharedWet: GainNode | undefined;
+let sharedCompressor: DynamicsCompressorNode | undefined;
 let spectrumSpace: ConvolverNode | undefined;
 let spectrumSpaceWet: GainNode | undefined;
 const scheduledEvents = new Set<number>();
 const AUDIO_START_LEAD_SECONDS = 0.24;
+const AMBIENCE_INTRO_SECONDS = 0.55;
 
 function ensureSharedVoice() {
   if (sharedSynth) return;
@@ -136,6 +138,12 @@ function ensureSharedVoice() {
   sharedLevel = new Tone.Gain(SOUND.gain);
   sharedDry = ctx.createGain();
   sharedWet = ctx.createGain();
+  sharedCompressor = ctx.createDynamicsCompressor();
+  sharedCompressor.threshold.value = MIX.compressorThresholdDb;
+  sharedCompressor.knee.value = MIX.compressorKneeDb;
+  sharedCompressor.ratio.value = MIX.compressorRatio;
+  sharedCompressor.attack.value = MIX.compressorAttackSeconds;
+  sharedCompressor.release.value = MIX.compressorReleaseSeconds;
   sharedReverb = ctx.createConvolver();
   sharedReverb.buffer = makeImpulseResponse(ctx, DATA_REVERB.seconds);
   spectrumSpace = ctx.createConvolver();
@@ -148,10 +156,12 @@ function ensureSharedVoice() {
   spectrumSpaceWet.gain.value = 0.26;
   sharedSynth.chain(sharedFilter, sharedPan, sharedLevel);
   sharedLevel.connect(sharedDry);
-  sharedDry.connect(Tone.Destination.input.input.input);
   sharedLevel.connect(sharedReverb);
-  sharedReverb.connect(sharedWet).connect(Tone.Destination.input.input.input);
-  spectrumSpace.connect(spectrumSpaceWet).connect(Tone.Destination.input.input.input);
+  sharedReverb.connect(sharedWet);
+  sharedDry.connect(sharedCompressor);
+  sharedWet.connect(sharedCompressor);
+  spectrumSpace.connect(spectrumSpaceWet).connect(sharedCompressor);
+  sharedCompressor.connect(Tone.Destination.input.input.input);
 }
 
 function ensureSpectrumVoice(): SpectrumVoiceRuntime {
@@ -206,13 +216,14 @@ export function scheduleMixed(
   _out: AudioNode,
   notes: Note[],
   at: number,
-  _activeVoices: InstrumentId[],
+  activeVoices: InstrumentId[],
 ): AudioScheduledSourceNode[] {
   ensureSharedVoice();
   const spectrumVoice = ensureSpectrumVoice();
   const transport = Tone.Transport;
   if (transport.state !== "started") transport.start();
   const timelineAt = transport.seconds + Math.max(0, at - Tone.now());
+  const mix = 1 / Math.sqrt(Math.max(1, new Set(activeVoices).size));
 
   // Satu suara tidak dapat membunyikan puncak serentak. Saat waktunya sama,
   // pilih puncak dengan amplitudo data terkuat dan pertahankan jam sapuan.
@@ -227,7 +238,7 @@ export function scheduleMixed(
         scheduledEvents.delete(id);
         motion.panner.pan.rampTo(Math.min(1, Math.max(-1, note.pan)), 0.012, time);
         motion.level.gain.rampTo(MOTION.gain, 0.04, time);
-        const velocity = Math.min(1, Math.max(0.05, note.vol ?? 0.85));
+        const velocity = Math.min(1, Math.max(0.05, (note.vol ?? 0.85) * mix));
         motion.synth.triggerAttackRelease(note.hz!, note.dur, time, velocity);
       }, eventAt);
       scheduledEvents.add(id);
@@ -240,7 +251,7 @@ export function scheduleMixed(
         const confidence = note.unverified ? 0.65 : 1;
         const change = Math.min(1, Math.max(-1, note.change ?? 0));
         const contourGain = change > 0 ? 1 + change * 0.14 : 1 + change * 0.18;
-        const velocity = Math.min(1, Math.max(0.035, (note.vol ?? 0.5) * confidence * contourGain));
+        const velocity = Math.min(1, Math.max(0.035, (note.vol ?? 0.5) * confidence * contourGain * mix));
         const profile = SPECTRUM_VOICES.mutedHornPad;
         const heat = Math.min(1, Math.max(0, note.heat ?? 0));
         // Flux yang naik membuka nada; flux yang turun menggelapkan dan
@@ -267,7 +278,7 @@ export function scheduleMixed(
     const eventAt = timelineAt + note.t;
     const duration = Math.max(0.035, Math.min(note.dur, next ? next.t - note.t : note.dur));
     const confidence = note.unverified ? 0.65 : 1;
-    const amplitude = Math.min(1, Math.max(0.035, (note.vol ?? 0.5) * confidence));
+    const amplitude = Math.min(1, Math.max(0.035, (note.vol ?? 0.5) * confidence * mix));
     const harmonicPosition = Math.min(1, Math.max(0, (Math.log2(note.hz!) - Math.log2(110)) / 4));
     const cutoff = 900 + harmonicPosition * 6900;
     let id = -1;
@@ -357,10 +368,11 @@ export class Sonifier {
     soundEpoch.n++;
     const ctx = this.audioContext();
     void ctx.resume();
-    const start = Tone.now() + AUDIO_START_LEAD_SECONDS;
+    const ambienceStart = Tone.now() + AUDIO_START_LEAD_SECONDS;
+    const start = ambienceStart + (duration > 0 ? AMBIENCE_INTRO_SECONDS : 0);
     scheduleMixed(ctx, ctx.destination, notes, start, activeVoices);
     if (duration > 0) {
-      startAmbience(ctx, start, duration);
+      startAmbience(ctx, ambienceStart, duration + AMBIENCE_INTRO_SECONDS, sharedCompressor!);
     }
     return start;
   }

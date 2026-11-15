@@ -203,7 +203,7 @@ function wind(ctx: AudioContext, run: Run, from: number) {
 }
 
 /** Mulai satu lapisan ambience dan jadwalkan harmoni sepanjang pemutaran. */
-export function startAmbience(ctx: AudioContext, at: number, duration: number) {
+export function startAmbience(ctx: AudioContext, at: number, duration: number, output: AudioNode = ctx.destination) {
   if (current) stopRun(current, ctx, true);
 
   const master = ctx.createGain();
@@ -222,8 +222,8 @@ export function startAmbience(ctx: AudioContext, at: number, duration: number) {
   dry.gain.value = AMBIENCE.dryMix;
   wet.gain.value = AMBIENCE.reverbMix;
   master.connect(compressor);
-  compressor.connect(dry).connect(ctx.destination);
-  compressor.connect(reverb).connect(wet).connect(ctx.destination);
+  compressor.connect(dry).connect(output);
+  compressor.connect(reverb).connect(wet).connect(output);
   const run: Run = { master, nodes: [] };
   current = run;
   wind(ctx, run, at);
