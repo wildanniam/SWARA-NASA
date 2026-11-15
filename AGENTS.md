@@ -161,12 +161,6 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
   - Perbaikan (PR #37): coba ulang 429, 5xx, dan koneksi putus dengan jeda 1, 2, 4, dan 8 detik dalam batas 90 detik; kalau tetap gagal, pekerjaan berakhir dengan `error: "archive"` dan aplikasi menulis "NASA's SPHEREx archive (IRSA) is not answering right now". Tidak dilanjutkan dengan satu koleksi saja, karena bundle itu akan tersimpan dengan eksposur yang diam-diam hilang.
   - Diuji dengan respons palsu (502, 502, 200; putus lalu 200; lima kali 502; 404) dan langsung ke IRSA: saat DR1 terus 502 pencarian berhenti setelah 21,5 detik dengan pesan arsip; percobaan berikutnya lolos dan bundle Sirius jadi ("Not trackable": terlalu terang untuk dilacak).
 
-- **KEPUTUSAN (Alif):** suara gerak memakai jalur stereo tersendiri agar pan tidak berubah ketika nada scan menyusul. Pada peta utara-di-atas, timur dipan penuh ke kiri dan barat ke kanan; pergeseran timur-barat di bawah 0,5" tetap di tengah. Gerak utara-selatan mengubah pitch. Spektrum memakai muted horn pad rendah dengan gain 0,4; bintang kontras mendapat satu shimmer singkat.
-
-- **KEPUTUSAN (sonifikasi):** level tiap lapisan data dibagi dengan faktor 1/√jumlah lapisan aktif dan semua suara melewati kompresor campuran; ambience mulai 0,55 detik sebelum lapisan data agar serangan awal tidak bertumpuk.
-
-- **KEPUTUSAN (sonifikasi):** ambience turun ke gain 0,34 saat nada spektrum berbunyi, dengan serangan 55 ms dan pemulihan 320 ms setelah nada selesai, supaya pad orkestra tidak menutupi timbre spektrum.
-
 ### 2026-11-14
 - **KEPUTUSAN (Wildan): landing page di `/`, aplikasi di `/sky`, mengikuti mockup v2.** Arahnya minimalis dan modern dengan rasi bintang sebagai aksen. Mockup pertama ditolak karena kartunya polos, isinya terlalu umum, bagian contohnya lemah, dan kakinya berantakan. Isi landing page dihitung dari bundle yang sama dengan aplikasi; sasaran dan mikro-interaksi tiap bagian ada di [web/DESIGN.md](web/DESIGN.md).
   - Tautan lama yang membawa parameter aplikasi tetap membuka aplikasi, dan aplikasi sekarang selalu menulis alamatnya di `/sky`, jadi memuat ulang tidak jatuh ke landing page. Tautan Share dan QR kartu berbagi ikut menunjuk `/sky`.
