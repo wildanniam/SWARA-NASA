@@ -821,18 +821,20 @@ function lightBack(place: ReadingPlace) {
       </p>
       <p>
         Listen layers the image, spectrum, and measured motion on one visit clock. The image moves through 32 columns from
-        east to west: higher is further north, louder is brighter, and a short ping marks the target at the centre. The
-        spectrum follows 48 wavelengths from short to long, with higher pitch for brighter measurements and a soft tick for
-        a data gap; brighter flux sounds warmer, while dimmer flux eases lower and softer. This expresses measured
-        brightness, not a direct object-temperature reading. Motion adds a brief bell at each measured visit.
+        east to west: nearby peaks in each column blend into one percussive note, higher is further north, and louder is
+        brighter. The centre column gets a target cue, folded into its data note when a peak is present. The spectrum
+        follows 48 wavelengths from short to long, grouped into one soft note per beat, with higher pitch for brighter
+        measurements and a soft tick for a data gap; brighter flux sounds warmer, while dimmer flux eases lower and softer.
+        This expresses measured brightness, not a direct object-temperature reading. Motion adds a brief bell at each
+        measured visit.
       </p>
       <p>
         The note legend uses yellow-green for the image scan, orange for the spectrum, and blue for motion; the active
-        source glows while it sounds. The image uses percussive notes, the spectrum a smooth flute-like tone, and motion a
-        bell-like tone. Bright stars add short shimmering chimes. A soft pipe-organ chord, string pad, sparse piano notes,
-        and low drone build slowly under the layers with a long reverb tail. If every data layer is unavailable, only a
-        quiet space ambience plays. Missing layers or visits are announced; the scan line, wavelength cursor, and lens
-        follow the same clock.
+        source glows while it sounds. The image uses rounded percussive notes, the spectrum a softly filtered muted-horn
+        pad, and motion a bell-like tone. Bright stars add one brief shimmer. A soft pipe-organ chord, string pad, sparse
+        piano notes, and low drone build slowly under the layers with a long reverb tail. If every data layer is
+        unavailable, only a quiet space ambience plays. Missing layers or visits are announced; the scan line, wavelength
+        cursor, and lens follow the same clock.
       </p>
     </>
   );

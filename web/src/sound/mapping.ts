@@ -8,9 +8,8 @@
 export const SOUND = {
   /** Lama satu kunjungan, detik. */
   visitSeconds: 7,
-  /** Jumlah langkah (nada) dari 0,75 sampai 5,0 mikron. Satu kunjungan punya
-   *  sekitar 100 titik yang tidak tersebar rata: makin banyak langkah, makin
-   *  banyak langkah kosong. */
+  /** Jumlah bin dari 0,75 sampai 5,0 mikron. Beberapa bin dalam satu ketukan
+   *  dirangkum menjadi satu nada saat diputar. */
   steps: 48,
   /** Jeda antar kunjungan saat semua diputar berurutan, detik. */
   pauseSeconds: 0.7,
@@ -31,7 +30,7 @@ export const SOUND = {
   unverifiedWaveform: "sawtooth" as OscillatorType,
   unverifiedGain: 0.45,
 
-  /** Langkah tanpa data: diam, dengan ketukan pelan supaya pendengar tahu waktu masih berjalan. */
+  /** Ketukan tanpa data: bunyi tick pelan supaya pendengar tahu waktu berjalan. */
   gapTick: true,
   gapTickHz: 1400,
   gapTickGain: 0.12,
@@ -88,7 +87,7 @@ export type MotionSettings = typeof MOTION;
 export const SCAN = {
   /** Jumlah kolom barat-ke-timur. */
   columns: 32,
-  /** Nada serentak terbanyak per kolom (puncak terkuat). */
+  /** Puncak terbanyak yang diambil per kolom; dirangkum menjadi satu nada. */
   maxNotes: 5,
   /** Detik per kolom: 32 x 0,34 ~ 11 detik per kunjungan. */
   colSeconds: 0.34,
@@ -133,6 +132,9 @@ export type InstrumentProfile = {
   waveform: OscillatorType;
   unverifiedWaveform: OscillatorType;
   unverifiedGain: number;
+  /** Cutoff low-pass untuk melunakkan timbre pad. */
+  lowpassHz?: number;
+  filterQ?: number;
   gapTick: boolean;
   gapTickHz: number;
   gapTickGain: number;
@@ -147,17 +149,19 @@ export type InstrumentProfile = {
 // Instrumen sintetis terpisah untuk tiap sumber data; level adalah pengali relatif.
 export const INSTRUMENTS: Record<InstrumentId, InstrumentProfile> = {
   spectrum: {
-    waveform: "sine",
+    waveform: "sawtooth",
     unverifiedWaveform: "triangle",
     unverifiedGain: 0.42,
+    lowpassHz: 1100,
+    filterQ: 0.65,
     gapTick: true,
     gapTickHz: 1400,
     gapTickGain: 0.1,
     gapTickWaveform: "sine",
     gain: 0.86,
     envelope: "sustain",
-    attackSeconds: 0.014,
-    sustainFraction: 0.62,
+    attackSeconds: 0.075,
+    sustainFraction: 0.78,
     partials: [],
   },
   scan: {

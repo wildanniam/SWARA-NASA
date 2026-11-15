@@ -142,40 +142,45 @@ export function scanPhrase(grid: ScanGrid, s: ScanSettings): Note[] {
     const dur = s.colSeconds * s.noteFill;
     const pos = total > 1 ? c / (total - 1) : 0;
     if (!col.peaks.length) {
-      notes.push({ t, dur, hz: null, unverified: false, pan: 0, lambda: pos, voice: "scan" });
+      notes.push(col.center
+        ? { t, dur: s.earconSeconds, hz: s.earconHz, vol: s.earconGain, unverified: false, pan: 0, lambda: 0.5, voice: "scan" }
+        : { t, dur, hz: null, unverified: false, pan: 0, lambda: pos, voice: "scan" });
     } else {
-      for (const [peakIndex, p] of col.peaks.entries()) {
+      const peaks = col.peaks.map((peak) => ({
+        hz: scanPitch(peak.row01, s),
+        vol: Math.min(1, Math.max(s.minVol, peak.value / grid.top)),
+        flagged: peak.flagged,
+        value: peak.value,
+      }));
+      const weightSum = peaks.reduce((sum, peak) => sum + peak.vol, 0);
+      const hz = Math.exp(peaks.reduce((sum, peak) => sum + Math.log(peak.hz) * peak.vol, 0) / weightSum);
+      const combinedEnergy = peaks.reduce((sum, peak) => sum + peak.vol ** 2, 0) + (col.center ? s.earconGain ** 2 : 0);
+      notes.push({
+        t,
+        dur,
+        hz,
+        vol: Math.min(1, Math.sqrt(combinedEnergy)),
+        unverified: peaks.some((peak) => peak.flagged),
+        pan: 0,
+        // Posisi pindai 0..1, bukan panjang gelombang: jadwal tidak memakainya.
+        lambda: pos,
+        voice: "scan",
+      });
+
+      // Bintang yang sangat kontras mendapat satu kilau pendek sebagai aksen.
+      const brightest = peaks[0];
+      if (brightest.value >= grid.bg + 6 * grid.sigma && brightest.value / grid.top >= 0.58) {
         notes.push({
-          t,
-          dur,
-          hz: scanPitch(p.row01, s),
-          vol: Math.min(1, Math.max(s.minVol, p.value / grid.top)),
-          unverified: p.flagged,
+          t: t + 0.07,
+          dur: 0.065,
+          hz: 1760,
+          vol: 0.16,
+          unverified: false,
           pan: 0,
-          // Posisi pindai 0..1, bukan panjang gelombang: jadwal tidak memakainya.
           lambda: pos,
           voice: "scan",
         });
-        // Bintang yang sangat kontras mendapat dua kilau pendek seperti denting.
-        if (peakIndex < 2 && p.value >= grid.bg + 6 * grid.sigma && p.value / grid.top >= 0.58) {
-          for (let glint = 0; glint < 2; glint++) {
-            notes.push({
-              t: t + 0.07 + glint * 0.12,
-              dur: 0.065,
-              hz: 1760 + glint * 440,
-              vol: 0.16,
-              unverified: false,
-              pan: 0,
-              lambda: pos,
-              voice: "scan",
-            });
-          }
-        }
       }
-    }
-    // Earcon target selalu berbunyi saat pindai melewati tengah, walau kolomnya kosong.
-    if (col.center) {
-      notes.push({ t, dur: s.earconSeconds, hz: s.earconHz, vol: s.earconGain, unverified: false, pan: 0, lambda: 0.5, voice: "scan" });
     }
   });
   return notes;

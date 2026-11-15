@@ -2,7 +2,7 @@
 // Tidak ada yang dikarang: data yang sama selalu menghasilkan nada yang sama.
 
 import type { Bin } from "../lib/spectrum";
-import { AMBIENCE, INSTRUMENTS, MIX, MOTION, SOUND, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
+import { AMBIENCE, INSTRUMENTS, MIX, MOTION, SCAN, SOUND, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
 
 export type Note = {
   /** Detik sejak awal frasa. */
@@ -46,10 +46,12 @@ export function pitch(flux: number, top: number, s: SoundSettings = SOUND): numb
   return s.baseHz * Math.pow(2, semitones / 12);
 }
 
-/** Satu kunjungan (sudah dibagi per langkah) -> deretan nada. */
+/** Satu kunjungan: beberapa langkah spektrum yang jatuh dalam satu ketukan
+ *  dirangkum menjadi satu nada. */
 export function phrase(bins: Bin[], top: number, s: SoundSettings = SOUND): Note[] {
+  if (!bins.length) return [];
   const step = s.visitSeconds / bins.length;
-  return bins.map((b, i) => ({
+  const raw: Note[] = bins.map((b, i): Note => ({
     t: i * step,
     dur: step * s.noteFill,
     hz: b.flux === null ? null : pitch(b.flux, top, s),
@@ -60,6 +62,41 @@ export function phrase(bins: Bin[], top: number, s: SoundSettings = SOUND): Note
     heat: b.flux === null ? 0 : Math.min(1, Math.max(0, b.flux / top)),
     vol: b.flux === null ? undefined : 0.2 + 0.8 * Math.sqrt(Math.min(1, Math.max(0, b.flux / top))),
   }));
+  const beatCount = Math.ceil(s.visitSeconds / SCAN.colSeconds);
+  const beats: Note[][] = Array.from({ length: beatCount }, () => []);
+  for (const note of raw) {
+    const beat = Math.min(beatCount - 1, Math.floor(note.t / SCAN.colSeconds));
+    beats[beat].push(note);
+  }
+
+  return beats.flatMap((group, beat): Note[] => {
+    if (!group.length) return [];
+    const start = beat * SCAN.colSeconds;
+    const dur = Math.min(SCAN.colSeconds * s.noteFill, s.visitSeconds - start);
+    const measured = group.filter((note) => note.hz !== null);
+    if (!measured.length) {
+      return [{ ...group[0], t: start, dur, hz: null, unverified: group.every((note) => note.unverified) }];
+    }
+
+    const weights = measured.map((note) => Math.max(0.01, note.vol ?? 1));
+    const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+    const weighted = (value: (note: Note) => number) =>
+      measured.reduce((sum, note, i) => sum + value(note) * weights[i], 0) / weightSum;
+    const hz = Math.exp(weighted((note) => Math.log(note.hz!)));
+    const vol = Math.sqrt(measured.reduce((sum, note) => sum + (note.vol ?? 1) ** 2, 0) / measured.length);
+
+    return [{
+      ...group[0],
+      t: start,
+      dur,
+      hz,
+      vol,
+      pan: weighted((note) => note.pan),
+      lambda: weighted((note) => note.lambda),
+      heat: weighted((note) => note.heat ?? 0),
+      unverified: measured.some((note) => note.unverified),
+    }];
+  });
 }
 
 /** Jadwalkan satu frasa mulai `at` (waktu konteks audio). Mengembalikan sumber
@@ -81,15 +118,31 @@ export function schedule(
     const start = at + n.t;
     const dur = tick ? 0.012 : n.dur;
     const peak = (tick ? s.gapTickGain : n.unverified ? s.unverifiedGain : 1) * (n.vol ?? 1);
-    osc.type = tick ? "sine" : n.unverified ? s.unverifiedWaveform : s.waveform;
+    const spectrumProfile = (n.voice ?? "spectrum") === "spectrum" && !tick ? INSTRUMENTS.spectrum : undefined;
+    osc.type = tick
+      ? "sine"
+      : spectrumProfile
+        ? n.unverified ? spectrumProfile.unverifiedWaveform : spectrumProfile.waveform
+        : n.unverified ? s.unverifiedWaveform : s.waveform;
     osc.frequency.value = tick ? s.gapTickHz : n.hz!;
     pan.pan.value = n.pan;
-    const attack = Math.min(0.008, dur / 4);
+    const attack = spectrumProfile
+      ? Math.min(spectrumProfile.attackSeconds, dur * 0.7)
+      : Math.min(0.008, dur / 4);
     env.gain.setValueAtTime(0, start);
     env.gain.linearRampToValueAtTime(peak, start + attack);
     env.gain.setValueAtTime(peak, start + dur * 0.6);
     env.gain.linearRampToValueAtTime(0, start + dur);
-    osc.connect(env).connect(pan).connect(out);
+    let toneOut: AudioNode = osc;
+    if (spectrumProfile?.lowpassHz && typeof ctx.createBiquadFilter === "function") {
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = spectrumProfile.lowpassHz;
+      filter.Q.value = spectrumProfile.filterQ ?? 0.0001;
+      osc.connect(filter);
+      toneOut = filter;
+    }
+    toneOut.connect(env).connect(pan).connect(out);
     osc.start(start);
     osc.stop(start + dur + 0.02);
     sources.push(osc);
@@ -128,12 +181,6 @@ export function scheduleMixed(
             gain: partial.gain,
             waveform: note.unverified ? profile.unverifiedWaveform : profile.waveform,
           })),
-          ...(note.voice === "spectrum"
-            ? [
-                { hz: note.hz! * 2, gain: 0.015 + heat * 0.065, waveform: "sine" as OscillatorType },
-                { hz: note.hz! * 3, gain: heat * 0.02, waveform: "triangle" as OscillatorType },
-              ]
-            : []),
         ];
     for (const tone of tones) {
       const osc = ctx.createOscillator();
@@ -155,7 +202,16 @@ export function scheduleMixed(
       } else {
         env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
       }
-      osc.connect(env).connect(pan).connect(out);
+      let toneOut: AudioNode = osc;
+      if (!tick && profile.lowpassHz && typeof ctx.createBiquadFilter === "function") {
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = profile.lowpassHz;
+        filter.Q.value = profile.filterQ ?? 0.0001;
+        osc.connect(filter);
+        toneOut = filter;
+      }
+      toneOut.connect(env).connect(pan).connect(out);
       osc.start(start);
       osc.stop(start + dur + 0.02);
       sources.push(osc);
