@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://swara-nasa.vercel.app/sky"><strong>Open the sky viewer</strong></a> ·
-  <a href="https://swara-nasa.vercel.app/sky?target=barnard">Explore Barnard's Star</a> ·
+  <a href="https://swara.space/sky"><strong>Open the sky viewer</strong></a> ·
+  <a href="https://swara.space/sky?target=barnard">Explore Barnard's Star</a> ·
   <a href="https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/">NASA Space Apps Challenge</a>
 </p>
 
