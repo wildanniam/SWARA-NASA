@@ -377,7 +377,9 @@ body {
   color: var(--accent);
   font-weight: 600;
   opacity: 0;
-  animation: lp-type 0.01s steps(1) calc(0.15s + var(--k) * 0.12s) forwards;
+  /* Pudar singkat, bukan steps(1): lompatan 0,01 detik bisa berhenti di 0,9999 di Chrome
+     sehingga hurufnya tidak pernah muncul (terjadi pada W saat diputar ulang). */
+  animation: lp-type 0.15s ease-out calc(0.15s + var(--k) * 0.12s) forwards;
 }
 
 .lp-acr-rest {
