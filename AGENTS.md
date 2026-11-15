@@ -165,6 +165,8 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 
 - **KEPUTUSAN (sonifikasi):** level tiap lapisan data dibagi dengan faktor 1/√jumlah lapisan aktif dan semua suara melewati kompresor campuran; ambience mulai 0,55 detik sebelum lapisan data agar serangan awal tidak bertumpuk.
 
+- **KEPUTUSAN (sonifikasi):** ambience turun ke gain 0,34 saat nada spektrum berbunyi, dengan serangan 55 ms dan pemulihan 320 ms setelah nada selesai, supaya pad orkestra tidak menutupi timbre spektrum.
+
 ### 2026-11-14
 - **KEPUTUSAN (Wildan): landing page di `/`, aplikasi di `/sky`, mengikuti mockup v2.** Arahnya minimalis dan modern dengan rasi bintang sebagai aksen. Mockup pertama ditolak karena kartunya polos, isinya terlalu umum, bagian contohnya lemah, dan kakinya berantakan. Isi landing page dihitung dari bundle yang sama dengan aplikasi; sasaran dan mikro-interaksi tiap bagian ada di [web/DESIGN.md](web/DESIGN.md).
   - Tautan lama yang membawa parameter aplikasi tetap membuka aplikasi, dan aplikasi sekarang selalu menulis alamatnya di `/sky`, jadi memuat ulang tidak jatuh ke landing page. Tautan Share dan QR kartu berbagi ikut menunjuk `/sky`.

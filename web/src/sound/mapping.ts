@@ -357,4 +357,8 @@ export const AMBIENCE = {
   tickAttackSeconds: 0.018,
   tickReleaseSeconds: 0.085,
   tickFilterHz: 1500,
+  /** Ambience turun halus saat spektrum berbunyi agar tekstur pad terpisah. */
+  spectrumDuckGain: 0.34,
+  spectrumDuckAttackSeconds: 0.055,
+  spectrumDuckReleaseSeconds: 0.32,
 };

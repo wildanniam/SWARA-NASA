@@ -4,6 +4,7 @@ import { AMBIENCE } from "./mapping";
 
 type Run = {
   master: GainNode;
+  duck: GainNode;
   nodes: AudioScheduledSourceNode[];
   timer?: ReturnType<typeof setTimeout>;
 };
@@ -209,6 +210,8 @@ export function startAmbience(ctx: AudioContext, at: number, duration: number, o
   const master = ctx.createGain();
   const dry = ctx.createGain();
   const wet = ctx.createGain();
+  const duck = ctx.createGain();
+  duck.gain.value = 1;
   const reverb = ctx.createConvolver();
   reverb.buffer = makeImpulseResponse(ctx, AMBIENCE.reverbSeconds);
   const compressor = ctx.createDynamicsCompressor();
@@ -221,10 +224,10 @@ export function startAmbience(ctx: AudioContext, at: number, duration: number, o
   master.gain.linearRampToValueAtTime(AMBIENCE.gain, at + AMBIENCE.buildSeconds);
   dry.gain.value = AMBIENCE.dryMix;
   wet.gain.value = AMBIENCE.reverbMix;
-  master.connect(compressor);
+  master.connect(duck).connect(compressor);
   compressor.connect(dry).connect(output);
   compressor.connect(reverb).connect(wet).connect(output);
-  const run: Run = { master, nodes: [] };
+  const run: Run = { master, duck, nodes: [] };
   current = run;
   wind(ctx, run, at);
 
@@ -293,4 +296,13 @@ export function stopAmbience(ctx: AudioContext, immediate = false) {
   const run = current;
   current = undefined;
   stopRun(run, ctx, immediate);
+}
+
+/** Turunkan bed saat lapisan spektrum berbunyi, lalu pulihkan lembut setelah nada selesai. */
+export function duckAmbience(at: number, duration: number) {
+  if (!current) return;
+  const gain = current.duck.gain;
+  gain.cancelScheduledValues(at);
+  gain.setTargetAtTime(AMBIENCE.spectrumDuckGain, at, AMBIENCE.spectrumDuckAttackSeconds);
+  gain.setTargetAtTime(1, at + Math.max(0.04, duration), AMBIENCE.spectrumDuckReleaseSeconds);
 }

@@ -4,7 +4,7 @@
 import type { Bin } from "../lib/spectrum";
 import * as Tone from "tone";
 import { AMBIENCE, DATA_REVERB, MIX, MOTION, SOUND, SPECTRUM_VOICES, type InstrumentId, type MotionSettings, type SoundSettings } from "./mapping";
-import { makeImpulseResponse, startAmbience, stopAmbience } from "./ambience";
+import { duckAmbience, makeImpulseResponse, startAmbience, stopAmbience } from "./ambience";
 
 // Kartu berbagi memakai helper ambience dan impulse response lewat modul ini.
 export { makeSpaceImpulse, scheduleAmbience } from "./ambience";
@@ -248,6 +248,7 @@ export function scheduleMixed(
       let id = -1;
       id = transport.scheduleOnce((time) => {
         scheduledEvents.delete(id);
+        duckAmbience(time, note.dur);
         const confidence = note.unverified ? 0.65 : 1;
         const change = Math.min(1, Math.max(-1, note.change ?? 0));
         const contourGain = change > 0 ? 1 + change * 0.14 : 1 + change * 0.18;

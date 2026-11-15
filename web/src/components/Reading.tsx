@@ -829,8 +829,9 @@ function lightBack(place: ReadingPlace) {
         Measured motion has its own stereo voice. North-south change shifts pitch; east-west change pans toward the same
         side as the arrow on the north-up sky map. East is left and west is right, with the opposite channel silent;
         shifts below 0.5″ remain centered. The sound describes measured position change, not confirmed physical motion.
-        A soft orchestra-like pad, distant wind, and slow quiet ticks fill the background. Missing layers or visits are
-        announced; the scan line, wavelength cursor, and lens follow the same clock.
+        A soft orchestra-like pad, distant wind, and slow quiet ticks fill the background. The bed recedes while spectrum
+        tones play, then returns gently between them. Missing layers or visits are announced; the scan line, wavelength
+        cursor, and lens follow the same clock.
       </p>
     </>
   );
