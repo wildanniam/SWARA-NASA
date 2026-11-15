@@ -214,6 +214,8 @@ kbd {
   font-stretch: 125%;
   letter-spacing: 0.16em;
   white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
   cursor: pointer;
 }
 
