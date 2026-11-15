@@ -99,7 +99,7 @@ function Nav() {
         ))}
       </nav>
       <a className="lp-nav-cta" href={APP_PATH}>
-        Open the sky
+        Explore the sky
         <ArrowRight weight="bold" />
       </a>
     </header>
@@ -174,12 +174,10 @@ function Hero({ examples }: { examples?: Example[] }) {
         SWARA turns NASA's SPHEREx survey into something anyone can use: pick a patch of sky, see it move across sixteen years, and hear its light.
       </p>
       <div ref={ctas} className="lp-ctas">
-        <a className="lp-btn lp-btn-primary" href={APP_PATH}>
-          Open the sky
+        <a className="lp-btn lp-btn-primary lp-btn-hero" href={APP_PATH}>
+          <span className="lp-btn-star" aria-hidden="true" />
+          Explore the sky
           <ArrowRight weight="bold" />
-        </a>
-        <a className="lp-btn lp-btn-ghost" href={placeHref("barnard")}>
-          Show me a moving star
         </a>
       </div>
     </section>
@@ -230,7 +228,7 @@ const FOOT = [
   {
     title: "Product",
     links: [
-      { label: "Open the sky", href: APP_PATH },
+      { label: "Explore the sky", href: APP_PATH },
       { label: "Show me a moving star", href: placeHref("barnard") },
       { label: "The five examples", href: "#examples" },
     ],
