@@ -7,7 +7,7 @@ import { coord } from "../lib/format";
 import { useDialog } from "../lib/hooks";
 import { LUTS, type PaletteId } from "../lib/palette";
 import { loadGray, paintSky } from "../lib/skyimage";
-import { PlaceThumb } from "./PlaceThumb";
+import { PlaceThumb, useVerdict } from "./PlaceThumb";
 
 type Props = {
   open: boolean;
@@ -64,6 +64,25 @@ function ReadAs({ atlas, look, ra, dec }: { atlas: Atlas; look: PaletteId; ra: n
   );
 }
 
+/** Satu tempat di daftar: jendela melengkung, nama dan julukannya, lalu yang terukur di sana. */
+function PlaceRow({ t, detail, current, built, onPick }: { t: TargetRef; detail: string; current: boolean; built: boolean; onPick: (id: string) => void }) {
+  const custom = t.kind === "custom";
+  const v = useVerdict(t.id, custom, built);
+  return (
+    <li>
+      <button type="button" className="place" aria-current={current} onClick={() => onPick(t.id)}>
+        <PlaceThumb id={t.id} custom={custom} enabled={built} size={104} arch />
+        <span className="place-id">
+          <span className="place-name">{t.name}</span>
+          <span className="place-epithet">{v?.epithet ?? detail}</span>
+        </span>
+        <span className="place-detail">{v ? v.short : built ? "" : "Still being gathered"}</span>
+        <ArrowRight aria-hidden="true" />
+      </button>
+    </li>
+  );
+}
+
 /** Pintu masuk: satu kotak untuk nama benda atau koordinat, lalu tempat yang bisa langsung dituju. */
 export function GoTo(p: Props) {
   const ref = useDialog<HTMLDivElement>(p.open, p.onClose);
@@ -89,14 +108,7 @@ export function GoTo(p: Props) {
   };
 
   const row = (t: TargetRef, detail: string) => (
-    <li key={t.id}>
-      <button type="button" className="place" aria-current={t.id === p.currentId} onClick={() => p.onPick(t.id)}>
-        <PlaceThumb id={t.id} custom={t.kind === "custom"} enabled={!p.building.has(t.id)} />
-        <span className="place-name">{t.name}</span>
-        <span className="place-detail">{detail}</span>
-        <ArrowRight aria-hidden="true" />
-      </button>
-    </li>
+    <PlaceRow key={t.id} t={t} detail={detail} current={t.id === p.currentId} built={!p.building.has(t.id)} onPick={p.onPick} />
   );
 
   return (

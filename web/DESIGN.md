@@ -14,7 +14,9 @@ Keputusan Wildan, 14 November 2026: **tarot dan rasi bintang** menjadi DNA visua
 
 Cara kita memakainya: tarot memberi **formatnya** (kartu tinggi, jendela melengkung, angka Romawi, pita julukan, sinar), langit memberi **isinya**. Tiap tempat yang di kartu tarot diisi hiasan, di sini diisi data. Emasnya adalah aksen ambar yang sudah ada, dan huruf tidak berubah.
 
-Yang sudah memakai arah ini: kartu berbagi, peta seluruh langit, dan bacaan tiga kartu yang menggantikan Guide (lihat di bawah). Yang belum: penerapan arah ini ke cuplikan penanda dan hasil Go to.
+Yang sudah memakai arah ini: kartu berbagi (gerak, cahaya, tempat), peta seluruh langit, bacaan tiga kartu yang menggantikan Guide, cuplikan penanda, dan daftar tempat di Go to.
+
+**Jendela melengkung = kartu tempat.** Di cuplikan penanda dan daftar Go to, citra asli benda itu tampil di jendela melengkung bergaris ganda (bentuk jendela kartu), dengan julukannya (The Wanderer, The Still One, The Riddle) dan angka yang terukur. Lensa bundar tetap milik alat ukur. Julukan dan angkanya dihitung di satu tempat (`web/src/lib/verdict.ts`) dan dipakai juga oleh landing page, jadi kata-katanya selalu sama.
 
 Dua watak, satu aturan: **alat ukur saat orang mengukur** (lensa, garis waktu, tombol putar, bacaan koordinat), **kartu saat SWARA bercerita** (bacaan, kartu berbagi). Tarot tidak ditempel di semua tempat. Viewer sendiri tetap ruang kendali teleskop; rasa alat ukurnya yang membuat datanya dipercaya.
 
@@ -213,8 +215,13 @@ Tiap gerak punya alasan:
 | Cincin Gaia mengunci dari besar ke ukurannya satu per satu, lalu memudar saat dimatikan | katalog sedang dicocokkan ke bintang di citra |
 | Menunjuk lensa: bacaan RA/Dec dan jarak dari tanda di samping kursor, jarum ambar di cincin menunjuk arahnya, N dan E menyala | lensa adalah alat ukur; tiap titiknya punya koordinat (rumusnya sama dengan `sky_grid` di pipeline) |
 | Kenop di cincin sedikit masuk saat ditekan dan bercahaya saat menyala | kenop alat, bukan tombol halaman |
+| Lima kenop menyala bergantian dengan keterangannya, sekali per browser saat lensa pertama terbuka | alatnya memperkenalkan diri; berhenti begitu orang menyentuh apa pun, dan tidak muncul dengan gerak dikurangi atau di layar sentuh |
 
 Dengan `prefers-reduced-motion`: tidak ada geser, perpindahan, atau gerak pembesaran; lensa langsung terbuka pada pembesaran kerjanya, dan blink tidak mulai sendiri.
+
+## Keterangan (tooltip)
+
+Dua baris, tanpa ikon: nama dan tombol pintasnya, lalu satu kalimat tentang gunanya. Dipakai kenop di cincin lensa ("Difference [D]: What changed since the first look") dan tanda di garis waktu. Tanda kunjungan SPHEREx menyebut jumlah eksposur yang ditumpuk serta persen piksel jenuh dan rusak pada band yang tampil; tanda WISE menyebut panjang gelombangnya dan bahwa citranya untuk dilihat, bukan diukur. Keterangan kenop diletakkan sedikit di bawah tengah kenopnya supaya tidak menimpa kenop tetangga.
 
 ## Keadaan yang wajib ada
 

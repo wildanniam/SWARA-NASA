@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { assetUrl, defaultBand, findFrame, loadManifest, type Manifest } from "../lib/bundle";
 import { paint } from "../lib/paint";
 import { LUTS, type PaletteId } from "../lib/palette";
+import { verdict, type Verdict } from "../lib/verdict";
 
 const manifests = new Map<string, Promise<Manifest>>();
 
@@ -24,10 +25,30 @@ type Props = {
   enabled: boolean;
   look?: PaletteId;
   size?: number;
+  /** Jendela melengkung seperti jendela kartu, bukan bundar: dipakai saat SWARA bercerita
+   *  tentang sebuah tempat (cuplikan penanda, daftar Go to). */
+  arch?: boolean;
 };
 
+/** Julukan dan angka terukur tempat itu, begitu manifestnya termuat. */
+export function useVerdict(id: string, custom: boolean, enabled: boolean): Verdict | undefined {
+  const [v, setV] = useState<Verdict>();
+  useEffect(() => {
+    setV(undefined);
+    if (!enabled) return;
+    let alive = true;
+    placeManifest(id, custom)
+      .then((m) => alive && setV(verdict(m, id, custom)))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [id, custom, enabled]);
+  return v;
+}
+
 /** Cuplikan bundar dari citra asli benda itu: kunjungan pertama di band bawaannya. */
-export function PlaceThumb({ id, custom, enabled, look = "heat", size = 96 }: Props) {
+export function PlaceThumb({ id, custom, enabled, look = "heat", size = 96, arch = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [shown, setShown] = useState(false);
 
@@ -56,5 +77,12 @@ export function PlaceThumb({ id, custom, enabled, look = "heat", size = 96 }: Pr
     };
   }, [id, custom, enabled, look, size]);
 
-  return <canvas ref={ref} className="thumb" data-shown={shown} width={size} height={size} aria-hidden="true" />;
+  const canvas = <canvas ref={ref} className="thumb" data-shown={shown} width={size} height={size} aria-hidden="true" />;
+  return arch ? (
+    <span className="arch" data-shown={shown} aria-hidden="true">
+      {canvas}
+    </span>
+  ) : (
+    canvas
+  );
 }

@@ -8,6 +8,10 @@ type Props = {
   visits: TimeWindow[];
   current?: Item;
   onSelect: (item: Item) => void;
+  /** Kualitas data tiap kunjungan SPHEREx pada band yang tampil, dua baris pendek. */
+  quality?: Record<string, string[]>;
+  /** Keterangan untuk citra WISE: panjang gelombangnya, dan bahwa ia hanya untuk dilihat. */
+  wiseNote?: string;
 };
 
 const PAD = 3; // persen
@@ -15,7 +19,7 @@ const year = (mjd: number) => 1858.874 + mjd / 365.25; // cukup teliti untuk mel
 const mjdOfYear = (y: number) => (y - 1858.874) * 365.25;
 
 /** Penggaris 16 tahun: citra WISE lalu kunjungan SPHEREx, pada jarak tanggal yang sebenarnya. */
-export function LongTimeline({ wise, visits, current, onSelect }: Props) {
+export function LongTimeline({ wise, visits, current, onSelect, quality, wiseNote }: Props) {
   const all = [
     ...wise.map((f) => ({ wise: true, id: f.id, mjd: f.mjd_mid })),
     ...visits.map((w) => ({ wise: false, id: w.id, mjd: w.mjd_mid })),
@@ -61,6 +65,14 @@ export function LongTimeline({ wise, visits, current, onSelect }: Props) {
           onClick={() => onSelect({ wise: f.wise, id: f.id })}
         >
           <span aria-hidden="true" />
+          <i className="time-tip" data-edge={at(f.mjd) < 14 ? "start" : at(f.mjd) > 86 ? "end" : undefined} aria-hidden="true">
+            <b>
+              {monthYear(f.mjd)} · {f.wise ? "WISE" : "SPHEREx"}
+            </b>
+            {(f.wise ? (wiseNote ? [wiseNote] : []) : (quality?.[f.id] ?? [])).map((line) => (
+              <em key={line}>{line}</em>
+            ))}
+          </i>
         </button>
       ))}
     </div>

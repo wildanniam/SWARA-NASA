@@ -51,7 +51,8 @@ import {
   type TargetRef,
 } from "./lib/bundle";
 import { readyFrameForWindow } from "./lib/visitFrames";
-import { loadAtlas, type Atlas } from "./lib/allsky";
+import { atlasUrl, loadAtlas, type Atlas } from "./lib/allsky";
+import { loadGray, type Gray } from "./lib/skyimage";
 import type { CardInput } from "./lib/card";
 import { coord, coordShort, microns, monthYear, shiftWords, span } from "./lib/format";
 import { readFramePixels } from "./lib/framePixels";
@@ -104,6 +105,21 @@ const LINK_OPENS_PLACE = !!(LINK_TARGET || LINK_NAME || LINK_HAS_POSITION);
 const LINK_SKY_BAND = /^D[1-6]$/.test(LINK.get("band") ?? "") ? LINK.get("band")! : "D5";
 // Tujuan tombol "Show me a moving star": gerak diri tercepat di langit kita.
 const TOUR_ID = "barnard";
+
+/** Keterangan dua baris di samping tombol cincin lensa: namanya, lalu apa gunanya. */
+function Tip({ title, text, hotkey }: { title: string; text: string; hotkey?: string }) {
+  return (
+    <span className="tip" aria-hidden="true">
+      <b>
+        {title}
+        {hotkey && <kbd>{hotkey}</kbd>}
+      </b>
+      <i>{text}</i>
+    </span>
+  );
+}
+/** Urutan tombol yang memperkenalkan diri saat lensa pertama kali terbuka, kiri ke kanan. */
+const INTRO = ["diff", "gaia", "reveal", "flags", "look"] as const;
 const KIND_DETAIL = { moving: "moves", variable: "changes brightness", custom: "yours" } as const;
 // Lebar pandangan lebar kalau bundelnya belum diketahui, detik busur.
 const WIDE_ARCSEC = 2400;
@@ -521,9 +537,10 @@ export function App() {
     if (route.id && quietArrival.current === route.id) quietArrival.current = undefined;
   }, [route.id]);
 
-  // Manifest peta seluruh langit dimuat begitu dibutuhkan: pembuka, atau pratinjau di "Go to".
+  // Manifest peta seluruh langit dimuat begitu dibutuhkan: pembuka, pratinjau di "Go to",
+  // bacaan kartu, atau kartu berbagi (kartu tempat).
   useEffect(() => {
-    if (atlasData || (!atlas && !gotoOpen && !notesOpen)) return;
+    if (atlasData || (!atlas && !gotoOpen && !notesOpen && !cardOpen)) return;
     let alive = true;
     loadAtlas()
       .then((data) => alive && setAtlasData(data))
@@ -534,7 +551,7 @@ export function App() {
     return () => {
       alive = false;
     };
-  }, [atlas, gotoOpen, notesOpen, atlasData]);
+  }, [atlas, gotoOpen, notesOpen, cardOpen, atlasData]);
 
   // Menjauh dari pandangan lebar: peta mulai dari tempat ini lalu menjauh sampai seluruh langit.
   const enterAtlas = useCallback(() => {
@@ -877,6 +894,43 @@ export function App() {
     return () => window.clearTimeout(diveTimer.current);
   }, [landed, manifest]);
 
+  // Sekali per browser, saat lensa pertama kali terbuka: lima tombol cincin memperkenalkan diri
+  // satu per satu lewat keterangannya sendiri. Berhenti begitu orang menyentuh apa pun.
+  const [intro, setIntro] = useState(-1);
+  const lensLive = !atlas && !collapsed && !!image && !status;
+  useEffect(() => {
+    if (!lensLive || prefersReducedMotion() || !window.matchMedia("(hover: hover)").matches) return;
+    try {
+      if (localStorage.getItem("swara:lens-intro")) return;
+    } catch {
+      return;
+    }
+    let k = -1;
+    let timer = 0;
+    const events = ["pointerdown", "keydown", "wheel"] as const;
+    const stop = () => {
+      window.clearTimeout(timer);
+      setIntro(-1);
+      events.forEach((e) => window.removeEventListener(e, stop));
+    };
+    const next = () => {
+      k++;
+      if (k >= INTRO.length) return stop();
+      setIntro(k);
+      timer = window.setTimeout(next, 1700);
+    };
+    timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem("swara:lens-intro", "1");
+      } catch {
+        /* tanpa penyimpanan, perkenalan muncul lagi lain kali */
+      }
+      events.forEach((e) => window.addEventListener(e, stop, { passive: true }));
+      next();
+    }, 2200);
+    return stop;
+  }, [lensLive]);
+
   // Berapa eksposur yang sudah terbaca dari berapa. Jumlah totalnya hanya dilaporkan
   // selama tahap baca; sesudah itu semuanya sudah terbaca.
   const collected = job?.seen_um?.length ?? 0;
@@ -1090,6 +1144,20 @@ export function App() {
     manifest?.context && targetId ? assetUrl(targetId, custom, manifest.context.image) : undefined;
 
   // Pergeseran tiap kunjungan, untuk label di penggaris waktu.
+  // Kualitas data tiap kunjungan pada band yang tampil: berapa eksposur ditumpuk, dan berapa
+  // persen pikselnya bertanda. Tampil saat tanda kunjungan di garis waktu ditunjuk.
+  const visitQuality = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    if (!manifest || !bandId) return out;
+    const pct = (x: number) => (x * 100 < 0.05 ? "0%" : x * 100 < 10 ? `${(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`);
+    for (const w of manifest.windows) {
+      const f = findFrame(manifest, w.id, bandId);
+      out[w.id] = f
+        ? [`${f.n_exposures} exposure${f.n_exposures === 1 ? "" : "s"} stacked`, `${pct(f.saturated_fraction)} saturated · ${pct(f.bad_fraction)} damaged pixels`]
+        : ["No image in this band"];
+    }
+    return out;
+  }, [manifest, bandId]);
   const visitNotes = useMemo(() => {
     const notes: Record<string, string> = {};
     if (!manifest) return notes;
@@ -1153,6 +1221,19 @@ export function App() {
   const jobRa = job?.ra;
   const jobDec = job?.dec;
   const jobLabel = job?.label;
+  // Peta seluruh langit untuk kartu tempat: dimuat saat dialog kartu dibuka.
+  const [cardSky, setCardSky] = useState<Gray>();
+  useEffect(() => {
+    if (!deckOpen || !atlasData || cardSky) return;
+    let alive = true;
+    const band = atlasData.frames.find((f) => f.band === atlasData.default_band) ?? atlasData.frames[0];
+    loadGray(atlasUrl(band.image))
+      .then((g) => alive && setCardSky(g))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [deckOpen, atlasData, cardSky]);
   const cardInput = useMemo<CardInput | undefined>(() => {
     if (!deckOpen || !manifest || !target || !targetId) return undefined;
     if (!cardWiseCount && !cardFrameImage) return undefined;
@@ -1181,11 +1262,12 @@ export function App() {
       points: cardPoints,
       blended: custom ? undefined : BLENDED[targetId],
       cataloguePm,
+      sky: atlasData && cardSky ? { atlas: atlasData, gray: cardSky } : undefined,
       today: new Date(),
     };
     // `cardWise` berganti tiap render; jumlahnya yang menandai citra baru termuat.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deckOpen, manifest, target, targetId, custom, palette, cardContext, cardWiseCount, cardFrameImage, cardPoints, cataloguePm, jobRa, jobDec, jobLabel]);
+  }, [deckOpen, manifest, target, targetId, custom, palette, cardContext, cardWiseCount, cardFrameImage, cardPoints, cataloguePm, jobRa, jobDec, jobLabel, atlasData, cardSky]);
 
   const openGoTo = () => {
     setFormError(undefined);
@@ -1379,10 +1461,12 @@ export function App() {
             style={{ "--a": "126deg" } as React.CSSProperties}
             aria-expanded={wheelOpen}
             aria-label="Choose a look"
+            data-intro={INTRO[intro] === "look"}
             data-tip={`Look: ${LOOKS.find((l) => l.id === palette)?.name}`}
             onClick={() => setWheelOpen((v) => !v)}
           >
             <Palette aria-hidden="true" />
+            <Tip title={`Look: ${LOOKS.find((l) => l.id === palette)?.name}`} text="Six colour maps for the same data" hotkey="C" />
           </button>
           {/* Roda filter: enam look terkurasi, berjajar di cincin seperti filter teleskop. */}
           {wheelOpen &&
@@ -1404,10 +1488,12 @@ export function App() {
             style={{ "--a": "162deg" } as React.CSSProperties}
             aria-pressed={reveal}
             aria-label="Reveal faint things"
+            data-intro={INTRO[intro] === "reveal"}
             data-tip="Reveal faint"
             onClick={() => setReveal((v) => !v)}
           >
             <SunDim aria-hidden="true" />
+            <Tip title={reveal ? "Reveal faint: on" : "Reveal faint"} text="Brighten the dim things around it" hotkey="R" />
           </button>
           <button
             type="button"
@@ -1415,10 +1501,12 @@ export function App() {
             style={{ "--a": "144deg" } as React.CSSProperties}
             aria-pressed={showFlags}
             aria-label="Mark unreliable pixels"
+            data-intro={INTRO[intro] === "flags"}
             data-tip="Unreliable pixels"
             onClick={() => setShowFlags((v) => !v)}
           >
             <Flag aria-hidden="true" />
+            <Tip title={showFlags ? "Unreliable pixels: on" : "Unreliable pixels"} text="Mark saturated and damaged pixels" />
           </button>
           <button
             type="button"
@@ -1426,23 +1514,31 @@ export function App() {
             style={{ "--a": "198deg" } as React.CSSProperties}
             aria-pressed={diff}
             aria-label="Show what changed since the first look"
+            data-intro={INTRO[intro] === "diff"}
             data-tip={diff ? "Difference: on" : "Difference"}
             disabled={!refImage}
             onClick={() => setDiff((v) => !v)}
           >
             <Subtract aria-hidden="true" />
+            <Tip title={diff ? "Difference: on" : "Difference"} text="What changed since the first look" hotkey="D" />
           </button>
           <button
             type="button"
-            className="satellite"
+            className="satellite satellite-low"
             style={{ "--a": "180deg" } as React.CSSProperties}
             aria-pressed={gaiaOn && !!gaiaFile}
             aria-label="Mark the stars of the Gaia catalogue"
+            data-intro={INTRO[intro] === "gaia"}
             data-tip={gaiaFile ? (gaiaOn ? "Gaia stars: on" : "Gaia stars") : "No Gaia stars stored for this place"}
             disabled={!gaiaFile}
             onClick={() => setGaiaOn((v) => !v)}
           >
             <CircleDashed aria-hidden="true" />
+            <Tip
+              title={gaiaOn && gaiaFile ? "Gaia stars: on" : "Gaia stars"}
+              text={gaiaFile ? "Where the Gaia catalogue puts each star" : "None stored for this place"}
+              hotkey={gaiaFile ? "A" : undefined}
+            />
           </button>
           {zoomLevels.length > 0 && (
             <>
@@ -1456,6 +1552,10 @@ export function App() {
                 onClick={() => zoom(-1)}
               >
                 <MagnifyingGlassMinus aria-hidden="true" />
+                <Tip
+                  title={zoomIndex > 0 ? "Zoom out" : canSky ? "Wide view" : "Whole sky"}
+                  text={zoomIndex > 0 ? "A wider field around it" : canSky ? "Close the lens onto the 40′ sky" : "Back to the map of the whole sky"}
+                />
               </button>
               <button
                 type="button"
@@ -1467,6 +1567,7 @@ export function App() {
                 onClick={() => zoom(1)}
               >
                 <MagnifyingGlassPlus aria-hidden="true" />
+                <Tip title="Zoom in" text="A closer look at the same place" />
               </button>
             </>
           )}
@@ -1584,6 +1685,8 @@ export function App() {
                 wise={wise.frames}
                 visits={available}
                 current={cursor >= 0 ? sequence[cursor] : undefined}
+                quality={visitQuality}
+                wiseNote={`${wise.band.lambda_um} µm · to look at, not measured`}
                 onSelect={(f) => {
                   setPlaying(false);
                   show(f);
@@ -1595,6 +1698,7 @@ export function App() {
                 available={availableIds}
                 current={windowId}
                 notes={visitNotes}
+                quality={visitQuality}
                 onSelect={(id) => {
                   setPlaying(false);
                   setWindowId(id);

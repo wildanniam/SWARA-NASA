@@ -46,7 +46,7 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 |---|---|
 | Spektrum saat itu juga | Ada, dan bisa dibunyikan |
 | Koordinat di URL | Ada |
-| Penanda kontaminasi | Ada: piksel jenuh dan rusak |
+| Penanda kontaminasi | Ada: piksel jenuh dan rusak di lensa, dan persentasenya per kunjungan di garis waktu |
 | Menjumlahkan data per detektor | Ada: satu frame = median per detektor per kunjungan |
 | Pengguna memilih lebar medan | Ada: peta seluruh langit yang bisa diperbesar sampai medan 1,8 derajat, pandangan lebar 40 menit busur, lalu lensa 6, 3, atau 2 menit busur |
 | Menimpa data WISE atau Gaia | Ada: WISE (W2, 2010-2024, untuk dilihat) dan bintang Gaia DR3 di lensa, ditaruh di posisinya pada tanggal citra yang tampil |
@@ -58,9 +58,8 @@ Kita sedang membangun produk yang akan dinilai, bukan bereksperimen.
 Urutan platform berikutnya:
 
 2. Halaman proyek dan video demo berbahasa Inggris.
-3. Identitas visual: logo sudah ada; sisanya penerapan ke cuplikan penanda dan hasil Go to. Kartu ketiga (peta rasi tempat benda itu berada) butuh berkas bintang dan garis rasi sebagai aset baru.
 
-Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), pembuka seluruh langit, dan landing page di `/` (aplikasi pindah ke `/sky`).
+Sudah selesai: medan 6 menit busur, riwayat WISE di garis waktu, zoom teleskop dengan latar yang sejajar, deploy publik, pembacaan data yang cepat, pemuatan bertahap untuk tempat baru, peralihan WISE ke SPHEREx yang setara tampilannya, enam look terkurasi dengan Reveal faint, tombol Share serta Guide (bacaan tiga kartu), kartu berbagi (kartu gerak dan kartu cahaya; tanpa kata "discovery"), pembuka seluruh langit, landing page di `/` (aplikasi pindah ke `/sky`), gaya kartu untuk cuplikan penanda dan daftar Go to, kartu berbagi ketiga (tempatnya), perkenalan tombol lensa, dan kualitas data per kunjungan di garis waktu.
 
 Aturan submission yang perlu diingat: demo 7 slide atau video paling lama 30 detik, semua berbahasa Inggris, tautan publik tanpa login, dan pemakaian AI diungkap.
 
@@ -138,6 +137,12 @@ Di luar contoh: Wolf 359 terukur 3,9" barat dan 2,4" selatan dalam 381 hari (kat
 ## Log
 
 ### 2026-11-15
+- **KEPUTUSAN (Wildan): empat sisa pekerjaan core dikerjakan dengan estetika sebagai tekanan utama.** Semuanya memakai data yang sudah ada; tidak ada bentuk bundle yang berubah.
+  - **Cuplikan penanda dan daftar Go to jadi kartu tempat:** jendela melengkung berisi citra asli, julukan, dan angka terukur ("The Wanderer · 10.1″ north in 12 months"). Julukan dan angka dihitung di `web/src/lib/verdict.ts`, dipakai juga oleh landing page.
+  - **Kartu berbagi ketiga, "Its place":** langit 44 derajat di sekitar benda dari peta seluruh langit SPHEREx, rasi yang ditempatinya digambar terang, kompas di sekeliling jendela, lalu lintang galaktik dan dari mana ia bisa terlihat. Kartu ini selalu ada, jadi benda tanpa spektrum bersih sekarang punya dua kartu.
+  - **Keterangan kenop lensa dua baris** (nama, tombol pintas, gunanya) dan **perkenalan sekali per browser**: lima kenop menyala bergantian saat lensa pertama terbuka.
+  - **Garis waktu:** menunjuk tanda kunjungan menampilkan jumlah eksposur yang ditumpuk serta persen piksel jenuh dan rusak; tanda WISE menyebut "to look at, not measured". Dua persen itu ditulis terpisah karena `saturated_fraction` dan `bad_fraction` di bundle dihitung sendiri-sendiri dan bisa tumpang tindih.
+  - Diuji di Chromium headless: kelima contoh di cuplikan dan daftar, kartu tempat pada tiga look (Ember, Glacier, Paper), perkenalan (urutan, tidak muncul di kunjungan kedua, berhenti saat diklik), tujuh keterangan kenop tanpa menimpa kenop lain, keterangan garis waktu di kedua rentang, ponsel 390 px, dan regresi aplikasi 26 langkah. Belum diuji: ponsel asli, Safari, Firefox.
 - **KEPUTUSAN (Wildan): panel temuan WISE 0855 menulis "Hidden · ? · behind a background star", bukan "Holding still".** Yang terukur di posisi itu bintang latar, jadi "Holding still" bisa terbaca sebagai WISE 0855 tidak bergerak. Teks dibuat sependek benda lain (prinsip minimalis); penjelasan panjang tetap di panel kiri. Berlaku untuk semua benda di `BLENDED` (`web/src/content.ts`).
 - **KEPUTUSAN (Wildan): UX lensa dipoles tanpa menunggu persetujuan per langkah.** Masukannya: Difference dan tombol lain berganti "langsung pek" tanpa transisi, dan teleskopnya terasa statis saat ditunjuk.
   - Pergantian cara melukis (Difference, look, Reveal faint, piksel tak andal) sekarang menyapu citra lama dari kiri ke kanan dalam 0,64 detik dengan garis ambar; blink dan pergantian pembesaran tidak tersapu. Cincin Gaia mengunci satu per satu dan memudar saat dimatikan. Keterangan di bawah lensa masuk pelan.
